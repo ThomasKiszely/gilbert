@@ -17,3 +17,6 @@ function renderView(req, res) {
 module.exports = {
     renderView
 };
+
+
+//bruges sådan her: <a href="/user">Gå til din brugerprofil</a>
