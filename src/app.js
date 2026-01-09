@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express();
 const path = require('path');
-const router = require('./routes/userRoutes');
+const viewRouter = require('./routes/viewRoutes');
 const { notFound } = require('./middlewares/notFound');
 const { errorHandler } = require('./middlewares/errorHandler');
 const { connectToMongo } = require('./services/db');
@@ -14,7 +14,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Routes
-app.use('/api', router);
+app.use('/', router);
 
 app.use(notFound);
 app.use(errorHandler);
