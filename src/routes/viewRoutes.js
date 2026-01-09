@@ -1,8 +1,10 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const viewController = require('./controllers/viewController');
+const { renderView } = require("../controllers/viewController");
 
-//Husk nu for helvede rækkefølgen... De mere specifikke først...
 
-router.get('/', viewController.showIndex);
+router.get("/:view", renderView);
+router.get("/", renderView);
+
+
 module.exports = router;

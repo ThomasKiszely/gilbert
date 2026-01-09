@@ -1,7 +1,19 @@
-const { view } = require("../utils/viewPath");
+const path = require("path");
+const fs = require("fs");
 
-function showIndex(req, res) {
-    res.sendFile(view("index.html"));
+function renderView(req, res) {
+    const viewName = req.params.view || "index";
+    const filePath = path.join(process.cwd(), "views", `${viewName}.html`);
+
+    if (!fs.existsSync(filePath)) {
+        return res
+            .status(404)
+            .sendFile(path.join(process.cwd(), "views", "404.html"));
+    }
+
+    res.sendFile(filePath);
 }
 
-module.exports = { showIndex };
+module.exports = {
+    renderView
+};
