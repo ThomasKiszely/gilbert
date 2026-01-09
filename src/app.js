@@ -14,7 +14,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Routes
-app.use('/', router);
+app.use('/', viewRouter);
 
 app.use(notFound);
 app.use(errorHandler);
