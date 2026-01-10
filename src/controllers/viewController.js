@@ -1,22 +1,18 @@
-const path = require("path");
-const fs = require("fs");
+const { resolveView, get404View } = require('../services/viewService');
 
-function renderView(req, res) {
+async function renderView(req, res) {
     const viewName = req.params.view || "index";
-    const filePath = path.join(process.cwd(), "views", `${viewName}.html`);
 
-    if (!fs.existsSync(filePath)) {
-        return res
-            .status(404)
-            .sendFile(path.join(process.cwd(), "views", "404.html"));
+    const filePath = await resolveView(viewName);
+
+    if(!filePath) {
+        return res.status(404).sendFile(get404View());
     }
-
-    res.sendFile(filePath);
+    return res.sendFile(filePath);
 }
 
 module.exports = {
-    renderView
-};
+    renderView,
+}
 
-
-//bruges sådan her: <a href="/user">Gå til din brugerprofil</a>
+//bruges sådan her: window.location.href = "/login";

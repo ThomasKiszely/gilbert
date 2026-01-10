@@ -6,12 +6,20 @@ function errorHandler(error, req, res, next) {
     const status = error.status || 500;
     const message = error.message || "Server error";
 
-    if (req.originalUrl.startsWith("/api") || req.headers.accept?.includes("application/json")) {
-        return res.status(status).json({ success: false, error: message });
+    const wantsJson =
+        req.originalUrl.startsWith("/api") ||
+        req.headers.accept?.includes("application/json");
+
+    if (wantsJson) {
+        return res.status(status).json({
+            success: false,
+            error: message,
+        });
     }
+    const errorPage = status === 404 ? "404.html" : "500.html";
 
     res.status(status).sendFile(
-        path.join(__dirname, '..', '..', 'public', 'errors', '500.html')
+        path.join(process.cwd(), 'views', errorPage),
     );
 }
 
