@@ -2,6 +2,8 @@ const express = require('express');
 const app = express();
 const path = require('path');
 const viewRouter = require('./routes/viewRoutes');
+const { limitRate } = require('./middlewares/rateLimiter');
+const { log } = require('./middlewares/logger');
 const { notFound } = require('./middlewares/notFound');
 const { errorHandler } = require('./middlewares/errorHandler');
 const { connectToMongo } = require('./services/db');
@@ -10,7 +12,8 @@ connectToMongo();
 
 // Middleware
 app.use(express.json());
-
+app.use(limitRate);
+app.use(log);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Routes

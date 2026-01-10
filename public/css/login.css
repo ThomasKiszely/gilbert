@@ -1,0 +1,34 @@
+.card {
+    width: 300px;
+    margin: 50px auto;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+}
+
+.tabs {
+    display: flex;
+    margin-bottom: 15px;
+}
+
+.tabs button {
+    flex: 1;
+    padding: 10px;
+    cursor: pointer;
+    border: none;
+    background: var(--primary-color);
+}
+
+.tabs button.active {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    font-weight: bold;
+}
+.tabs button:hover {
+    background: linear-gradient(135deg, var(--secondary-color), var(--accent-color));
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.hidden {
+    display: none;
+}
