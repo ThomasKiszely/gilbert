@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
     email: { type: String, unique: true, required: true, lowercase: true, trim: true },
     username: { type: String, unique: true, required: true },
     passwordHash: { type: String, required: true },
-    role: { type: String, enum: userRoles, default: 'private' },
+    role: { type: String, enum: userRoles, default: 'private', required: true },
     location: {
         city: { type: String, required: true },
         country: { type: String, required: true },
