@@ -34,16 +34,29 @@ async function handleAuthentication(event, endpoint) {
     // Laver FormData om til objekt
     const payload = Object.fromEntries(formData.entries());
 
-    if (endpoint === 'register'){
-        if(payload.password !== payload.confirmPassword){
+    if (endpoint === 'register') {
+        if (payload.password !== payload.confirmPassword) {
             msg.textContent = "Passwords do not match";
             msg.style.color = "red";
             return;
         }
-
+        const registerPayload = {
+            username: payload.username,
+            email: payload.email,
+            password: payload.password,
+            location: {
+                city: payload.city,
+                country: payload.country,
+            }
+        };
+        return submitAuth(endpoint, registerPayload);
     }
 
-    try {
+    submitAuth(endpoint, payload);
+}
+
+async function submitAuth(endpoint, payload) {
+    try{
         const res = await fetch(`/api/auth/${endpoint}`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
