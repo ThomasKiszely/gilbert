@@ -11,12 +11,18 @@ async function createUser(user) {
 }
 
 async function updateUser(id, user) {
-    const updatedUser = User.findByIdAndUpdate(id, user, { new: true, runValidators: true });
+    const updatedUser = await User.findByIdAndUpdate(id, user, { new: true, runValidators: true });
     return updatedUser;
+}
+
+async function findUserById(id) {
+    const user = await User.findById(id);
+    return user;
 }
 
 module.exports = {
     findUserByEmail,
     createUser,
     updateUser,
+    findUserById,
 }

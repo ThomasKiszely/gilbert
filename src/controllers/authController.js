@@ -2,17 +2,21 @@ const authService = require('../services/authService');
 
 async function register(req, res, next) {
     try {
-        const { username, email, password, confirmPassword, location } = req.body;
+        const { username, email, password, confirmPassword, location, termsAccepted } = req.body;
 
         if (password !== confirmPassword) {
             return res.status(400).json({ error: 'Passwords do not match' });
+        }
+        if(!termsAccepted) {
+            return res.status(400).json({ error: 'TermsAccepted' });
         }
 
         const user = await authService.register({
             username,
             email,
             password,
-            location
+            location,
+            termsAccepted,
         });
 
         const verifyToken = await authService.generateEmailVerificationToken(user._id);
@@ -93,6 +97,16 @@ async function resendVerificationEmail(req, res, next) {
     }
 }
 
+async function acceptTerms(req, res, next) {
+    try{
+        const userId = req.user.id;
+        await authService.acceptTerms(userId);
+        return res.status(200).json({ success: true, message: "Terms accepted successfully." });
+    } catch (error) {
+        next(error);
+    }
+}
+
 
 module.exports = {
     register,
@@ -100,4 +114,5 @@ module.exports = {
     logout,
     verifyEmail,
     resendVerificationEmail,
+    acceptTerms,
 };

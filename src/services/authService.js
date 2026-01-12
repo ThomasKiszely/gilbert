@@ -15,10 +15,14 @@ function createToken(user) {
     );
 }
 
-async function register({ username, email, password, location }) {
+async function register({ username, email, password, location, termsAccepted }) {
     const existing = await userRepo.findUserByEmail(email.toLowerCase());
     if (existing) {
         throw new Error("Email already exists");
+    }
+
+    if (!termsAccepted){
+        throw new Error("Terms must be accepted");
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -28,7 +32,10 @@ async function register({ username, email, password, location }) {
         email: email.toLowerCase(),
         passwordHash,
         location,
-        isEmailVerified: false
+        termsAccepted,
+        termsAcceptedAt: new Date(),
+        isEmailVerified: false,
+        termsVersion: process.env.TERMS_VERSION
     });
 
     return user;
@@ -37,12 +44,15 @@ async function register({ username, email, password, location }) {
 async function login(email, password) {
     const user = await userRepo.findUserByEmail(email.toLowerCase());
     if (!user) {
-        throw new Error("Forkert email eller password");
+        throw new Error("Wrong email or password");
+    }
+    if (user.termsVersion !== process.env.TERMS_VERSION) {
+        throw new Error("New terms must be accepted");
     }
 
     const match = await bcrypt.compare(password, user.passwordHash);
     if (!match) {
-        throw new Error("Forkert email eller password");
+        throw new Error("Wrong email or password");
     }
 
     if (!user.isEmailVerified) {
@@ -107,6 +117,18 @@ async function resendVerificationEmail(email) {
     await sendVerificationEmail(user.email, token);
 }
 
+async function acceptTerms(userId){
+    const updated = await userRepo.updateUser(userId, {
+        termsAccepted: true,
+        termsAcceptedAt: new Date(),
+        termsVersion: process.env.TERMS_VERSION
+    });
+    if (!updated) {
+        throw new Error("User not found");
+    }
+    return updated;
+}
+
 
 module.exports = {
     register,
@@ -114,5 +136,6 @@ module.exports = {
     generateEmailVerificationToken,
     sendVerificationEmail,
     verifyEmail,
-    resendVerificationEmail
+    resendVerificationEmail,
+    acceptTerms,
 };

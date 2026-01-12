@@ -9,7 +9,7 @@ function sanitizeString(str) {
 function validateUser(req, res, next) {
     const errors = [];
 
-    let { username, email, password, location } = req.body;
+    let { username, email, password, location, termsAccepted } = req.body;
 
     if (typeof username === "string"){
         req.body.username = sanitizeString(username);
@@ -24,7 +24,7 @@ function validateUser(req, res, next) {
         }
     }
 
-    ({ username, email, password, location } = req.body);
+    ({ username, email, password, location, termsAccepted } = req.body);
 
     if (typeof username !== 'string' || username.length < 2) {
         errors.push('Username must be at least 2 characters');
@@ -49,6 +49,9 @@ function validateUser(req, res, next) {
         if (!location.country || location.country.length < 2) {
             errors.push('Country is required');
         }
+    }
+    if (termsAccepted !== true && termsAccepted !== "true") {
+        errors.push('You must accept the terms to register');
     }
     if(errors.length > 0) {
         return res.status(400).json({ success: false, errors });
