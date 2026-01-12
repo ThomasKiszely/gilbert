@@ -3,6 +3,7 @@ const app = express();
 const path = require('path');
 const viewRouter = require('./routes/viewRoutes');
 const authRouter = require('./routes/authRoutes');
+const userRouter = require('./routes/userRoutes');
 const { limitRate } = require('./middlewares/rateLimiter');
 const { log } = require('./middlewares/logger');
 const { verifyToken } = require('./middlewares/verifyToken');
@@ -22,7 +23,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 // Routes
 app.use('/', viewRouter);
 app.use('/api/auth', authRouter);
-
+app.use('/api/users', userRouter);
 
 app.use(notFound);
 app.use(errorHandler);
