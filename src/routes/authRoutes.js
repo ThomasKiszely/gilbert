@@ -4,12 +4,13 @@ const authController = require("../controllers/authController");
 const { loginLimiter } = require("../middlewares/loginLimiter");
 const { validateLogin } = require("../middlewares/loginValidator");
 const { validateUser } = require("../middlewares/userValidator");
+const { emailVerificationLimiter } = require("../middlewares/emailVerificationLimiter");
 
 router.post("/login", loginLimiter, validateLogin, authController.login);
 router.post("/register", validateUser, authController.register);
 router.post("/logout", authController.logout);
 router.get("/verify-email", authController.verifyEmail);
-router.post("/resend-verification", authController.resendVerificationEmail);
+router.post("/resend-verification", emailVerificationLimiter, authController.resendVerificationEmail);
 
 
 module.exports = router;
