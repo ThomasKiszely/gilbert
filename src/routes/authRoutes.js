@@ -8,5 +8,8 @@ const { validateUser } = require("../middlewares/userValidator");
 router.post("/login", loginLimiter, validateLogin, authController.login);
 router.post("/register", validateUser, authController.register);
 router.post("/logout", authController.logout);
+router.get("/verify-email", authController.verifyEmail);
+router.post("/resend-verification", authController.resendVerificationEmail);
+
 
 module.exports = router;

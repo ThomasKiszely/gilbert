@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const userRepo = require("../data/userRepo");
+const mailer = require("../utils/mailer"); //tilføj mail-service
 
 function createToken(user) {
     return jwt.sign(
@@ -24,18 +25,17 @@ async function register({ username, email, password, location }) {
 
     const user = await userRepo.createUser({
         username,
-        email,
+        email: email.toLowerCase(),
         passwordHash,
-        location
+        location,
+        isEmailVerified: false
     });
 
-    const token = createToken(user);
-
-    return { token, user };
+    return user;
 }
 
 async function login(email, password) {
-    const user = await userRepo.findUserByEmail(email);
+    const user = await userRepo.findUserByEmail(email.toLowerCase());
     if (!user) {
         throw new Error("Forkert email eller password");
     }
@@ -45,9 +45,74 @@ async function login(email, password) {
         throw new Error("Forkert email eller password");
     }
 
+    if (!user.isEmailVerified) {
+        throw new Error("Email not verified");
+    }
+
     const token = createToken(user);
 
     return { token, user };
 }
 
-module.exports = { register, login };
+function generateEmailVerificationToken(userId) {
+    return jwt.sign(
+        { userId },
+        process.env.EMAIL_SECRET,
+        { expiresIn: "1d" }
+    );
+}
+
+async function sendVerificationEmail(email, token) {
+    const url = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
+
+    await mailer.send({
+        to: email,
+        subject: "Verification email",
+        html: `<p>Klik for at verificere din email:</p><a href="${url}">${url}</a>`
+    });
+}
+
+async function verifyEmail(token) {
+    let payload;
+
+    try{
+        payload = jwt.verify(token, process.env.EMAIL_SECRET);
+    } catch {
+        throw new Error("Invalid or expired verification token");
+    }
+
+    const updated = await userRepo.updateUser(payload.userId, {
+        isEmailVerified: true
+    });
+
+    if (!updated) {
+        throw new Error("User not found");
+    }
+    return updated;
+}
+
+async function resendVerificationEmail(email) {
+    const user = await userRepo.findUserByEmail(email.toLowerCase());
+
+    // Af sikkerhedsgrunde: returnér bare success, selv hvis user ikke findes
+    if (!user) return;
+
+    // Hvis allerede verificeret → ingen grund til at sende mail
+    if (user.isEmailVerified) return;
+
+    // Generér ny token
+    const token = generateEmailVerificationToken(user._id);
+
+    // Send email (virker når du engang har maileren)
+    await sendVerificationEmail(user.email, token);
+}
+
+
+module.exports = {
+    register,
+    login,
+    generateEmailVerificationToken,
+    sendVerificationEmail,
+    verifyEmail,
+    resendVerificationEmail
+};
