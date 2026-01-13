@@ -1,3 +1,5 @@
+const { isStrongPassword } = require('../utils/isStrongPassword')
+
 function sanitizeString(str) {
     return str
         .trim()
@@ -37,9 +39,8 @@ function validateUser(req, res, next) {
             errors.push("Email is not valid");
         }
     }
-    if (!password || typeof password !== 'string' || password.trim().length < 8) {
-        errors.push('Password must be at least 8 characters');
-    }
+    if (!isStrongPassword(password)) {
+        errors.push("Password must be at least 8 characters and include upper, lower, number and special character"); }
     if (!location || typeof location !== 'object') {
         errors.push('Location is required');
     } else {
