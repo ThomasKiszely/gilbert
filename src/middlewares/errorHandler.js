@@ -14,6 +14,7 @@ function errorHandler(error, req, res, next) {
         return res.status(status).json({
             success: false,
             error: message,
+            code: error.code || null
         });
     }
     const errorPage = status === 404 ? "404.html" : "500.html";

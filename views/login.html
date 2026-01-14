@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="../public/css/style.css">
     <link rel="stylesheet" href="/css/login.css">
-    <link rel="stylesheet" href="../public/css/login.css">
+    <link rel="stylesheet" href="/css/modal.css">
 </head>
 <body>
 <header>
@@ -28,22 +28,45 @@
     </form>
 
     <form id="signupForm" class="hidden">
-        <input type="text" id="signupUsername" name="username" placeholder="Username" required autofocus>
+        <input type="text" name="username" placeholder="Username" required>
 
-        <input type="email" id="signupEmail" name="email" placeholder="Email" required>
+        <input type="email" name="email" placeholder="Email" required>
 
-        <input type="text" id="signupCity" name="city" placeholder="City" required>
-        <input type="text" id="signupCountry" name="country" placeholder="Country" required>
+        <input type="text" name="city" placeholder="City" required>
+        <input type="text" name="country" placeholder="Country" required>
 
-        <input type="password" id="signupPassword" name="password" placeholder="Password" required>
-        <input type="password" id="signupConfirmPassword" name="confirmPassword" placeholder="Confirm Password" required>
+        <input type="password" name="password" placeholder="Password" required>
+        <input type="password" name="confirmPassword" placeholder="Confirm Password" required>
+
+        <label class="terms">
+            <input type="checkbox" name="termsAccepted" required>
+            I accept the <a href="#" id="termsLink">terms and conditions</a>
+        </label>
 
         <button type="submit">Register</button>
     </form>
+    <!-- Terms Modal -->
+    <div id="termsModal" class="modal hidden">
+        <div class="modal-content">
+            <span id="closeTerms" class="close">&times;</span>
+            <h2>Terms & Conditions</h2>
+
+            <div class="terms-text">
+                <p><strong>Version 1.0.0</strong></p>
+                <p>By creating an account, you agree to the following terms...</p>
+                <p>[Her indsætter du dine terms-tekster]</p>
+            </div>
+
+            <button id="acceptTermsBtn" class="hidden">Accept Terms</button>
+        </div>
+    </div>
+
+
+
 
     <div id="message"></div>
 </div>
-<script src="js/login.js"></script>
+<script src="/js/login.js"></script>
 
 <footer></footer>
 </body>

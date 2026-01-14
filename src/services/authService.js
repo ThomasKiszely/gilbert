@@ -47,7 +47,9 @@ async function login(email, password) {
         throw new Error("Wrong email or password");
     }
     if (user.termsVersion !== process.env.TERMS_VERSION) {
-        throw new Error("New terms must be accepted");
+        const err = new Error("New terms must be accepted");
+        err.code = "TERMS_OUTDATED";
+        throw err;
     }
 
     const match = await bcrypt.compare(password, user.passwordHash);
