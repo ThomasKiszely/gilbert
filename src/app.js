@@ -4,6 +4,20 @@ const path = require('path');
 const viewRouter = require('./routes/viewRoutes');
 const authRouter = require('./routes/authRoutes');
 const userRouter = require('./routes/userRoutes');
+
+// Product routers
+const productRouter = require('./routes/productRoutes');
+const brandRouter = require('./routes/brandRoutes');
+const categoryRouter = require('./routes/categoryRoutes');
+const colorRouter = require('./routes/colorRoutes');
+const conditionRouter = require('./routes/conditionRoutes');
+const materialRouter = require('./routes/materialRoutes');
+const sizeRouter = require('./routes/sizeRoutes');
+const subcategoryRouter = require('./routes/subcategoryRoutes');
+const tagRouter = require('./routes/tagRoutes');
+
+
+
 const { limitRate } = require('./middlewares/rateLimiter');
 const { log } = require('./middlewares/logger');
 const { verifyToken } = require('./middlewares/verifyToken');
@@ -17,13 +31,26 @@ connectToMongo();
 app.use(express.json());
 app.use(limitRate);
 app.use(log);
-app.use(verifyToken);
+//app.use(verifyToken);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Routes
-app.use('/', viewRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/users', userRouter);
+
+// Product routes
+app.use('/api/products', productRouter);
+app.use('/api/brands', brandRouter);
+app.use('/api/colors', colorRouter);
+app.use('/api/categories', categoryRouter);
+app.use('/api/conditions', conditionRouter);
+app.use('/api/materials', materialRouter);
+app.use('/api/sizes', sizeRouter);
+app.use('/api/subcategories', subcategoryRouter);
+app.use('/api/tags', tagRouter);
+
+
+app.use('/', viewRouter);
 
 app.use(notFound);
 app.use(errorHandler);
