@@ -31,7 +31,7 @@ connectToMongo();
 app.use(express.json());
 app.use(limitRate);
 app.use(log);
-//app.use(verifyToken);
+app.use(verifyToken);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Routes
