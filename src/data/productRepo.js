@@ -1,4 +1,4 @@
-const Product = require("../models/product");
+const Product = require("../models/Product");
 
 const POPULATE_FIELDS = 'category subcategory brand size condition color material tags seller';
 async function createProduct(productData) {
