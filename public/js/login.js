@@ -76,6 +76,17 @@ async function submitAuth(endpoint, payload) {
                 showTerms({ showAcceptButton: true });
                 return;
             }
+            if (data.code === "EMAIL_NOT_VERIFIED"){
+                showMessage("Your email is not verified", "red");
+
+                const btn = document.createElement("button");
+                btn.textContent = "Resend verification email";
+                btn.style.marginTop = "10px";
+
+                btn.onclick = () => resendVerification(payload.email);
+                msg.appendChild(btn);
+                return;
+            }
             if (data.errors){
                 return showMessage(data.errors.join(", "), "red");
             }
@@ -152,3 +163,23 @@ document.getElementById("acceptTermsBtn").addEventListener("click", async () => 
         showMessage(data.error || "Could not accept terms", "red");
     }
 });
+
+async function resendVerification(email) {
+    try {
+        const res = await fetch("/api/auth/resend-verification", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            showMessage("A new verification email has been sent.", "green");
+        } else {
+            showMessage(data.error || "Could not resend verification email.", "red");
+        }
+    } catch (err) {
+        showMessage("Server error while resending email.", "red");
+    }
+}

@@ -58,7 +58,9 @@ async function login(email, password) {
     }
 
     if (!user.isEmailVerified) {
-        throw new Error("Email not verified");
+        const err = new Error("Email not verified");
+        err.code = "EMAIL_NOT_VERIFIED";
+        throw err;
     }
 
     const token = createToken(user);
