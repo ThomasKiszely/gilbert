@@ -21,13 +21,14 @@
         <button id="signupTab">Register</button>
     </div>
 
-    <form id="loginForm">
+    <form id="loginForm" onsubmit="handleAuthentication(event, 'login')">
         <input type="email" id="loginEmail" name="email" placeholder="Email" required autofocus>
         <input type="password" id="loginPassword" name="password" placeholder="Password" required>
         <button type="submit">Login</button>
     </form>
 
-    <form id="signupForm" class="hidden">
+    <form id="signupForm" class="hidden" onsubmit="handleAuthentication(event, 'register')">
+
         <input type="text" name="username" placeholder="Username" required>
 
         <input type="email" name="email" placeholder="Email" required>

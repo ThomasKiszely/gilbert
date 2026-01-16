@@ -63,7 +63,8 @@ async function submitAuth(endpoint, payload) {
     try {
         const res = await fetch(`/api/auth/${endpoint}`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json",
+            "Accept": "application/json",},
             body: JSON.stringify(payload),
             credentials: "include"
         });
@@ -74,6 +75,9 @@ async function submitAuth(endpoint, payload) {
             if (data.code === "TERMS_OUTDATED") {
                 showTerms({ showAcceptButton: true });
                 return;
+            }
+            if (data.errors){
+                return showMessage(data.errors.join(", "), "red");
             }
             return showMessage(data.error || "Something went wrong", "red");
         }

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Email Verification</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .verify-box {
+      max-width: 400px;
+      margin: 80px auto;
+      padding: 30px;
+      background: #fff;
+      border-radius: 8px;
+      text-align: center;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .success { color: green; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+
+<div class="verify-box">
+  <h2>Email Verification</h2>
+  <p id="status">Verifying your email...</p>
+</div>
+
+<script>
+  async function verifyEmail() {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+
+    if (!token) {
+      document.getElementById("status").textContent = "Missing verification token.";
+      document.getElementById("status").className = "error";
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/auth/verify-email?token=${token}`);
+      const data = await res.json();
+
+      if (data.success) {
+        document.getElementById("status").textContent = "Your email has been verified!";
+        document.getElementById("status").className = "success";
+
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 5000);
+      } else {
+        document.getElementById("status").textContent = data.error || "Verification failed.";
+        document.getElementById("status").className = "error";
+      }
+    } catch (err) {
+      document.getElementById("status").textContent = "Server error.";
+      document.getElementById("status").className = "error";
+    }
+  }
+
+  verifyEmail();
+</script>
+
+</body>
+</html>

@@ -5,10 +5,14 @@ async function register(req, res, next) {
         const { username, email, password, confirmPassword, location, termsAccepted } = req.body;
 
         if (password !== confirmPassword) {
-            return res.status(400).json({ error: 'Passwords do not match' });
+            const err = new Error("Passwords do not match");
+            err.status = 400;
+            return next(err);
         }
         if(!termsAccepted) {
-            return res.status(400).json({ error: 'TermsAccepted' });
+            const err = new Error("Terms must be accepted");
+            err.status = 400;
+            return next(err);
         }
 
         const user = await authService.register({
