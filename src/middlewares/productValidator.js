@@ -1,13 +1,8 @@
 const {Types} = require("mongoose");
 const Product = require("../models/Product");
-
-function sanitizeString(str) {
-    return str
-        .trim()
-        .replace(/<[^>]*>?/gm, "") //Fjerner HTML‑tags og script‑tags
-        .replace(/\s+/g, " ") //.replace(/\s+/g, " ")
-        .replace(/[^\w\s\-ÆØÅæøå]/g, ""); //Fjerner alle tegn der ikke er tilladt
-}
+const {genders} = require("../utils/gender");
+const {validateEnum} = require("../utils/validate");
+const {sanitizeString} = require("../utils/sanitize");
 
 function validateObjectId(id)
 {
@@ -39,6 +34,16 @@ function validateProduct(req, res, next)  {
     {
         req.body.description = sanitizeString(description);
     }
+
+    // Gender via validateEnum
+    req.body.gender = validateEnum(
+        "gender",
+        gender,
+        genders,
+        sanitizeString,
+        errors
+    );
+
     // Validate ObjectIDs
     const idFields = { category, subcategory, brand, size, condition, color, material };
 

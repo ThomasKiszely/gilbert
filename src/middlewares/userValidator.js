@@ -1,12 +1,5 @@
 const { isStrongPassword } = require('../utils/isStrongPassword')
-
-function sanitizeString(str) {
-    return str
-        .trim()
-        .replace(/<[^>]*>?/gm, "") //Fjerner HTML‑tags og script‑tags
-        .replace(/\s+/g, " ") //.replace(/\s+/g, " ")
-        .replace(/[^\w\s\-ÆØÅæøå]/g, ""); //Fjerner alle tegn der ikke er tilladt
-}
+const {sanitizeString} = require("../utils/sanitize");
 
 function validateUser(req, res, next) {
     const errors = [];
