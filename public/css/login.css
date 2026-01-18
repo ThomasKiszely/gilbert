@@ -32,3 +32,17 @@
 .hidden {
     display: none;
 }
+.forgot {
+    margin-top: 10px;
+    text-align: right;
+}
+
+.forgot a {
+    font-size: 0.9rem;
+    color: #555;
+    text-decoration: none;
+}
+
+.forgot a:hover {
+    text-decoration: underline;
+}

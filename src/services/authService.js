@@ -133,6 +133,49 @@ async function acceptTerms(userId){
     return updated;
 }
 
+function generatePasswordResetToken(userId) {
+    return jwt.sign(
+        { userId },
+        process.env.PASSWORD_RESET_SECRET,
+        { expiresIn: "1h" }
+    );
+}
+
+async function requestPasswordReset(email) {
+    const user = await userRepo.findUserByEmail(email.toLowerCase());
+    if(!user) return;
+
+    const token = generatePasswordResetToken(user._id);
+
+    const url = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+
+    await mailer.send({
+        to: user.email,
+        subject: "Reset your Password",
+        html: `
+                <p>Click to reset your password: </p>
+                <a href="${url}">${url}</a>`,
+    });
+}
+
+async function resetPassword(token, newPassword) {
+    let payload;
+    try{
+        payload = jwt.verify(token, process.env.PASSWORD_RESET_SECRET);
+    } catch {
+        throw new Error("Invalid or expired reset token");
+    }
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    const updated = await userRepo.updateUser(payload.userId, {
+        passwordHash
+    });
+    if (!updated) {
+        throw new Error("User not found");
+    }
+    return updated;
+}
+
 
 module.exports = {
     register,
@@ -142,4 +185,6 @@ module.exports = {
     verifyEmail,
     resendVerificationEmail,
     acceptTerms,
+    resetPassword,
+    requestPasswordReset
 };

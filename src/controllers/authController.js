@@ -111,6 +111,37 @@ async function acceptTerms(req, res, next) {
     }
 }
 
+async function requestPasswordReset(req, res, next) {
+    try{
+        const { email } = req.body;
+        await authService.requestPasswordReset(email);
+        return res.status(200).json({
+            success: true,
+            message: "If email exists a password reset link will be send.",
+        })
+    } catch (error){
+        next(error);
+    }
+}
+
+async function resetPassword(req, res, next) {
+    try{
+        const { token } = req.query;
+        const { password, confirmPassword } = req.body;
+        if (password !== confirmPassword) {
+            const err = new Error("Passwords do not match");
+            err.status = 400;
+            return next(err);
+        }
+        await authService.resetPassword(token, password);
+        return res.status(200).json({
+            success: true,
+            message: "Password reset successfully.",
+        });
+    } catch (error){
+        next(error);
+    }
+}
 
 module.exports = {
     register,
@@ -119,4 +150,6 @@ module.exports = {
     verifyEmail,
     resendVerificationEmail,
     acceptTerms,
+    requestPasswordReset,
+    resetPassword,
 };
