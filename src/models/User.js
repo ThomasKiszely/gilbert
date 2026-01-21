@@ -1,11 +1,12 @@
 const mongoose = require('mongoose');
 const { userRoles } = require('../utils/userRoles');
+const { professionalStatus } = require('../utils/professionalStatus');
 
 const userSchema = new mongoose.Schema({
     email: {type: String, unique: true, required: true, lowercase: true, trim: true},
     username: {type: String, unique: true, required: true},
     passwordHash: {type: String, required: true},
-    role: {type: String, enum: userRoles, default: 'private', required: true},
+    role: {type: String, enum: Object.values(userRoles), default: userRoles.private, required: true},
     termsAccepted: {type: Boolean, required: true},
     termsAcceptedAt: {
         type: Date, required: function () {
@@ -18,6 +19,7 @@ const userSchema = new mongoose.Schema({
         country: {type: String, required: true},
     },
     cvr: {type: String},
+    professionalStatus: {type: String, enum: Object.values(professionalStatus), default: professionalStatus.none},
     isEmailVerified: {type: Boolean, default: false},
     badges: {
         isProfessional: {type: Boolean, default: false},

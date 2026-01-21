@@ -52,6 +52,9 @@ async function handleAuthentication(event, endpoint) {
                 country: payload.country
             }
         };
+        if(payload.cvr && payload.cvr.trim() !== ""){
+            registerPayload.cvr = payload.cvr.trim();
+        }
 
         return submitAuth("register", registerPayload);
     }

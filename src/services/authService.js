@@ -1,7 +1,9 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const userRepo = require("../data/userRepo");
-const mailer = require("../utils/mailer"); //tilføj mail-service
+const mailer = require("../utils/mailer");
+const { professionalStatus} = require("../utils/professionalStatus"); //tilføj mail-service
+const { userRoles } = require("../utils/userRoles");
 
 function createToken(user) {
     return jwt.sign(
@@ -15,7 +17,7 @@ function createToken(user) {
     );
 }
 
-async function register({ username, email, password, location, termsAccepted }) {
+async function register({ username, email, password, location, termsAccepted, cvr }) {
     const existing = await userRepo.findUserByEmail(email.toLowerCase());
     if (existing) {
         throw new Error("Email already exists");
@@ -25,16 +27,24 @@ async function register({ username, email, password, location, termsAccepted }) 
         throw new Error("Terms must be accepted");
     }
 
+    let proStat = professionalStatus.none;
+
+    if (cvr){
+        proStat = professionalStatus.pending;
+    }
     const passwordHash = await bcrypt.hash(password, 10);
 
     const user = await userRepo.createUser({
         username,
         email: email.toLowerCase(),
         passwordHash,
+        role: userRoles.private,
         location,
         termsAccepted,
         termsAcceptedAt: new Date(),
         isEmailVerified: false,
+        cvr: cvr,
+        professionalStatus: proStat,
         termsVersion: process.env.TERMS_VERSION
     });
 

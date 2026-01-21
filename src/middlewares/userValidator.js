@@ -1,5 +1,6 @@
 const { isStrongPassword } = require('../utils/isStrongPassword')
 const {sanitizeString} = require("../utils/sanitize");
+const { validateCVR } = require('../utils/validateCVR');
 
 function validateUser(req, res, next) {
     const errors = [];
@@ -44,6 +45,12 @@ function validateUser(req, res, next) {
             errors.push('Country is required');
         }
     }
+    if(req.body.cvr){
+        if(!validateCVR(req.body.cvr)){
+            errors.push('CVR is not valid');
+        }
+    }
+
     if (termsAccepted !== true && termsAccepted !== "true") {
         errors.push('You must accept the terms to register');
     }

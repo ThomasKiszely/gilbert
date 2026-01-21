@@ -1,5 +1,6 @@
-const userRoles = [ 'private', 'professional', 'admin', 'gilbert' ];
-
-module.exports = {
-    userRoles
+module.exports.userRoles = {
+    private: "private",
+    professional: "professional",
+    admin: "admin",
+    gilbert: "gilbert",
 };

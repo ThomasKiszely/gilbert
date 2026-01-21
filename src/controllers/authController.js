@@ -2,7 +2,7 @@ const authService = require('../services/authService');
 
 async function register(req, res, next) {
     try {
-        const { username, email, password, confirmPassword, location, termsAccepted } = req.body;
+        const { username, email, password, confirmPassword, location, termsAccepted, cvr } = req.body;
 
         if (password !== confirmPassword) {
             const err = new Error("Passwords do not match");
@@ -21,6 +21,7 @@ async function register(req, res, next) {
             password,
             location,
             termsAccepted,
+            cvr
         });
 
         const verifyToken = await authService.generateEmailVerificationToken(user._id);
