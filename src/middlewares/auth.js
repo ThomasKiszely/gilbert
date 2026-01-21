@@ -3,13 +3,11 @@ const userRepo = require('../data/userRepo');
 
 async function requireAuth(req, res, next) {
     try{
-        const token = req.cookies.jwt;
-        if (!token) {
+        if (!req.user) {
             return res.status(401).json({ error: "Not authenticated" });
         }
-        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
 
-        const user = await userRepo.findUserById(decodedToken.id);
+        const user = await userRepo.findUserById(req.user.id);
         if (!user) {
             return res.status(401).json({ error: "User not found" });
         }

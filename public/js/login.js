@@ -68,8 +68,7 @@ async function submitAuth(endpoint, payload) {
             method: "POST",
             headers: { "Content-Type": "application/json",
             "Accept": "application/json",},
-            body: JSON.stringify(payload),
-            credentials: "include"
+            body: JSON.stringify(payload)
         });
 
         const data = await res.json();
@@ -102,6 +101,7 @@ async function submitAuth(endpoint, payload) {
 
         // LOGIN SUCCESS
         localStorage.setItem("user", JSON.stringify(data.data));
+        localStorage.setItem("token", data.token);
         window.location.href = "/";
     } catch (err) {
         console.error(err);

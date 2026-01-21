@@ -53,6 +53,7 @@ async function login(req, res, next) {
         return res.status(200).json({
             success: true,
             data: user,
+            token: token,
         });
     } catch (error) {
         next(error);

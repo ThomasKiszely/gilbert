@@ -1,10 +1,14 @@
 const userRepo = require('../data/userRepo');
 const mongoose = require('mongoose');
+const { sanitizeString } = require('../utils/sanitize');
+const { validateCVR } = require('../utils/validateCVR');
+const { professionalStatus } = require('../utils/professionalStatus');
 
-async function updateUser(id, data){
+async function updateMe(id, data) {
     if (!mongoose.Types.ObjectId.isValid(id)) {
         throw new Error(`Invalid userId`);
     }
+
     const allowed = [
         "username",
         "email",
@@ -21,18 +25,33 @@ async function updateUser(id, data){
     for (const key of allowed) {
         const [field, subfield] = key.split(".");
 
-        if (subfield){
-            if(data[field] && data[field][subfield] !== undefined) {
-                update[`${field}.${subfield}`] = data[field][subfield];
+        if (subfield) {
+            if (data[field] && data[field][subfield] !== undefined) {
+                const value = data[field][subfield];
+                update[`${field}.${subfield}`] =
+                    typeof value === "string" ? sanitizeString(value) : value;
             }
         } else {
             if (data[key] !== undefined) {
-                update[key] = data[key];
+                const value = data[key];
+                update[key] =
+                    typeof value === "string" ? sanitizeString(value) : value;
             }
         }
     }
-    if (update.email){
+
+    if (update.email) {
         update.isEmailVerified = false;
+    }
+
+    if (update.cvr) {
+        update.cvr = sanitizeString(update.cvr);
+
+        if (!validateCVR(update.cvr)) {
+            throw new Error(`Invalid CVR`);
+        }
+
+        update.professionalStatus = professionalStatus.pending;
     }
 
     if (Object.keys(update).length === 0) {
@@ -42,13 +61,23 @@ async function updateUser(id, data){
     update.updatedAt = new Date();
 
     const updated = await userRepo.updateUser(id, update);
-    if(!updated) {
+    if (!updated) {
         throw new Error("User not found");
     }
+
     return updated;
 }
 
+async function getMe(id) {
+    return userRepo.findUserById(id);
+}
+
+async function updateUser(id, update) {
+    return userRepo.updateUser(id, update);
+}
 
 module.exports = {
     updateUser,
-}
+    updateMe,
+    getMe
+};

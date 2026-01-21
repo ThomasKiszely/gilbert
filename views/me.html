@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <title>Min Profil</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<h1>Min Profil</h1>
+
+<div id="status"></div>
+
+<form id="profileForm">
+
+    <label>Brugernavn</label>
+    <input type="text" id="username" name="username">
+
+    <label>Email</label>
+    <input type="email" id="email" name="email">
+
+    <label>By</label>
+    <input type="text" id="city" name="city">
+
+    <label>Land</label>
+    <input type="text" id="country" name="country">
+
+    <label>CVR (valgfrit)</label>
+    <input type="text" id="cvr" name="cvr">
+
+    <label>Bio</label>
+    <textarea id="bio" name="bio"></textarea>
+
+    <label>Avatar URL</label>
+    <input type="text" id="avatarUrl" name="avatarUrl">
+
+    <label>Sprog</label>
+    <select id="language" name="language">
+        <option value="da">Dansk</option>
+        <option value="en">English</option>
+    </select>
+
+    <button type="submit">Gem ændringer</button>
+</form>
+
+<script src="/js/me.js"></script>
+</body>
+</html>
