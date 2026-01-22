@@ -25,4 +25,7 @@ passwordForm.addEventListener('submit', async(e) => {
     }
     passwordStatus.innerText = "Password changed successfully.";
     passwordForm.reset();
+    setTimeout(() => {
+        window.location.href = "/";
+    }, 2000);
 });

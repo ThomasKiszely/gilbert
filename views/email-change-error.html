@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <title>Email ændring fejlede</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 80px auto;
+            text-align: center;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #b30000;
+        }
+        .small {
+            color: #666;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Kunne ikke ændre email</h1>
+<p>Linket er ugyldigt, udløbet eller emailen er allerede i brug.</p>
+
+<p class="small">Du bliver sendt videre til login om et øjeblik.</p>
+
+<p class="small">Hvis du ikke bliver sendt videre automatisk, kan du <a href="/login">klikke her</a>.</p>
+
+<script>
+    setTimeout(() => {
+        window.location.href = "/login";
+    }, 5000);
+</script>
+
+</body>
+</html>

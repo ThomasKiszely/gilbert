@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <title>Email ændret</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 500px;
+      margin: 80px auto;
+      text-align: center;
+      line-height: 1.6;
+    }
+    h1 {
+      color: #2c7a2c;
+    }
+    .small {
+      color: #666;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Din email er nu ændret</h1>
+<p>Du bliver sendt videre til login om et øjeblik.</p>
+
+<p class="small">Hvis du ikke bliver sendt videre automatisk, kan du <a href="/login">klikke her</a>.</p>
+
+<script>
+  setTimeout(() => {
+    window.location.href = "/login";
+  }, 5000);
+</script>
+
+</body>
+</html>

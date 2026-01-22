@@ -64,6 +64,34 @@ async function changePassword(req, res, next) {
     }
 }
 
+async function changeEmail(req, res, next) {
+    try{
+        const { currentPassword, newEmail, confirmEmail } = req.body;
+        if(!currentPassword || !newEmail || !confirmEmail){
+            return res.status(400).json({ success: false, error: "All fields are required" });
+        }
+        const result = await userService.requestEmailChange(
+            req.user.id,
+            currentPassword,
+            newEmail,
+            confirmEmail
+        );
+        return res.status(200).json({ success: true, message: "Check your new email to confirm change." });
+    } catch (error){
+        next(error);
+    }
+}
+
+async function verifyEmailChange(req, res, next) {
+    try{
+        const { token } = req.query;
+        await userService.verifyEmailChange(token);
+        return res.redirect("/email-change-success");
+    } catch (error){
+        return res.redirect("/email-change-error");
+    }
+}
+
 
 module.exports = {
     updateUser,
@@ -71,4 +99,6 @@ module.exports = {
     updateMe,
     updateAvatar,
     changePassword,
+    changeEmail,
+    verifyEmailChange,
 }

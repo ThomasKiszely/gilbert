@@ -6,6 +6,9 @@ const userSchema = new mongoose.Schema({
     email: {type: String, unique: true, required: true, lowercase: true, trim: true},
     username: {type: String, unique: true, required: true},
     passwordHash: {type: String, required: true},
+    pendingEmail: {type: String},
+    emailChangeToken: {type: String},
+    emailChangeExpires: {type: Date},
     role: {type: String, enum: Object.values(userRoles), default: userRoles.private, required: true},
     termsAccepted: {type: Boolean, required: true},
     termsAcceptedAt: {

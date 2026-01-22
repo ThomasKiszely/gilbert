@@ -19,7 +19,6 @@ async function loadProfile(){
         const user = json.data;
 
         document.getElementById("username").value = user.username || "";
-        document.getElementById("email").value = user.email || "";
         document.getElementById("city").value = user.location?.city || "";
         document.getElementById("country").value = user.location?.country || "";
         document.getElementById("cvr").value = user.cvr || "";

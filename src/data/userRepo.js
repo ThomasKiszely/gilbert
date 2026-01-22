@@ -20,9 +20,15 @@ async function findUserById(id) {
     return user;
 }
 
+async function findUserByToken(token) {
+    const user = await User.findOne({ emailChangeToken: token });
+    return user;
+}
+
 module.exports = {
     findUserByEmail,
     createUser,
     updateUser,
     findUserById,
+    findUserByToken,
 }

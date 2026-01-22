@@ -8,7 +8,9 @@ const { upload } = require("../middlewares/upload");
 
 router.post("/me/avatar", requireAuth, upload.single("avatar"), userController.updateAvatar);
 router.post("/me/password", requireAuth, userController.changePassword);
+router.post("/me/email", requireAuth, userController.changeEmail);
 router.patch("/user/:id", canUpdateUser, userController.updateUser);
+router.get("/verify-email-change", userController.verifyEmailChange);
 router.get("/me", requireAuth, userController.getMe);
 router.patch("/me", requireAuth, userController.updateMe);
 

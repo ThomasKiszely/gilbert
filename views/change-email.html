@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <title>Skift email</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<h2>Skift email</h2>
+
+<form id="emailForm">
+
+    <label>Nuværende adgangskode</label>
+    <input type="password" id="currentPassword" required>
+
+    <label>Ny email</label>
+    <input type="email" id="newEmail" required>
+
+    <label>Gentag ny email</label>
+    <input type="email" id="confirmEmail" required>
+
+    <button type="submit">Skift email</button>
+</form>
+
+<div id="emailStatus"></div>
+
+<script src="/js/change-email.js"></script>
+</body>
+</html>
