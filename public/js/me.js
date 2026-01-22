@@ -24,7 +24,7 @@ async function loadProfile(){
         document.getElementById("country").value = user.location?.country || "";
         document.getElementById("cvr").value = user.cvr || "";
         document.getElementById("bio").value = user.profile?.bio || "";
-        document.getElementById("avatarUrl").value = user.profile?.avatarUrl || "";
+        document.getElementById("avatarPreview").src = user.profile?.avatarUrl || "/avatars/Gilbert.jpeg";
         document.getElementById("language").value = user.profile?.language || "da";
 
     } catch (err){
@@ -35,6 +35,14 @@ async function loadProfile(){
 form.addEventListener('input', () => {
     statusBox.innerText = "";
 });
+
+document.getElementById("avatarFile").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        document.getElementById("avatarPreview").src = URL.createObjectURL(file);
+    }
+});
+
 
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -49,34 +57,48 @@ form.addEventListener('submit', async (e) => {
         cvr: document.getElementById("cvr").value,
         profile: {
             bio: document.getElementById("bio").value,
-            avatarUrl: document.getElementById("avatarUrl").value,
             language: document.getElementById("language").value
         }
     };
 
-    try {
-        const res = await fetch("/api/users/me", {
-            method: "PATCH",
+    const res = await fetch("/api/users/me", {
+        method: "PATCH",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + localStorage.getItem("token")
+        },
+        body: JSON.stringify(payload)
+    });
+
+    const json = await res.json();
+    if (!json.success) {
+        statusBox.innerText = "Error: " + (json.error || json.message);
+        return;
+    }
+
+    const file = document.getElementById("avatarFile").files[0];
+    if (file) {
+        const formData = new FormData();
+        formData.append("avatar", file);
+
+        const uploadRes = await fetch("/api/users/me/avatar", {
+            method: "POST",
             headers: {
-                "Content-Type": "application/json",
                 "Authorization": "Bearer " + localStorage.getItem("token")
             },
-            body: JSON.stringify(payload)
+            body: formData
         });
 
-        const json = await res.json();
-
-        if (!json.success) {
-            statusBox.innerText = "Error: " + (json.error || json.message || "Unknown error");
+        const uploadJson = await uploadRes.json();
+        if (!uploadJson.success) {
+            statusBox.innerText = "Avatar upload failed";
             return;
         }
-
-        statusBox.innerText = "Profile updated";
-        loadProfile();
-
-    } catch (err) {
-        statusBox.innerText = "Error: " + err.message;
     }
+
+    statusBox.innerText = "Profil opdateret";
+    loadProfile();
 });
+
 
 loadProfile();

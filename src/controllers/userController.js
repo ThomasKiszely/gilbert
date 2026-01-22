@@ -30,9 +30,45 @@ async function updateMe(req, res, next) {
     }
 }
 
+async function updateAvatar(req, res, next) {
+    try{
+        const avatarUrl = "/avatars/" + req.file.filename;
+
+        await userService.updateMe(req.user.id, {
+            "profile.avatarUrl": avatarUrl,
+        });
+        return res.status(200).json({ success: true, data: avatarUrl });
+
+    } catch (error){
+        next(error);
+    }
+}
+
+async function changePassword(req, res, next) {
+    try{
+        const{ currentPassword, newPassword, confirmPassword } = req.body;
+
+        if(!currentPassword || !newPassword || !confirmPassword){
+            return res.status(400).json({ success: false, error: "All fields are required" });
+        }
+
+        const result = await userService.changePassword(
+            req.user.id,
+            currentPassword,
+            newPassword,
+            confirmPassword
+        );
+        return res.status(200).json({ success: true, message: "Password changed successfully." });
+    } catch (error){
+        next(error);
+    }
+}
+
 
 module.exports = {
     updateUser,
     getMe,
-    updateMe
+    updateMe,
+    updateAvatar,
+    changePassword,
 }

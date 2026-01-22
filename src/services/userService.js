@@ -1,8 +1,10 @@
 const userRepo = require('../data/userRepo');
 const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
 const { sanitizeString } = require('../utils/sanitize');
 const { validateCVR } = require('../utils/validateCVR');
 const { professionalStatus } = require('../utils/professionalStatus');
+const { isStrongPassword } = require('../utils/isStrongPassword');
 
 async function updateMe(id, data) {
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -76,8 +78,37 @@ async function updateUser(id, update) {
     return userRepo.updateUser(id, update);
 }
 
+async function changePassword(userId, currentPassword, newPassword, confirmPassword) {
+    const user = await userRepo.findUserById(userId);
+    if (!user) {
+        throw new Error("User not found");
+    }
+    const match = await bcrypt.compare(currentPassword, user.password);
+    if (!match) {
+        throw new Error("Current password is incorrect");
+    }
+    if (newPassword !== confirmPassword) {
+        throw new Error("Passwords do not match");
+    }
+    if (!isStrongPassword(newPassword)) {
+        throw new Error("Password must be at least 8 characters and include upper, lower, number and special character");
+    }
+    if (newPassword === currentPassword) {
+        throw new Error("Password must not be the same as the old password");
+    }
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+    await userRepo.updateUser(userId, {
+        password: hashedPassword,
+        updatedAt: new Date(),
+    });
+
+    return true;
+}
+
 module.exports = {
     updateUser,
     updateMe,
-    getMe
+    getMe,
+    changePassword,
 };
