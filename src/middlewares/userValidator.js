@@ -8,16 +8,23 @@ function validateUser(req, res, next) {
     let { username, email, password, location, termsAccepted } = req.body;
 
     if (typeof username === "string"){
-        req.body.username = sanitizeString(username);
+        req.body.username = sanitizeString(username.trim());
+    }
+
+    if (typeof email === "string") {
+        req.body.email = sanitizeString(email.trim().toLowerCase());
     }
 
     if (location && typeof location === "object"){
         if (typeof location.city === "string"){
-            req.body.location.city = sanitizeString(location.city);
+            req.body.location.city = sanitizeString(location.city.trim());
         }
         if (typeof location.country === "string"){
-            req.body.location.country = sanitizeString(location.country);
+            req.body.location.country = sanitizeString(location.country.trim());
         }
+    }
+    if (req.body.cvr && typeof req.body.cvr === "string") {
+        req.body.cvr = sanitizeString(req.body.cvr.trim());
     }
 
     ({ username, email, password, location, termsAccepted } = req.body);

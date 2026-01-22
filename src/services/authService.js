@@ -4,6 +4,7 @@ const userRepo = require("../data/userRepo");
 const mailer = require("../utils/mailer");
 const { professionalStatus} = require("../utils/professionalStatus"); //tilføj mail-service
 const { userRoles } = require("../utils/userRoles");
+const { sanitizeUser } = require("../utils/sanitizeUser");
 
 function createToken(user) {
     return jwt.sign(
@@ -48,7 +49,8 @@ async function register({ username, email, password, location, termsAccepted, cv
         termsVersion: process.env.TERMS_VERSION
     });
 
-    return user;
+    const safeUser = sanitizeUser(user);
+    return safeUser;
 }
 
 async function login(email, password) {
@@ -74,8 +76,9 @@ async function login(email, password) {
     }
 
     const token = createToken(user);
+    const safeUser = sanitizeUser(user);
 
-    return { token, user };
+    return { token, user: safeUser };
 }
 
 function generateEmailVerificationToken(userId) {

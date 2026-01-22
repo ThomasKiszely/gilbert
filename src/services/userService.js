@@ -7,6 +7,7 @@ const { sanitizeString } = require('../utils/sanitize');
 const { validateCVR } = require('../utils/validateCVR');
 const { professionalStatus } = require('../utils/professionalStatus');
 const { isStrongPassword } = require('../utils/isStrongPassword');
+const { sanitizeUser } = require('../utils/sanitizeUser');
 
 async function updateMe(id, data) {
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -63,15 +64,17 @@ async function updateMe(id, data) {
         throw new Error("User not found");
     }
 
-    return updated;
+    return sanitizeUser(updated);
 }
 
 async function getMe(id) {
-    return userRepo.findUserById(id);
+    const user = await userRepo.findUserById(id);
+    return sanitizeUser(user);
 }
 
 async function updateUser(id, update) {
-    return userRepo.updateUser(id, update);
+    const user = await userRepo.updateUser(id, update);
+    return sanitizeUser(user);
 }
 
 async function changePassword(userId, currentPassword, newPassword, confirmPassword) {
