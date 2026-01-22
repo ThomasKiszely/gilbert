@@ -43,13 +43,6 @@ async function login(req, res, next) {
         const { email, password } = req.body;
         const { token, user } = await authService.login(email, password);
 
-        res.cookie("jwt", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-            maxAge: 1000 * 60 * 60,
-        });
-
         return res.status(200).json({
             success: true,
             data: user,
@@ -62,15 +55,9 @@ async function login(req, res, next) {
 
 async function logout(req, res, next) {
     try {
-        res.clearCookie("jwt", {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-        });
-
         return res.status(200).json({
             success: true,
-            message: "Du er nu logget ud",
+            message: "You have been logged out",
         });
     } catch (error) {
         next(error);
