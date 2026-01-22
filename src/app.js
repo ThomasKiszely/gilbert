@@ -15,7 +15,7 @@ const materialRouter = require('./routes/materialRoutes');
 const sizeRouter = require('./routes/sizeRoutes');
 const subcategoryRouter = require('./routes/subcategoryRoutes');
 const tagRouter = require('./routes/tagRoutes');
-
+const adminRouter = require('./routes/adminRoutes');
 
 
 const { limitRate } = require('./middlewares/rateLimiter');
@@ -51,6 +51,9 @@ app.use('/api/sizes', sizeRouter);
 app.use('/api/subcategories', subcategoryRouter);
 app.use('/api/tags', tagRouter);
 
+
+// Admin routes
+app.use('/api/admin', adminRouter);
 
 app.use('/', viewRouter);
 

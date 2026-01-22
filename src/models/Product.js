@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const {genders} = require('../utils/gender');
+const {statuses} = require('../utils/statusType');
 
 const productSchema = new mongoose.Schema({
     title: {type: String, required: true},
@@ -17,6 +18,7 @@ const productSchema = new mongoose.Schema({
     images: {type: [String], required: true},
     documents: {type: [String], required: true},
     seller: {type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
+    status: {type: String, enum: statuses, default: 'In Review'},
 },
 {timestamps: true });
 module.exports = mongoose.model('Product', productSchema);

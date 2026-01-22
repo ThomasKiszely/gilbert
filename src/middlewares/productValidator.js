@@ -3,6 +3,7 @@ const Product = require("../models/Product");
 const {genders} = require("../utils/gender");
 const {validateEnum} = require("../utils/validate");
 const {sanitizeString} = require("../utils/sanitize");
+const {statuses} = require("../utils/statusType");
 
 function validateObjectId(id)
 {
@@ -25,7 +26,7 @@ async function loadProduct(req, res, next) {
 function validateProduct(req, res, next)  {
     const errors = [];
 
-    let {title, category, subcategory, brand, gender, size, condition, color, material, tags, price, description, images, documents} = req.body;
+    let {title, category, subcategory, brand, gender, size, condition, color, material, tags, price, description, images, documents, status} = req.body;
 
     if(typeof title === "string") {
         req.body.title = sanitizeString(title);
@@ -43,6 +44,15 @@ function validateProduct(req, res, next)  {
         sanitizeString,
         errors
     );
+    if(status !== undefined) {
+        req.body.status = validateEnum(
+            "status",
+            status,
+            statuses,
+            sanitizeString,
+            errors
+        );
+    }
 
     // Validate ObjectIDs
     const idFields = { category, subcategory, brand, size, condition, color, material };
