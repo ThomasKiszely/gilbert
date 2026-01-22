@@ -23,6 +23,10 @@ async function deleteProduct(productId) {
     return await productRepo.deleteProduct(productId);
 }
 
+async function searchProducts(filters, page, limit) {
+    return await productRepo.searchProducts(filters, page, limit);
+}
+
 module.exports = {
     createProduct,
     readAllProducts,
@@ -30,4 +34,5 @@ module.exports = {
     getProductById,
     updateProduct,
     deleteProduct,
+    searchProducts,
 }

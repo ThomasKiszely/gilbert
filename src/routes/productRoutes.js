@@ -8,7 +8,8 @@ const {validateProduct, loadProduct, yourProduct} = require('../middlewares/prod
 const productController = require('../controllers/productController');
 
 router.get('/', productController.readAllProducts);
-router.get('/search', productController.findProducts);
+router.get('/filter', productController.filterProducts);
+router.get('/search', productController.searchProducts);
 router.get('/:id', productController.getProductById);
 
 router.post('/', requireAuth,  canSell, validateProduct ,productController.createProduct);

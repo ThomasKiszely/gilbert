@@ -57,6 +57,57 @@ async function deleteProduct(productId) {
     return deltedProduct;
 }
 
+
+
+async function searchProducts(filters, page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+
+    const pipeline = [
+        // Join brand
+        {
+            $lookup: {
+                from: 'brands',
+                localField: 'brand',
+                foreignField: '_id',
+                as: 'brand',
+            }
+        },
+        { $unwind: '$brand' },
+
+        // Join category
+        {
+            $lookup: {
+                from: 'subcategories',
+                localField: 'subcategory',
+                foreignField: '_id',
+                as: 'subcategory'
+            }
+        },
+        { $unwind: '$subcategory' },
+
+        // Join tags
+        {
+            $lookup: {
+                from: 'tags',
+                localField: 'tags',
+                foreignField: '_id',
+                as: 'tags',
+            }
+        },
+        {$match: { status: 'Approved' }},
+
+        ...(filters.$or ? [{$match: { $or: filters.$or } }] : []),
+
+        // Pagination
+        {$skip: skip},
+        {$limit: limit}
+    ];
+
+    return await Product.aggregate(pipeline);
+}
+
+
+
 module.exports = {
     createProduct,
     allProducts,
@@ -66,5 +117,6 @@ module.exports = {
     updateStatusProduct,
     adminGetAllProducts,
     getProductsInReview,
-    deleteProduct
+    deleteProduct,
+    searchProducts,
 }
