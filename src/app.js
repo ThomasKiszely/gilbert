@@ -16,6 +16,7 @@ const sizeRouter = require('./routes/sizeRoutes');
 const subcategoryRouter = require('./routes/subcategoryRoutes');
 const tagRouter = require('./routes/tagRoutes');
 const adminRouter = require('./routes/adminRoutes');
+const favoriteRouter = require('./routes/favoriteRoutes');
 
 
 const { limitRate } = require('./middlewares/rateLimiter');
@@ -51,6 +52,8 @@ app.use('/api/sizes', sizeRouter);
 app.use('/api/subcategories', subcategoryRouter);
 app.use('/api/tags', tagRouter);
 
+//Favorites
+app.use('/api/favorites', favoriteRouter);
 
 // Admin routes
 app.use('/api/admin', adminRouter);
