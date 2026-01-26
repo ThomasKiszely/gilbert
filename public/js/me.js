@@ -48,7 +48,6 @@ form.addEventListener('submit', async (e) => {
 
     const payload = {
         username: document.getElementById("username").value,
-        email: document.getElementById("email").value,
         location: {
             city: document.getElementById("city").value,
             country: document.getElementById("country").value
