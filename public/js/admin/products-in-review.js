@@ -3,9 +3,7 @@ const API_URL = "/api/admin";
 async function fetchProductsInReview() {
     const res = await fetch(`${API_URL}/products/in-review`, {
         method: "GET",
-        headers: {
-            "Authorization": "Bearer " + localStorage.getItem("token")
-        }
+        credentials: "include",
     });
 
     return await res.json();
@@ -53,9 +51,7 @@ async function updateStatus(id, status) {
     const endpoint = status === "Approved" ? "approve" : "reject"
     const res = await fetch(`${API_URL}/products/${id}/${endpoint}`, {
         method: "PUT",
-        headers: {
-            "Authorization": "Bearer " + localStorage.getItem("token")
-        }
+        credentials: "include"
     });
 
     if (res.ok) {

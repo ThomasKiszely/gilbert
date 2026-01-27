@@ -2,15 +2,39 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Admin panel</title>
+    <title>Gilbert</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/admin-dash.css">
 </head>
 <body>
-<div id="admin-container">
-    <h1>Admin – Products in review</h1>
-    <div id="products"></div>
+<header class="admin-header">
+    <h1>Admin</h1>
+    <nav>
+        <a href="/admin">Dashboard</a>
+        <a href="/admin-products">Produkter</a>
+        <a href="/admin-users">Brugere</a>
+    </nav>
+</header>
+
+<h1>Admin Dashboard</h1>
+
+<div class="admin-grid">
+    <a class="admin-card" href="/admin-products">
+        <h2>Products</h2>
+        <p>See and administrate all products</p>
+    </a>
+
+    <a class="admin-card" href="/products-in-review">
+        <h2>Products in review</h2>
+        <p>Approve or reject new projects</p>
+    </a>
+
+    <a class="admin-card" href="/admin-users">
+        <h2>Users</h2>
+        <p>Administrate users and roles</p>
+    </a>
 </div>
 
-<script src="/js/admin.js"></script>
-
+<script src="/js/admin/admin.js"></script>
 </body>
 </html>

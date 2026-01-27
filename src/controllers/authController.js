@@ -1,4 +1,5 @@
 const authService = require('../services/authService');
+const { isProduction } = require('../utils/isProduction');
 
 async function register(req, res, next) {
     try {
@@ -46,7 +47,7 @@ async function login(req, res, next) {
         // Sæt cookie til views
         res.cookie("token", token, {
             httpOnly: true,
-            secure: false, // true i production
+            secure: isProduction(), // true i production
             sameSite: "lax",
             maxAge: 1000 * 60 * 60 * 24 * 7 // 7 dage
         });

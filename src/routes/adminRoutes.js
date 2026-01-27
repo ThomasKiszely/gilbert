@@ -2,9 +2,8 @@ const express = require('express');
 const router = express.Router();
 
 const adminController = require('../controllers/adminController');
-const {requireAuth, requireRole} = require('../middlewares/auth');
+const { requireRole } = require('../middlewares/auth');
 
-router.use(requireAuth);
 router.use(requireRole("admin"));
 
 router.get('/products', adminController.getAllProducts);

@@ -93,7 +93,7 @@ form.addEventListener('submit', async (e) => {
         }
     }
 
-    statusBox.innerText = "Profil opdateret";
+    statusBox.innerText = "Profile updated";
     loadProfile();
 });
 

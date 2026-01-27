@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { isProduction } = require('../utils/isProduction')
 
 let transporterPromise = null;
 
@@ -8,7 +9,7 @@ async function getTransporter() {
     }
 
     // Production → Gmail
-    if (process.env.NODE_ENV === 'production') {
+    if (isProduction()) {
         transporterPromise = nodemailer.createTransport({
             service: 'gmail',
             auth: {

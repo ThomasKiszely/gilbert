@@ -12,7 +12,7 @@ async function loadProfile() {
 
         const json = await res.json();
         if (!json.success) {
-            throw new Error("Kunne ikke hente profil");
+            throw new Error("Could not fetch profile");
         }
 
         const user = json.data;
