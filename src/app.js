@@ -20,8 +20,10 @@ const favoriteRouter = require('./routes/favoriteRoutes');
 
 
 const { limitRate } = require('./middlewares/rateLimiter');
+const cookieParser = require('cookie-parser');
 const { log } = require('./middlewares/logger');
 const { verifyToken } = require('./middlewares/verifyToken');
+const { requireAuth } = require('./middlewares/auth');
 const { notFound } = require('./middlewares/notFound');
 const { errorHandler } = require('./middlewares/errorHandler');
 const { connectToMongo } = require('./services/db');
@@ -29,6 +31,7 @@ connectToMongo();
 //npx nodemon server eller npm run dev for at starte nodemon - ctrl-c for at afslutte
 
 // Middleware
+app.use(cookieParser());
 app.use(express.json());
 app.use(limitRate);
 app.use(log);
@@ -36,7 +39,7 @@ app.use(verifyToken);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use("/avatars", express.static(path.join(__dirname, "..", "public", "avatars")));
 
-
+app.use(requireAuth);
 // Routes
 app.use('/api/auth', authRouter);
 app.use('/api/users', userRouter);

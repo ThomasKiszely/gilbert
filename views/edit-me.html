@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <title>Min Profil</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<p><a href="/change-password">Change password</a></p>
+<p><a href="/change-email">Change email</a></p>
+<h1>Min Profil</h1>
+
+<div id="status"></div>
+
+<form id="profileForm">
+
+    <label>Brugernavn</label>
+    <input type="text" id="username" name="username">
+
+    <label>By</label>
+    <input type="text" id="city" name="city">
+
+    <label>Land</label>
+    <input type="text" id="country" name="country">
+
+    <label>CVR (valgfrit)</label>
+    <input type="text" id="cvr" name="cvr">
+
+    <label>Bio</label>
+    <textarea id="bio" name="bio"></textarea>
+
+    <label>Profilbillede</label>
+    <input type="file" id="avatarFile" accept="image/*">
+    <img id="avatarPreview" style="max-width:150px; display:block; margin-top:10px;">
+
+    <label>Sprog</label>
+    <select id="language" name="language">
+        <option value="da">Dansk</option>
+        <option value="en">English</option>
+    </select>
+
+    <button type="submit">Gem ændringer</button>
+</form>
+
+<script src="/js/edit-me.js"></script>
+</body>
+</html>

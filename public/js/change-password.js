@@ -11,9 +11,9 @@ passwordForm.addEventListener('submit', async(e) => {
     };
     const res = await fetch('/api/users/me/password', {
         method: 'POST',
+        credentials: 'include',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify(payload),
     });

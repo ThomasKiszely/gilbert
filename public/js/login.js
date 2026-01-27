@@ -66,8 +66,11 @@ async function submitAuth(endpoint, payload) {
     try {
         const res = await fetch(`/api/auth/${endpoint}`, {
             method: "POST",
-            headers: { "Content-Type": "application/json",
-            "Accept": "application/json",},
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            credentials: "include", // ⭐ vigtigt for login
             body: JSON.stringify(payload)
         });
 
@@ -78,7 +81,7 @@ async function submitAuth(endpoint, payload) {
                 showTerms({ showAcceptButton: true });
                 return;
             }
-            if (data.code === "EMAIL_NOT_VERIFIED"){
+            if (data.code === "EMAIL_NOT_VERIFIED") {
                 showMessage("Your email is not verified", "red");
 
                 const btn = document.createElement("button");
@@ -89,7 +92,7 @@ async function submitAuth(endpoint, payload) {
                 msg.appendChild(btn);
                 return;
             }
-            if (data.errors){
+            if (data.errors) {
                 return showMessage(data.errors.join(", "), "red");
             }
             return showMessage(data.error || "Something went wrong", "red");
@@ -100,14 +103,13 @@ async function submitAuth(endpoint, payload) {
         }
 
         // LOGIN SUCCESS
-        localStorage.setItem("user", JSON.stringify(data.data));
-        localStorage.setItem("token", data.token);
         window.location.href = "/";
     } catch (err) {
         console.error(err);
         showMessage("Exception occurred", "red");
     }
 }
+
 
 function showMessage(text, color) {
     msg.textContent = text;

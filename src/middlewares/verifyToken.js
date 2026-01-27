@@ -1,18 +1,18 @@
 const jwt = require("jsonwebtoken");
 
 function verifyToken(req, res, next) {
-    const authHeader = req.headers.authorization;
+    const token = req.cookies?.token;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    if (!token) {
         req.user = null;
         return next();
     }
 
-    const token = authHeader.split(" ")[1];
-
     try {
         req.user = jwt.verify(token, process.env.JWT_SECRET);
     } catch {
+        // Token er ugyldig → fjern cookie
+        res.clearCookie("token");
         req.user = null;
     }
 

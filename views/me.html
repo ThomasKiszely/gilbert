@@ -6,41 +6,28 @@
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-<p><a href="/change-password">Change password</a></p>
-<p><a href="/change-email">Change email</a></p>
+
 <h1>Min Profil</h1>
+
+<p><a href="/edit-me">Rediger profil</a></p>
+<p><a href="/change-password">Skift kodeord</a></p>
+<p><a href="/change-email">Skift email</a></p>
 
 <div id="status"></div>
 
-<form id="profileForm">
+<div class="profile-view">
 
-    <label>Brugernavn</label>
-    <input type="text" id="username" name="username">
+    <img id="avatar" style="max-width:150px; display:block; margin-bottom:20px;">
 
-    <label>By</label>
-    <input type="text" id="city" name="city">
+    <p><strong>Brugernavn:</strong> <span id="username"></span></p>
+    <p><strong>By:</strong> <span id="city"></span></p>
+    <p><strong>Land:</strong> <span id="country"></span></p>
+    <p><strong>CVR:</strong> <span id="cvr"></span></p>
+    <p><strong>Bio:</strong></p>
+    <p id="bio"></p>
+    <p><strong>Sprog:</strong> <span id="language"></span></p>
 
-    <label>Land</label>
-    <input type="text" id="country" name="country">
-
-    <label>CVR (valgfrit)</label>
-    <input type="text" id="cvr" name="cvr">
-
-    <label>Bio</label>
-    <textarea id="bio" name="bio"></textarea>
-
-    <label>Profilbillede</label>
-    <input type="file" id="avatarFile" accept="image/*">
-    <img id="avatarPreview" style="max-width:150px; display:block; margin-top:10px;">
-
-    <label>Sprog</label>
-    <select id="language" name="language">
-        <option value="da">Dansk</option>
-        <option value="en">English</option>
-    </select>
-
-    <button type="submit">Gem ændringer</button>
-</form>
+</div>
 
 <script src="/js/me.js"></script>
 </body>

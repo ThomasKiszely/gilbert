@@ -2,10 +2,8 @@ const express = require("express");
 const router = express.Router();
 const { renderView } = require("../controllers/viewController");
 
-
-router.get("/:view", renderView);
+// fallback
 router.get("/", renderView);
-router.get('/products', renderView);
-
+router.get("/:view", renderView);
 
 module.exports = router;
