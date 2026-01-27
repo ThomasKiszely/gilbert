@@ -5,6 +5,11 @@ async function createSize(sizeData) {
     return await size.save();
 }
 
+async function readAllSizes() {
+    return await Size.find({});
+}
+
 module.exports = {
     createSize,
+    readAllSizes,
 }

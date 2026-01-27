@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-
+const upload = require("../middlewares/upload");
 const { requireAuth} = require('../middlewares/auth');
 const { canSell} = require('../middlewares/sellerValidator');
 const {validateProduct, loadProduct, yourProduct} = require('../middlewares/productValidator');
@@ -12,7 +12,7 @@ router.get('/filter', productController.filterProducts);
 router.get('/search', productController.searchProducts);
 router.get('/:id', productController.getProductById);
 
-router.post('/', requireAuth,  canSell, validateProduct ,productController.createProduct);
+router.post('/', requireAuth,  canSell, upload.array("images", 4) , validateProduct ,productController.createProduct);
 
 router.put('/:id', requireAuth,  loadProduct, yourProduct, validateProduct ,productController.updateProduct);
 

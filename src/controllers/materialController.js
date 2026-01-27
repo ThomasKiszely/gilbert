@@ -14,6 +14,20 @@ async function createMaterial(req, res, next) {
     }
 }
 
+async function readAllMaterials(req, res, next) {
+    try {
+        const materials = await materialService.readAllMaterials();
+        if (!materials) {
+            const error = new Error('Failed to read all materials');
+            error.status = 400;
+            next(error);
+        }
+        return res.status(200).json(materials);
+    } catch (error) {
+        next(error);
+    }
+}
 module.exports = {
     createMaterial,
+    readAllMaterials,
 }

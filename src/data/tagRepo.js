@@ -6,6 +6,11 @@ async function createTag(tagData) {
     return await tag.save();
 }
 
+async function readAllTags() {
+    return await Tag.find({});
+}
+
 module.exports = {
     createTag,
+    readAllTags,
 }

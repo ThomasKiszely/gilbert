@@ -38,7 +38,7 @@ app.use(log);
 app.use(verifyToken);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use("/avatars", express.static(path.join(__dirname, "..", "public", "avatars")));
-
+app.use("/api/images", express.static("uploads"));
 app.use(requireAuth);
 // Routes
 app.use('/api/auth', authRouter);

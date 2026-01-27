@@ -13,7 +13,20 @@ async function createBrand(req, res, next) {
         next(err);
     }
 }
-
+async function readAllBrands(req, res, next) {
+    try {
+        const brands = await brandService.readAllBrands();
+        if(!brands) {
+            const err = new Error('Failed to read all brands');
+            err.status = 400;
+            next(err);
+        }
+        return res.status(200).json(brands);
+    } catch (err) {
+        next(err);
+    }
+}
 module.exports = {
     createBrand,
+    readAllBrands,
 }

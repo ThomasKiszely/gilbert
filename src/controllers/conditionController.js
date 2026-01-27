@@ -13,6 +13,21 @@ async function createCondition(req, res, next) {
         next(err);
     }
 }
+
+async function readAllConditions(req, res, next) {
+    try  {
+        const conditions = await conditionService.readAllConditions();
+        if (!conditions) {
+            const error = new Error('Failed to read all conditions');
+            error.status = 400;
+            next(error);
+        }
+        return res.status(200).json(conditions);
+    } catch (err) {
+        next(err);
+    }
+}
 module.exports = {
     createCondition,
+    readAllConditions,
 }

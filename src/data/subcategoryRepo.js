@@ -5,6 +5,10 @@ async function createSubcategory(subcategoryData) {
     return await subcategory.save();
 }
 
+async function readAllSubcategories() {
+    return await Subcategory.find({});
+}
 module.exports = {
     createSubcategory,
+    readAllSubcategories,
 }

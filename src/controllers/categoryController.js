@@ -14,6 +14,21 @@ async function createCategory(req, res, next) {
         next(error);
     }
 }
+
+async function  readAllCategories(req, res, next) {
+    try {
+        const categories = await categoryService.readAllCategories();
+        if (!categories) {
+            const error = new Error('Could not read all categories');
+            error.status = 400;
+            next(error);
+        }
+        res.status(200).json(categories);
+    } catch (error) {
+        next(error);
+    }
+}
 module.exports = {
     createCategory,
+    readAllCategories,
 }

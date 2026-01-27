@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <title>Create Product</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<h1>Create Product</h1>
+
+<form id="createProductForm" enctype="multipart/form-data">
+
+    <label>Title</label>
+    <input type="text" name="title" required>
+
+    <label>Category</label>
+    <select id="category" name="category" required></select>
+
+    <label>Subcategory</label>
+    <select id="subcategory" name="subcategory" required></select>
+
+    <label>Brand</label>
+    <select id="brand" name="brand" required></select>
+
+    <label>Gender</label>
+    <select id="gender" name="gender" required>
+        <option value="Male">Male</option>
+        <option value="Female">Female</option>
+        <option value="Unisex">Unisex</option>
+    </select>
+
+    <label>Size</label>
+    <select id="size" name="size" required></select>
+
+    <label>Condition</label>
+    <select id="condition" name="condition" required></select>
+
+    <label>Color</label>
+    <select id="color" name="color" required></select>
+
+    <label>Material</label>
+    <select id="material" name="material" required></select>
+
+    <label>Tags</label>
+    <select id="tags" name="tags" multiple required></select>
+
+    <label>Price</label>
+    <input type="number" name="price" required>
+
+    <label>Description</label>
+    <textarea name="description" required></textarea>
+
+    <label>Images</label>
+    <input type="file" id="imageInput" name="images" multiple accept="image/*">
+
+    <div id="imagePreview"></div>
+
+    <button type="submit">Create Product</button>
+</form>
+
+<script src="/js/createProduct.js"></script>
+
+</body>
+</html>

@@ -16,7 +16,7 @@ const productSchema = new mongoose.Schema({
     price: {type: Number, required: true},
     description: {type: String, required: true},
     images: {type: [String], required: true},
-    documents: {type: [String], required: true},
+    documents: {type: [String], default: []},
     seller: {type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
     status: {type: String, enum: statuses, default: 'In Review'},
 },

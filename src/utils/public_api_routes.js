@@ -5,7 +5,8 @@ const PUBLIC_API_ROUTES = [
     "/api/auth/reset-password",
     "/api/auth/verify-email",
     "/api/auth/resend-verification",
-    "/api/users/verify-email-change"
+    "/api/users/verify-email-change",
+    "/api/products"
 ];
 
 module.exports = {

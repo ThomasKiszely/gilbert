@@ -5,6 +5,11 @@ async function createColor(colorData) {
     return await color.save();
 }
 
+async function readAllColors() {
+    return await Color.find({});
+}
+
 module.exports = {
     createColor,
+    readAllColors,
 }

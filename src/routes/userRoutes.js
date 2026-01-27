@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const userController = require("../controllers/userController");
 const { canUpdateUser } = require("../middlewares/canUpdateUser");
-const { upload } = require("../middlewares/upload");
+const upload = require("../middlewares/upload");
 
 
 router.post("/me/avatar", upload.single("avatar"), userController.updateAvatar);

@@ -5,6 +5,11 @@ async function createMaterial(materialData) {
     return await material.save();
 }
 
+async function readAllMaterials() {
+    return await Material.find({});
+}
+
 module.exports = {
     createMaterial,
+    readAllMaterials,
 }

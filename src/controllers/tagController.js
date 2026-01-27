@@ -15,6 +15,21 @@ async function createTag(req, res, next) {
     }
 }
 
+async function readAllTags(req, res, next) {
+    try {
+        const tags = await tagService.readAllTags();
+        if (!tags) {
+            const error = new Error('Failed to read all tags');
+            error.status = 400;
+            next(error);
+        }
+        return res.status(200).json(tags);
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     createTag,
+    readAllTags,
 }

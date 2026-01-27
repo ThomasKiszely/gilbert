@@ -5,6 +5,11 @@ async function createCondition(conditionData) {
     return await condition.save();
 }
 
+async function readAllConditions() {
+    return await Condition.find({});
+}
+
 module.exports = {
     createCondition,
+    readAllConditions,
 }

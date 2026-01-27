@@ -6,6 +6,11 @@ async function createBrand(brandData) {
     return await newBrand.save();
 }
 
+async function readAllBrands() {
+    return await Brand.find({});
+}
+
 module.exports = {
     createBrand,
+    readAllBrands,
 }

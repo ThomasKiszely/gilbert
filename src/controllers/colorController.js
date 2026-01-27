@@ -16,6 +16,21 @@ async function createColor(req, res, next) {
     }
 }
 
+async function readAllColors(req, res, next) {
+    try {
+        const colors = await colorService.readAllColors();
+        if(!colors) {
+            const error = new Error('Failed to read all colors');
+            error.status = 400;
+            next(error);
+        }
+        return res.status(200).json(colors);
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports =  {
     createColor,
+    readAllColors,
 }

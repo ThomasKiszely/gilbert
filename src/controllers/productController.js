@@ -2,7 +2,21 @@ const productService = require('../services/productService');
 
 async function createProduct(req, res, next) {
     try {
-        const product = await productService.createProduct(req.body);
+        const imageFiles = req.files || [];
+
+        const imagePath = imageFiles.map(file => `/api/images/${file.filename}`);
+
+        console.log("BODY:", req.body);
+        console.log("FILES:", req.files);
+        console.log("USER:", req.user);
+
+        const productData = {
+            ...req.body,
+            images: imagePath,
+            seller: req.user.id
+        }
+        console.log("PRODUCT DATA:", productData);
+        const product = await productService.createProduct(productData);
         if (!product) {
             const err = new Error('Product not created');
             err.status = 400;

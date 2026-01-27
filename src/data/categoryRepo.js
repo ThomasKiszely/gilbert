@@ -6,6 +6,11 @@ async function createCategory(categoryData) {
     return await category.save();
 }
 
+async function readAllCategories() {
+    return await Category.find({});
+}
+
 module.exports = {
     createCategory,
+    readAllCategories,
 }
