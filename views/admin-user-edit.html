@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin – Edit User</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/admin-user-edit.css">
+</head>
+<body>
+
+<header>
+    <h1>Admin – Edit User</h1>
+    <nav>
+        <a href="/admin-users">⬅ Back to users</a>
+    </nav>
+</header>
+
+<main>
+    <section id="user-edit-container">
+        <h2 id="usernameHeader">Loading...</h2>
+
+        <div class="user-info">
+            <p><strong>Email:</strong> <span id="email"></span></p>
+            <p><strong>Rolle:</strong> <span id="role"></span></p>
+            <p><strong>Status:</strong> <span id="professionalStatus"></span></p>
+            <p><strong>Badges:</strong> <span id="badges"></span></p>
+        </div>
+
+        <hr>
+
+        <h3>Update role</h3>
+        <select id="roleSelect">
+            <option value="user">User</option>
+            <option value="professional">Professional</option>
+            <option value="admin">Admin</option>
+        </select>
+        <button id="updateRoleBtn">Update role</button>
+
+        <h3>Update professional status</h3>
+        <select id="statusSelect">
+            <option value="none">None</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+        </select>
+        <button id="updateStatusBtn">Update status</button>
+
+        <h3>Update badges</h3>
+
+        <label>
+            <input type="checkbox" id="badgeProfessional"> Professional
+        </label>
+
+        <label>
+            <input type="checkbox" id="badgeExpert"> Expert Seller
+        </label>
+
+        <label>
+            <input type="checkbox" id="badgeIdVerified"> ID Verified
+        </label>
+
+        <button id="updateBadgesBtn">Update badges</button>
+
+
+        <p id="message" class="message"></p>
+    </section>
+</main>
+
+<script src="/js/admin/admin-user-edit.js"></script>
+
+</body>
+</html>
