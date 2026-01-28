@@ -29,7 +29,7 @@ async function saveProfileImage(file) {
     const outputFilename = file.filename + ".webp";
     const outputPath = path.join(PROFILE_DIR, outputFilename);
     await sharp(file.path)
-        .resize(400) // mindre profilbillede
+        .resize(400)
         .webp({ quality: 80 })
         .toFile(outputPath);
     fs.unlinkSync(file.path);
@@ -46,7 +46,7 @@ async function deleteImage(imageUrl) {
     } else if (imageUrl.includes("/profiles/")) {
         dir = PROFILE_DIR;
     } else {
-        return; // ukendt mappe → gør ingenting
+        return;
     }
 
     const filePath = path.join(dir, filename);
