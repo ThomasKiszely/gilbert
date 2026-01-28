@@ -42,7 +42,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // TIL UPLOAD AF BILLEDER
 app.use("/api/images/products", express.static("uploads/products"));
-app.use("/api/images/profiles", express.static("uploads/profiles"));
+app.use("/api/images/avatars", express.static("uploads/avatars"));
 
 
 app.use(requireAuth);

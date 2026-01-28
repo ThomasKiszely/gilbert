@@ -1,4 +1,5 @@
 const userService = require("../services/userService");
+const imageService = require("../services/imageService");
 
 async function updateUser(req, res, next) {
     try{
@@ -32,10 +33,17 @@ async function updateMe(req, res, next) {
 
 async function updateAvatar(req, res, next) {
     try{
-        const avatarUrl = "/avatars/" + req.file.filename;
+        if(!req.file){
+            return res.status(400).json({ success: false, message: 'No file uploaded.' });
+        }
+        console.log("REQ.FILE:", req.file);
+
+        const avatarUrl = await imageService.saveAvatar(req.file);
 
         await userService.updateMe(req.user.id, {
-            "profile.avatarUrl": avatarUrl,
+            profile: {
+                avatarUrl: avatarUrl,
+            }
         });
         return res.status(200).json({ success: true, data: avatarUrl });
 

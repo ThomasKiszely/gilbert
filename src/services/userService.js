@@ -29,6 +29,14 @@ async function updateMe(id, data) {
     for (const key of allowed) {
         const [field, subfield] = key.split(".");
 
+        // ⭐ Avatar URL må IKKE saniteres
+        if (key === "profile.avatarUrl") {
+            if (data.profile && data.profile.avatarUrl) {
+                update["profile.avatarUrl"] = data.profile.avatarUrl;
+            }
+            continue;
+        }
+
         if (subfield) {
             if (data[field] && data[field][subfield] !== undefined) {
                 const value = data[field][subfield];
@@ -43,6 +51,7 @@ async function updateMe(id, data) {
             }
         }
     }
+
 
     if (update.cvr) {
         update.cvr = sanitizeString(update.cvr);

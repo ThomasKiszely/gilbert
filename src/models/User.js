@@ -36,7 +36,7 @@ const userSchema = new mongoose.Schema({
     },
     profile: {
         bio: {type: String},
-        avatarUrl: {type: String, default: "/avatars/Gilbert.jpeg"},
+        avatarUrl: {type: String, default: "/avatars/Gilbert.jpg"},
         language: {type: String, default: "en"}
     },
 },

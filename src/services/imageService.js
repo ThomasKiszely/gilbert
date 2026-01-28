@@ -3,7 +3,7 @@ const path = require('path');
 const sharp = require('sharp');
 
 const PRODUCT_DIR = path.join(__dirname, '../../uploads/products');
-const PROFILE_DIR = path.join(__dirname, '../../uploads/profiles');
+const PROFILE_DIR = path.join(__dirname, '../../uploads/avatars');
 
 function ensureDir(dir) {
     if(!fs.existsSync(dir)) {
@@ -25,7 +25,7 @@ async function saveProductImage(file) {
     return `/api/images/products/${outputFilename}`;
 }
 
-async function saveProfileImage(file) {
+async function saveAvatar(file) {
     const outputFilename = file.filename + ".webp";
     const outputPath = path.join(PROFILE_DIR, outputFilename);
     await sharp(file.path)
@@ -33,7 +33,7 @@ async function saveProfileImage(file) {
         .webp({ quality: 80 })
         .toFile(outputPath);
     fs.unlinkSync(file.path);
-    return `/api/images/profiles/${outputFilename}`;
+    return `/api/images/avatars/${outputFilename}`;
 }
 
 async function deleteImage(imageUrl) {
@@ -43,7 +43,7 @@ async function deleteImage(imageUrl) {
 
     if (imageUrl.includes("/products/")) {
         dir = PRODUCT_DIR;
-    } else if (imageUrl.includes("/profiles/")) {
+    } else if (imageUrl.includes("/avatars/")) {
         dir = PROFILE_DIR;
     } else {
         return;
@@ -59,6 +59,6 @@ async function deleteImage(imageUrl) {
 
 module.exports = {
     saveProductImage,
-    saveProfileImage,
+    saveAvatar,
     deleteImage
 }

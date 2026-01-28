@@ -23,7 +23,7 @@ async function loadProfile() {
         document.getElementById("cvr").innerText = user.cvr || "";
         document.getElementById("bio").innerText = user.profile?.bio || "";
         document.getElementById("language").innerText = user.profile?.language || "da";
-        document.getElementById("avatar").src = user.profile?.avatarUrl || "/avatars/Gilbert.jpeg";
+        document.getElementById("avatar").src = user.profile?.avatarUrl || "/api/images/avatars/Gilbert.jpg";
 
     } catch (err) {
         statusBox.innerText = "Error: " + err.message;
