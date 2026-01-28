@@ -1,5 +1,7 @@
 const ADMIN_VIEWS = [
     "admin",
+    "admin-users",
+    "products-in-review",
 ];
 
 module.exports = {
