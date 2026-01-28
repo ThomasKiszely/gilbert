@@ -1,5 +1,5 @@
 const productRepo = require("../data/productRepo");
-
+const imageService = require("../services/imageService");
 async function createProduct(productData) {
     return await productRepo.createProduct(productData);
 }
@@ -20,8 +20,19 @@ async function updateProduct(productId, productData) {
 }
 
 async function deleteProduct(productId) {
-    return await productRepo.deleteProduct(productId);
+    const product = await productRepo.getProductById(productId);
+    if (!product) return null;
+
+    if (product.images && product.images.length > 0) {
+        product.images.forEach(imgUrl => {
+            imageService.deleteImage(imgUrl);
+        });
+    }
+
+    await productRepo.deleteProduct(productId);
+    return product;
 }
+
 
 async function searchProducts(filters, page, limit) {
     return await productRepo.searchProducts(filters, page, limit);

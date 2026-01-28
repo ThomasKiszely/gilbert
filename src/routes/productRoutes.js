@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const upload = require("../middlewares/upload");
+const upload = require("../middlewares/productUpload");
 const { requireAuth} = require('../middlewares/auth');
 const { canSell} = require('../middlewares/sellerValidator');
 const {validateProduct, loadProduct, yourProduct} = require('../middlewares/productValidator');

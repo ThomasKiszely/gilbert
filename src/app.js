@@ -37,8 +37,14 @@ app.use(limitRate);
 app.use(log);
 app.use(verifyToken);
 app.use(express.static(path.join(__dirname, '..', 'public')));
-app.use("/avatars", express.static(path.join(__dirname, "..", "public", "avatars")));
-app.use("/api/images", express.static("uploads"));
+//app.use("/avatars", express.static(path.join(__dirname, "..", "public", "avatars")));
+
+
+// TIL UPLOAD AF BILLEDER
+app.use("/api/images/products", express.static("uploads/products"));
+app.use("/api/images/profiles", express.static("uploads/profiles"));
+
+
 app.use(requireAuth);
 // Routes
 app.use('/api/auth', authRouter);

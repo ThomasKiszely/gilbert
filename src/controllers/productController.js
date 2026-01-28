@@ -1,18 +1,18 @@
 const productService = require('../services/productService');
-
+const {saveProductImage} = require('../services/imageService');
 async function createProduct(req, res, next) {
     try {
         const imageFiles = req.files || [];
 
-        const imagePath = imageFiles.map(file => `/api/images/${file.filename}`);
+        const images = [];
 
-        console.log("BODY:", req.body);
-        console.log("FILES:", req.files);
-        console.log("USER:", req.user);
-
+        for(const file of imageFiles) {
+            const url = await saveProductImage(file);
+            images.push(url);
+        }
         const productData = {
             ...req.body,
-            images: imagePath,
+            images,
             seller: req.user.id
         }
         console.log("PRODUCT DATA:", productData);
