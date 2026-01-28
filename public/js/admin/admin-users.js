@@ -10,7 +10,7 @@ async function fetchUsers() {
 
         return await res.json();
     } catch (err) {
-        console.error("Kunne ikke hente brugere", err);
+        console.error("Could not fetch users", err);
         return null;
     }
 }
@@ -65,7 +65,6 @@ function setupPagination() {
 
 async function init() {
     const result = await fetchUsers();
-    console.log("RESULT FRA BACKEND:", result);
 
     if (!result) return;
 

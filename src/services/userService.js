@@ -9,21 +9,14 @@ const { professionalStatus } = require('../utils/professionalStatus');
 const { isStrongPassword } = require('../utils/isStrongPassword');
 const { sanitizeUser } = require('../utils/sanitizeUser');
 const imageService = require('../services/imageService');
+const { allowedUserUpdateFields } = require('../utils/allowedUserUpdateFields');
 
 async function updateMe(id, data) {
     if (!mongoose.Types.ObjectId.isValid(id)) {
         throw new Error(`Invalid userId`);
     }
 
-    const allowed = [
-        "username",
-        "location.city",
-        "location.country",
-        "cvr",
-        "profile.bio",
-        "profile.avatarUrl",
-        "profile.language"
-    ];
+    const allowed = allowedUserUpdateFields;
 
     const update = {};
 

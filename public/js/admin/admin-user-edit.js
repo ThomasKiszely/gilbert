@@ -25,7 +25,7 @@ async function fetchUser() {
         const data = await res.json();
         return data.data;
     } catch (err) {
-        console.error("Kunne ikke hente bruger", err);
+        console.error("Could not fetch user", err);
         return null;
     }
 }
@@ -63,7 +63,7 @@ async function updateRole() {
 
     const data = await res.json();
     renderUser(data.data);
-    message.textContent = "Rolle opdateret!";
+    message.textContent = "Role updated!";
 }
 
 // Update professional status
@@ -79,7 +79,7 @@ async function updateStatus() {
 
     const data = await res.json();
     renderUser(data.data);
-    message.textContent = "Status opdateret!";
+    message.textContent = "Status updated!";
 }
 
 // Update badges (boolean object)
@@ -99,7 +99,7 @@ async function updateBadges() {
 
     const data = await res.json();
     renderUser(data.data);
-    message.textContent = "Badges opdateret!";
+    message.textContent = "Badges updated!";
 }
 
 // Event listeners
