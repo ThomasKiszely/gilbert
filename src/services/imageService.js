@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
+const userRepo = require('../data/userRepo');
 
 const PRODUCT_DIR = path.join(__dirname, '../../uploads/products');
 const PROFILE_DIR = path.join(__dirname, '../../uploads/avatars');
@@ -25,7 +26,14 @@ async function saveProductImage(file) {
     return `/api/images/products/${outputFilename}`;
 }
 
-async function saveAvatar(file) {
+async function saveAvatar(file, userId) {
+    const user = await userRepo.findUserById(userId);
+    const oldAvatar = user.profile?.avatarUrl;
+
+    if(oldAvatar) {
+        await deleteImage(oldAvatar);
+    }
+
     const outputFilename = file.filename + ".webp";
     const outputPath = path.join(PROFILE_DIR, outputFilename);
     await sharp(file.path)

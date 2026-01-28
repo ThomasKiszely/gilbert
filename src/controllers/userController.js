@@ -36,9 +36,8 @@ async function updateAvatar(req, res, next) {
         if(!req.file){
             return res.status(400).json({ success: false, message: 'No file uploaded.' });
         }
-        console.log("REQ.FILE:", req.file);
 
-        const avatarUrl = await imageService.saveAvatar(req.file);
+        const avatarUrl = await imageService.saveAvatar(req.file, req.user.id);
 
         await userService.updateMe(req.user.id, {
             profile: {
