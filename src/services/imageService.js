@@ -52,7 +52,7 @@ async function deleteImage(imageUrl) {
     const filePath = path.join(dir, filename);
 
     if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
+       await fs.unlinkSync(filePath);
     }
 }
 
