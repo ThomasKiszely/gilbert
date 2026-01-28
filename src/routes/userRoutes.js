@@ -12,6 +12,7 @@ router.patch("/user/:id", canUpdateUser, userController.updateUser);
 router.get("/verify-email-change", userController.verifyEmailChange);
 router.get("/me", userController.getMe);
 router.patch("/me", userController.updateMe);
+router.delete('/me', userController.deleteUser);
 
 
 module.exports = router;

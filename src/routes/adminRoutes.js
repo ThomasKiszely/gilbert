@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 
 const adminController = require('../controllers/adminController');
+const userController = require('../controllers/userController');
 const { requireRole } = require('../middlewares/auth');
 const { validateUserRole } = require('../middlewares/validateUserRole');
 const { validateProfessionalStatus } = require('../middlewares/validateprofessionalStatus');
@@ -20,5 +21,6 @@ router.get('/products/in-review', adminController.getProductsInReview);
 
 router.put('/products/:id/approve',adminController.approveProduct);
 router.put('/products/:id/reject', adminController.rejectProduct);
+router.delete('/users/:id', userController.deleteUser)
 
 module.exports = router;

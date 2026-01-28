@@ -94,7 +94,9 @@ async function updateUserBadges(id, badges) {
     ).select("-passwordHash");
 }
 
-
+async function deleteUser(userId){
+    return await User.findByIdAndDelete(userId);
+}
 
 module.exports = {
     findUserByEmail,
@@ -106,4 +108,5 @@ module.exports = {
     updateUserRole,
     updateProfessionalStatus,
     updateUserBadges,
+    deleteUser,
 }

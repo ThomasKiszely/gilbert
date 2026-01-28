@@ -8,6 +8,7 @@ const { validateCVR } = require('../utils/validateCVR');
 const { professionalStatus } = require('../utils/professionalStatus');
 const { isStrongPassword } = require('../utils/isStrongPassword');
 const { sanitizeUser } = require('../utils/sanitizeUser');
+const imageService = require('../services/imageService');
 
 async function updateMe(id, data) {
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -180,6 +181,16 @@ async function verifyEmailChange(token) {
     return true;
 }
 
+async function deleteUser(userId) {
+    const user = await userRepo.findUserById(userId);
+    const avatar = user.profile?.avatarUrl;
+    if(avatar) {
+        await imageService.deleteImage(avatar);
+    }
+    const deleted = await userRepo.deleteUser(userId);
+    return deleted;
+}
+
 module.exports = {
     updateUser,
     updateMe,
@@ -187,4 +198,5 @@ module.exports = {
     changePassword,
     requestEmailChange,
     verifyEmailChange,
+    deleteUser,
 };

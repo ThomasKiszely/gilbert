@@ -99,6 +99,15 @@ async function verifyEmailChange(req, res, next) {
     }
 }
 
+async function deleteUser(req, res, next) {
+    try{
+        const id = req.params.id;
+        const user = await userService.deleteUser(id);
+        return res.status(204).end();
+    } catch(error){
+        next(error);
+    }
+}
 
 module.exports = {
     updateUser,
@@ -108,4 +117,5 @@ module.exports = {
     changePassword,
     changeEmail,
     verifyEmailChange,
+    deleteUser
 }
