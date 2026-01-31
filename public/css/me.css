@@ -81,3 +81,62 @@
     color: inherit;
     display: block;
 }
+/* --- MOBILE OPTIMIZATION --- */
+@media (max-width: 600px) {
+
+    body {
+        padding: 15px;
+    }
+
+    .profile-title {
+        font-size: 1.4rem;
+        margin-top: 10px;
+    }
+
+    .profile-actions {
+        max-width: 100%;
+        gap: 10px;
+    }
+
+    .profile-actions .profile-btn {
+        padding: 10px 12px;
+        font-size: 0.95rem;
+    }
+
+    .profile-view {
+        max-width: 100%;
+        padding: 15px;
+    }
+
+    .profile-avatar {
+        width: 90px;
+        height: 90px;
+        margin-bottom: 15px;
+    }
+
+    .profile-fields p {
+        font-size: 0.85rem;
+    }
+
+    .section-title {
+        font-size: 1.2rem;
+    }
+
+    /* Products grid like index */
+    .product-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 15px;
+    }
+
+    .product-card img {
+        height: 180px;
+    }
+
+    .product-title {
+        font-size: 0.9rem;
+    }
+
+    .product-price {
+        font-size: 1rem;
+    }
+}

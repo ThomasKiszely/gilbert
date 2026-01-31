@@ -88,6 +88,7 @@ body {
     overflow: hidden;
     box-shadow: var(--shadow);
     transition: transform .2s ease;
+    color: var(--accent-color);
 }
 
 .product-card:hover {
@@ -102,6 +103,7 @@ body {
 
 .product-info {
     padding: 14px;
+    color: var(--accent-color);
 }
 
 .product-title {

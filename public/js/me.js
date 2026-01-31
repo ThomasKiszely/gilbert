@@ -76,5 +76,25 @@ async function loadMyProducts() {
     }
 }
 
+document.getElementById("logout-btn").addEventListener("click", async () => {
+    try {
+        const res = await fetch("/api/auth/logout", {
+            method: "POST",
+            credentials: "include"
+        });
+
+        const json = await res.json();
+
+        if (json.success) {
+            window.location.href = "/"; // redirect til forsiden
+        } else {
+            statusBox.innerText = "Logout failed";
+        }
+    } catch (err) {
+        statusBox.innerText = "Error logging out";
+    }
+});
+
+
 loadProfile();
 loadMyProducts();
