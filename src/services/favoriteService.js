@@ -9,7 +9,8 @@ async function removeFavorite(userId, productId) {
     return await favoriteRepo.removeFavorite(userId, productId);
 }
 async function getFavorites(userId) {
-    return await favoriteRepo.getFavorites(userId);
+    const favorites = await favoriteRepo.getFavorites(userId);
+    return favorites.map(f => f.product);
 }
 async function toggleFavorite(userId, productId) {
     const exists = await favoriteRepo.isFavorite(userId, productId);

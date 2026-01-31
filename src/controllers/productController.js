@@ -33,7 +33,8 @@ async function readAllProducts(req, res, next) {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 20;
 
-        const products = await productService.readAllProducts(page, limit);
+        const userId = req.user?.id;
+        const products = await productService.readAllProducts(page, limit, userId);
 
         if (!products) {
             const err = new Error('Products not found');
@@ -61,7 +62,8 @@ async function searchProducts(req, res, next) {
                 {"subcategory.name": new RegExp(q, 'i')},
             ];
         }
-        const products = await productService.searchProducts(filters, page, limit);
+        const userId = req.user?.id;
+        const products = await productService.searchProducts(filters, page, limit, userId);
         if (!products) {
             const err = new Error('Products not found with filters');
             err.status = 400;
@@ -74,7 +76,8 @@ async function searchProducts(req, res, next) {
 }
 async function getProductById(req, res, next) {
     try {
-        const product = await productService.getProductById(req.params.id);
+        const userId = req.user?.id;
+        const product = await productService.getProductById(req.params.id, userId);
         if (!product) {
             const err = new Error('Product not found with valid id');
             err.status = 400;
@@ -126,7 +129,8 @@ async function filterProducts(req, res, next) {
         delete filters.page;
         delete filters.limit;
 
-        const products = await productService.findProducts(filters, page, limit);
+        const userId = req.user?.id;
+        const products = await productService.findProducts(filters, page, limit, userId);
         if (!products) {
             const err = new Error('Products not found with filters');
             err.status = 400;
@@ -141,7 +145,7 @@ async function filterProducts(req, res, next) {
 async function getMyProducts(req, res, next) {
     try{
         console.log('REQ.USER: ' + req.user);
-        const userId = req.user._id;
+        const userId = req.user.id;
         const products = await productService.findProductsBySeller(userId);
         return res.status(200).json({ success: true, data: products });
     } catch (error) {

@@ -1,0 +1,31 @@
+.empty-message {
+    text-align: center;
+    margin-top: 40px;
+    font-size: 1.1rem;
+    opacity: 0.8;
+    color: var(--accent-color);
+}
+.favorite-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.heart-icon {
+    width: 28px;
+    height: 28px;
+    fill: rgba(255,255,255,0.8);
+    transition: fill 0.2s ease, transform 0.15s ease;
+}
+
+.favorite-btn:hover .heart-icon {
+    transform: scale(1.15);
+}
+
+.favorite-btn.active .heart-icon {
+    fill: #ff4d4d;
+}
+
+

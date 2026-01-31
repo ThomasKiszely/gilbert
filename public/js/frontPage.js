@@ -28,10 +28,21 @@ function renderProducts(products) {
             : "";
 
         const image = product.images?.[0] || "/images/ImagePlaceholder.jpg";
+
         card.innerHTML = `
             <div class="product-image-wrapper">
                 ${badge}
                 <img src="${image}" alt="${product.title}">
+
+                <div class="favorite-btn ${product.isFavorite ? "active" : ""}" data-id="${product._id}">
+    <svg class="heart-icon" viewBox="0 0 24 24">
+        <path d="M12 21s-6.7-4.35-10-9.14C-1.6 7.1 1.4 2 6 2c2.54 0 4 1.66 6 3.76C14 3.66 15.46 2 18 2c4.6 0 7.6 5.1 4 9.86C18.7 16.65 12 21 12 21z"/>
+    </svg>
+</div>
+
+
+
+
             </div>
 
             <div class="product-info">
@@ -43,7 +54,11 @@ function renderProducts(products) {
 
         container.appendChild(card);
     });
+
+    // ⭐ meget vigtigt
+    setupFavoriteButtons();
 }
+
 
 async function getProducts() {
     const products = await fetchProducts();
