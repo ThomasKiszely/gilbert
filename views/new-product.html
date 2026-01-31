@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<form id="product-form" enctype="multipart/form-data">
+  <input name="title" placeholder="Title" required>
+  <input name="price" type="number" placeholder="Price" required>
+  <textarea name="description" placeholder="Description"></textarea>
+
+  <input type="file" name="images" multiple accept="image/*">
+
+  <button type="submit">Create product</button>
+</form>
+
+<div id="status"></div>
+
+<script src="/js/new-product.js"></script>
+
+
+
+</body>
+</html>

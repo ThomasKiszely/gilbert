@@ -138,6 +138,17 @@ async function filterProducts(req, res, next) {
     }
 }
 
+async function getMyProducts(req, res, next) {
+    try{
+        console.log('REQ.USER: ' + req.user);
+        const userId = req.user._id;
+        const products = await productService.findProductsBySeller(userId);
+        return res.status(200).json({ success: true, data: products });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     createProduct,
     readAllProducts,
@@ -146,4 +157,5 @@ module.exports = {
     updateProduct,
     deleteProduct,
     filterProducts,
+    getMyProducts,
 }

@@ -106,6 +106,17 @@ async function searchProducts(filters, page = 1, limit = 20) {
     return await Product.aggregate(pipeline);
 }
 
+async function findProductsBySeller(sellerId) {
+    return await Product.find({ seller: sellerId })
+        .populate("category")
+        .populate("subcategory")
+        .populate("brand")
+        .populate("size")
+        .populate("condition")
+        .populate("color")
+        .populate("material")
+        .populate("tags");
+}
 
 
 module.exports = {
@@ -119,4 +130,5 @@ module.exports = {
     getProductsInReview,
     deleteProduct,
     searchProducts,
+    findProductsBySeller,
 }

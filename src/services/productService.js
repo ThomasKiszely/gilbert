@@ -38,6 +38,10 @@ async function searchProducts(filters, page, limit) {
     return await productRepo.searchProducts(filters, page, limit);
 }
 
+async function findProductsBySeller(sellerId){
+    return await productRepo.findProductsBySeller(sellerId);
+}
+
 module.exports = {
     createProduct,
     readAllProducts,
@@ -46,4 +50,5 @@ module.exports = {
     updateProduct,
     deleteProduct,
     searchProducts,
+    findProductsBySeller,
 }
