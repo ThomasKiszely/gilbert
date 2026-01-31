@@ -2,38 +2,45 @@
 <html lang="da">
 <head>
     <meta charset="UTF-8">
-    <title>My Profil</title>
+    <title>My Profile</title>
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/me.css">
+    <link rel="stylesheet" href="/css/edit-me.css">
 </head>
 <body>
-<p><a href="/change-password">Change password</a></p>
-<p><a href="/change-email">Change email</a></p>
+<div id="toast" class="toast"></div>
+
+<div class="profile-actions">
+    <a href="/change-password" class="profile-btn">Change password</a>
+    <a href="/change-email" class="profile-btn">Change email</a>
+</div>
+
 <h1>My Profile</h1>
 
 <div id="status"></div>
 
 <form id="profileForm">
 
-    <label>Brugernavn</label>
+    <label>Username</label>
     <input type="text" id="username" name="username">
 
-    <label>By</label>
+    <label>City</label>
     <input type="text" id="city" name="city">
 
-    <label>Land</label>
+    <label>Country</label>
     <input type="text" id="country" name="country">
 
-    <label>CVR (valgfrit)</label>
+    <label>CVR (optional)</label>
     <input type="text" id="cvr" name="cvr">
 
     <label>Bio</label>
     <textarea id="bio" name="bio"></textarea>
 
-    <label>Profilbillede</label>
+    <label>Avatar</label>
     <input type="file" id="avatarFile" accept="image/*">
     <img id="avatarPreview" style="max-width:150px; display:block; margin-top:10px;">
 
-    <label>Sprog</label>
+    <label>Language</label>
     <select id="language" name="language">
         <option value="da">Dansk</option>
         <option value="en">English</option>

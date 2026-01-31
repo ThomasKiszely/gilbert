@@ -1,6 +1,17 @@
 const form = document.getElementById('profileForm');
 const statusBox = document.getElementById('status');
 
+function showToast(message) {
+    const toast = document.getElementById("toast");
+    toast.textContent = message;
+    toast.classList.add("show");
+
+    setTimeout(() => {
+        toast.classList.remove("show");
+    }, 2000);
+}
+
+
 async function loadProfile() {
     try {
         const res = await fetch("/api/users/me", {
@@ -58,7 +69,6 @@ form.addEventListener('submit', async (e) => {
         }
     };
 
-    // ⭐ PATCH bruger cookie-auth
     const res = await fetch("/api/users/me", {
         method: "PATCH",
         credentials: "include",
@@ -70,11 +80,10 @@ form.addEventListener('submit', async (e) => {
 
     const json = await res.json();
     if (!json.success) {
-        statusBox.innerText = "Error: " + (json.error || json.message);
+        showToast("Error updating profile");
         return;
     }
 
-    // ⭐ Avatar upload bruger cookie-auth
     const file = document.getElementById("avatarFile").files[0];
     if (file) {
         const formData = new FormData();
@@ -88,13 +97,14 @@ form.addEventListener('submit', async (e) => {
 
         const uploadJson = await uploadRes.json();
         if (!uploadJson.success) {
-            statusBox.innerText = "Avatar upload failed";
+            showToast("Avatar upload failed");
             return;
         }
     }
 
-    statusBox.innerText = "Profile updated";
+    showToast("Profile updated");
     loadProfile();
 });
+
 
 loadProfile();

@@ -1,0 +1,117 @@
+/* Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Premium palette */
+:root {
+    --primary-color: #004324;      /* Racing green */
+    --secondary-color: #423a26;    /* Deep brown */
+    --accent-color: #f8f0e5;       /* Ivory */
+    --burgundy: #5a0f1b;           /* Luxury accent */
+    --card-bg: #0a2a1a;
+    --border-color: #c8c0b4;
+    --radius: 14px;
+    --shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+
+/* Body */
+body {
+    background: var(--primary-color);
+    color: var(--accent-color);
+    font-family: "Inter", Arial, sans-serif;
+    padding: 0;
+}
+
+/* Topbar */
+.topbar {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    background: var(--primary-color);
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 50;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.logo {
+    height: 34px;
+}
+
+/* Bottom navigation */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--primary-color);
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 0 14px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    z-index: 999;
+}
+
+.nav-item {
+    color: var(--accent-color);
+    font-size: 1.6rem;
+    text-decoration: none;
+}
+
+.sell-btn {
+    background: var(--burgundy);
+    color: white;
+    padding: 14px 18px;
+    border-radius: 50%;
+    font-size: 2rem;
+    margin-top: -28px;
+    box-shadow: var(--shadow);
+}
+
+/* Product grid */
+.product-grid {
+    padding: 20px;
+    padding-bottom: 120px; /* space for bottom nav */
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 22px;
+}
+
+.product-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: transform .2s ease;
+}
+
+.product-card:hover {
+    transform: translateY(-4px);
+}
+
+.product-card img {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+}
+
+.product-info {
+    padding: 14px;
+}
+
+.product-title {
+    font-family: "Playfair Display", serif;
+    font-size: 1.1rem;
+    margin-bottom: 6px;
+}
+
+.product-price {
+    color: var(--accent-color);
+    font-weight: bold;
+    font-size: 1.2rem;
+}

@@ -51,13 +51,21 @@ async function loadMyProducts() {
             div.className = "product-card";
 
             div.innerHTML = `
-    <a href="/edit-product/${p._id}" class="product-link">
-        <img src="${p.images[0]}" style="max-width:120px">
-        <p><strong>${p.title}</strong></p>
-        <p>${p.price} kr</p>
-        <p>Status: ${p.status}</p>
+    <a href="/edit-product/${p._id}" class="product-card-link">
+        <div class="product-card">
+            <div class="product-image-wrapper">
+                <img src="${p.images[0]}" alt="${p.title}">
+            </div>
+
+            <div class="product-info">
+                <div class="product-title">${p.title}</div>
+                <div class="product-price">${p.price} kr.</div>
+                <div class="product-status">${p.status}</div>
+            </div>
+        </div>
     </a>
 `;
+
 
 
             container.appendChild(div);
