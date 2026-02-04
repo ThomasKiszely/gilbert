@@ -12,6 +12,17 @@ import AdminProductsInReview from "./pages/admin/AdminProductsInReview.tsx";
 import AdminUsers from "./pages/admin/AdminUsers.tsx";
 import AdminUserEdit from "./pages/admin/AdminUserEdit.tsx";
 import MePage from "./pages/MePage.tsx";
+import VerifyEmailPage from "./pages/VerifyEmailPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ChangePasswordPage from "./pages/ChangePasswordPage";
+import EditProfilePage from "./pages/EditProfilePage";
+import FavoritesPage from "./pages/FavoritesPage.tsx";
+import ChangeEmailPage from "./pages/ChangeEmailPage";
+import EmailChangeErrorPage from "./pages/EmailChangeErrorPage.tsx";
+import EmailChangeSuccessPage from "./pages/EmailChangeSuccessPage.tsx";
+import NotFoundPage from "./pages/NotFoundPage.tsx";
+import ServerErrorPage from "./pages/ServerErrorPage";
 
 
 function App() {
@@ -26,12 +37,52 @@ function App() {
                             <CreateProduct />
                         </ProtectedRoute>
                         } />
+                    <Route
+                        path="/change-password"
+                        element={
+                            <ProtectedRoute>
+                                <ChangePasswordPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/me" element={ <ProtectedRoute>
                         <MePage />
                     </ProtectedRoute>
                     }
                     />
+                    <Route
+                        path="/edit-me"
+                        element={
+                            <ProtectedRoute>
+                                <EditProfilePage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/favorites"
+                        element={
+                            <ProtectedRoute>
+                                <FavoritesPage />
+                            </ProtectedRoute>
+                        }
+                    />
+                    <Route
+                        path="/change-email"
+                        element={
+                            <ProtectedRoute>
+                                <ChangeEmailPage />
+                            </ProtectedRoute>
+                        }
+                    />
+
+                    <Route path="/verify-email" element={<VerifyEmailPage />} />
+                    <Route path="/reset-password" element={<ResetPasswordPage />} />
+                    <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                    <Route path="/email-change-error" element={<EmailChangeErrorPage />} />
+                    <Route path="/email-change-success" element={<EmailChangeSuccessPage />} />
+
 
                     {/* Admin routes */}
                     <Route
@@ -60,7 +111,7 @@ function App() {
                     />
 
                     <Route
-                        path="/admin-user-edit"
+                        path="/admin/user-edit"
                         element={
                             <ProtectedAdminRoute>
                                 <AdminUserEdit />
@@ -69,6 +120,8 @@ function App() {
                     />
                 </Route>
 
+                <Route path="/500" element={<ServerErrorPage />} />
+                <Route path="*" element={<NotFoundPage />} />
             </Routes>
         </BrowserRouter>
     );

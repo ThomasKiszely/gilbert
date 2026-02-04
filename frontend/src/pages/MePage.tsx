@@ -64,21 +64,15 @@ const MePage = () => {
 
     async function handleLogout() {
         try {
-            const res = await api("/api/auth/logout", {
-                method: "POST",
-            });
-
-            const json = await res.json();
-
-            if (json.success) {
-                navigate("/");
-            } else {
-                setStatus("Logout failed");
-            }
+            await api("/api/auth/logout", { method: "POST" });
         } catch {
-            setStatus("Error logging out");
+            // backend-fejl er ligegyldige for logout
         }
+
+        localStorage.removeItem("token");
+        navigate("/");
     }
+
 
     return (
         <div className="p-6 pb-20">
@@ -144,14 +138,6 @@ const MePage = () => {
                 ))}
             </div>
 
-            {/* Bottom navigation */}
-            <nav className="bottom-nav fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around py-3">
-                <Link to="/" className="nav-item text-xl">🏠</Link>
-                <Link to="/search" className="nav-item text-xl">🔍</Link>
-                <Link to="/create-product" className="nav-item text-xl">＋</Link>
-                <Link to="/favorites" className="nav-item text-xl">❤️</Link>
-                <Link to="/me" className="nav-item text-xl">🐱</Link>
-            </nav>
         </div>
     );
 };

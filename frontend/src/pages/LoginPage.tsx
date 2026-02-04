@@ -141,6 +141,13 @@ export default function LoginPage() {
                     <input name="password" type="password" placeholder="Password" required className="input" />
 
                     <button className="btn-primary w-full">Login</button>
+
+                    <div className="text-center mt-3">
+                        <a href="/forgot-password" className="text-sm underline text-racing-green">
+                            Forgot your password?
+                        </a>
+                    </div>
+
                 </form>
             )}
 

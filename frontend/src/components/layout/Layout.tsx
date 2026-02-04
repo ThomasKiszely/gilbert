@@ -54,7 +54,7 @@ export default function Layout() {
                     <span>❤️</span>
                     Favorites
                 </a>
-                <a href="/profile" className="flex flex-col items-center text-xs">
+                <a href="/me" className="flex flex-col items-center text-xs">
                     <span>👤</span>
                     Profile
                 </a>
