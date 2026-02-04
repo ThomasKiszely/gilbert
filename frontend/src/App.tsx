@@ -5,11 +5,13 @@ import CreateProduct from "./pages/CreateProduct";
 import LoginPage from "./pages/LoginPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+
 import ProtectedAdminRoute from "./components/auth/ProtectedAdminRoute";
 import AdminDashboard from "./pages/admin/adminDashboard";
 import AdminProductsInReview from "./pages/admin/AdminProductsInReview.tsx";
 import AdminUsers from "./pages/admin/AdminUsers.tsx";
 import AdminUserEdit from "./pages/admin/AdminUserEdit.tsx";
+import MePage from "./pages/MePage.tsx";
 
 
 function App() {
@@ -25,6 +27,11 @@ function App() {
                         </ProtectedRoute>
                         } />
                     <Route path="/login" element={<LoginPage />} />
+                    <Route path="/me" element={ <ProtectedRoute>
+                        <MePage />
+                    </ProtectedRoute>
+                    }
+                    />
 
                     {/* Admin routes */}
                     <Route
