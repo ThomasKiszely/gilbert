@@ -18,7 +18,6 @@ const tagRouter = require('./routes/tagRoutes');
 const adminRouter = require('./routes/adminRoutes');
 const favoriteRouter = require('./routes/favoriteRoutes');
 
-
 const { limitRate } = require('./middlewares/rateLimiter');
 const { log } = require('./middlewares/logger');
 const { jwtAuth } = require('./middlewares/jwtAuth');
@@ -30,6 +29,7 @@ connectToMongo();
 //npx nodemon server eller npm run dev for at starte nodemon - ctrl-c for at afslutte
 
 // Middleware
+//app.set('trust proxy', 1); //hvis jeg ligger bag reverse proxy
 app.use(express.json());
 app.use(limitRate);
 app.use(log);
@@ -42,10 +42,10 @@ app.use("/api/images/products", express.static("uploads/products"));
 app.use("/api/images/avatars", express.static("uploads/avatars"));
 
 app.use(jwtAuth);
-app.use(requireAuth);
+//app.use(requireAuth);
 // Routes
 app.use('/api/auth', authRouter);
-app.use('/api/users', userRouter);
+app.use('/api/users', requireAuth, userRouter);
 
 // Product routes
 app.use('/api/products', productRouter);
@@ -59,10 +59,10 @@ app.use('/api/subcategories', subcategoryRouter);
 app.use('/api/tags', tagRouter);
 
 //Favorites
-app.use('/api/favorites', favoriteRouter);
+app.use('/api/favorites', requireAuth, favoriteRouter);
 
 // Admin routes
-app.use('/api/admin', adminRouter);
+app.use('/api/admin', requireAuth, adminRouter);
 
 //app.use('/', viewRouter);
 

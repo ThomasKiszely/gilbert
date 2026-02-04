@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { api } from "../../api/api.ts";
 
 export default function AdminUserEdit() {
     const [params] = useSearchParams();
@@ -18,9 +19,7 @@ export default function AdminUserEdit() {
 
     async function fetchUser() {
         try {
-            const res = await fetch(`/api/admin/users/${userId}`, {
-                credentials: "include"
-            });
+            const res = await api(`/api/admin/users/${userId}`);
 
             const data = await res.json();
             setUser(data.data);
@@ -35,9 +34,8 @@ export default function AdminUserEdit() {
     }
 
     async function updateRole() {
-        const res = await fetch(`/api/admin/users/${userId}/role`, {
+        const res = await api(`/api/admin/users/${userId}/role`, {
             method: "PUT",
-            credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ role })
         });
@@ -48,9 +46,8 @@ export default function AdminUserEdit() {
     }
 
     async function updateStatus() {
-        const res = await fetch(`/api/admin/users/${userId}/professional`, {
+        const res = await api(`/api/admin/users/${userId}/professional`, {
             method: "PUT",
-            credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ professionalStatus: status })
         });
@@ -61,9 +58,8 @@ export default function AdminUserEdit() {
     }
 
     async function updateBadges() {
-        const res = await fetch(`/api/admin/users/${userId}/badges`, {
+        const res = await api(`/api/admin/users/${userId}/badges`, {
             method: "PUT",
-            credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ badges })
         });

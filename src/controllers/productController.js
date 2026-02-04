@@ -41,6 +41,7 @@ async function readAllProducts(req, res, next) {
             err.status = 400;
             return next(err);
         }
+        console.log("USER:", req.user);
         return res.status(200).json(products);
     } catch (error) {
         next(error);

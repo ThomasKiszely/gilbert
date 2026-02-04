@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { api } from "../api/api.ts";
 
 const endpoints = {
     category: "/api/categories",
@@ -52,9 +53,8 @@ export default function CreateProduct() {
         images.forEach((img) => formData.append("images", img));
 
         try {
-            const res = await fetch("/api/products", {
+            const res = await api("/api/products", {
                 method: "POST",
-                credentials: "include",
                 body: formData,
             });
 

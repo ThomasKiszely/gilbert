@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { api } from "../../api/api.ts";
 
 const PAGE_SIZE = 10;
 
@@ -10,9 +11,7 @@ export default function AdminUsers() {
 
     async function fetchUsers() {
         try {
-            const res = await fetch(`/api/admin/users?page=${page}&limit=${PAGE_SIZE}`, {
-                credentials: "include",
-            });
+            const res = await api(`/api/admin/users?page=${page}&limit=${PAGE_SIZE}`);
 
             const data = await res.json();
 

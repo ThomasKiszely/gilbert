@@ -5,6 +5,7 @@ export interface Product {
     price: number,
     imageUrl: string,
     tag?: string,
+    isFavorite?: boolean,
 }
 
 export interface ApiProduct {
@@ -14,6 +15,7 @@ export interface ApiProduct {
     price: number;
     images?: string[];
     tags?: { name: string }[];
+    isFavorite?: boolean;
 }
 
 

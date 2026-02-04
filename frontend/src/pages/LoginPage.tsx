@@ -84,6 +84,8 @@ export default function LoginPage() {
                 return setMessage("User registered. Please verify your email.");
             }
 
+            localStorage.setItem("token", data.token);
+
             window.location.href = "/";
         } catch (err) {
             console.error(err);

@@ -2,25 +2,43 @@ import { useEffect, useState } from "react";
 import BlogPost from "../components/home/BlogPost.tsx";
 import FeaturedProducts from "../components/home/FeaturedProducts.tsx";
 import CategoryList from "../components/home/CategoryList.tsx";
-import type {ApiProduct,Product} from "../components/product/types.ts";
+import type { ApiProduct, Product } from "../components/product/types.ts";
+import { api } from "../api/api.ts";
+import { toggleFavorite } from "../api/favorites.ts"; // ⭐ Husk denne
 
 const Index = () => {
     const [products, setProducts] = useState<Product[]>([]);
 
     async function loadProducts() {
-        const res = await fetch("/api/products");
+        const res = await api("/api/products");
         const data = await res.json();
 
-        const mapped = data.map((p: ApiProduct) : Product => ({
-            id: p.id,
+        const mapped = data.map((p: ApiProduct): Product => ({
+            id: p._id,
             title: p.title,
             brand: p.brand?.name || "",
             price: p.price,
             imageUrl: p.images?.[0] || "/images/ImagePlaceholder.jpg",
             tag: p.tags?.[0]?.name,
+            isFavorite: p.isFavorite ?? false,
         }));
 
         setProducts(mapped);
+    }
+
+    // ⭐ Toggle favorite (skal ligge HER)
+    async function handleToggleFavorite(productId: string) {
+        // Optimistic UI update
+        setProducts(prev =>
+            prev.map(p =>
+                p.id === productId
+                    ? { ...p, isFavorite: !p.isFavorite }
+                    : p
+            )
+        );
+
+        // Backend sync
+        await toggleFavorite(productId);
     }
 
     useEffect(() => {
@@ -45,13 +63,17 @@ const Index = () => {
                 ]}
             />
 
-            <FeaturedProducts title="New Arrivals" products={products} />
+            <FeaturedProducts
+                title="New Arrivals"
+                products={products}
+                onToggleFavorite={handleToggleFavorite} // ⭐ send callback ned
+            />
 
             <FeaturedProducts
                 title="Price Drops"
                 products={products.filter((p) => p.tag === "Price Drop")}
+                onToggleFavorite={handleToggleFavorite} // ⭐ også her
             />
-
         </>
     );
 };
