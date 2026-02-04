@@ -1,6 +1,9 @@
 import { Outlet } from "react-router-dom";
+import {useUser} from "../../hooks/useUser";
 
 export default function Layout() {
+    const {user, loading} = useUser();
+
     return (
         <div className="min-h-screen bg-background text-foreground flex flex-col">
 
@@ -9,11 +12,26 @@ export default function Layout() {
                 <div className="text-2xl font-semibold tracking-wide">GILBERT</div>
 
                 <div className="hidden md:flex gap-6 text-sm">
-                    <a href="/login">Login</a>
+
                     <a href="/me">My Page</a>
-                    <a href="/admin">Admin</a>
                     <a href="/create-product">Create Product</a>
-                    <button id="logoutBtn">Logout</button>
+
+
+                    {!user && !loading && (
+                        <a href="/login">Login</a>
+                    )}
+
+
+                    {user && (
+                        <>
+                            {/* Kun admins ser Admin */}
+                            {user.role === "admin" && (
+                                <a href="/admin">Admin</a>
+                            )}
+
+                            <button id="logoutBtn">Logout</button>
+                        </>
+                    )}
                 </div>
             </nav>
 

@@ -1,0 +1,85 @@
+import { useEffect, useState } from "react";
+
+const API_URL = "/api/admin";
+
+export default function AdminProductsInReview() {
+    const [products, setProducts] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    async function fetchProducts() {
+        try {
+            const res = await fetch(`${API_URL}/products/in-review`, {
+                credentials: "include",
+            });
+
+            const data = await res.json();
+            setProducts(data);
+        } catch (err) {
+            console.error("Failed to load products", err);
+        }
+
+        setLoading(false);
+    }
+
+    async function updateStatus(id: string, status: "Approved" | "Rejected") {
+        const endpoint = status === "Approved" ? "approve" : "reject";
+
+        const res = await fetch(`${API_URL}/products/${id}/${endpoint}`, {
+            method: "PUT",
+            credentials: "include",
+        });
+
+        if (res.ok) {
+            fetchProducts();
+        } else {
+            alert("Something went wrong");
+        }
+    }
+
+    useEffect(() => {
+        fetchProducts();
+    }, []);
+
+    if (loading) {
+        return <p className="p-6">Loading products…</p>;
+    }
+
+    return (
+        <div className="max-w-4xl mx-auto p-6">
+            <h1 className="text-3xl font-bold mb-6">Products in Review</h1>
+
+            {products.length === 0 && (
+                <p>No products waiting for confirmation</p>
+            )}
+
+            <div className="space-y-4">
+                {products.map((product) => (
+                    <div
+                        key={product._id}
+                        className="p-4 bg-ivory rounded-xl shadow-md"
+                    >
+                        <h3 className="text-xl font-semibold">{product.title}</h3>
+                        <p>Pris: {product.price} kr</p>
+                        <p>Sælger: {product.seller?.username || "Unknown"}</p>
+
+                        <div className="flex gap-4 mt-4">
+                            <button
+                                onClick={() => updateStatus(product._id, "Approved")}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                            >
+                                Approve
+                            </button>
+
+                            <button
+                                onClick={() => updateStatus(product._id, "Rejected")}
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                            >
+                                Reject
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}

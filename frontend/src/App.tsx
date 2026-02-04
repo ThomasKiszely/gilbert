@@ -5,6 +5,12 @@ import CreateProduct from "./pages/CreateProduct";
 import LoginPage from "./pages/LoginPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+import ProtectedAdminRoute from "./components/auth/ProtectedAdminRoute";
+import AdminDashboard from "./pages/admin/adminDashboard";
+import AdminProductsInReview from "./pages/admin/AdminProductsInReview.tsx";
+import AdminUsers from "./pages/admin/AdminUsers.tsx";
+import AdminUserEdit from "./pages/admin/AdminUserEdit.tsx";
+
 
 function App() {
     return (
@@ -20,6 +26,40 @@ function App() {
                         } />
                     <Route path="/login" element={<LoginPage />} />
 
+                    {/* Admin routes */}
+                    <Route
+                        path="/admin"
+                        element={
+                            <ProtectedAdminRoute>
+                                <AdminDashboard />
+                            </ProtectedAdminRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin/review"
+                        element={
+                            <ProtectedAdminRoute>
+                                <AdminProductsInReview />
+                            </ProtectedAdminRoute>
+                        }
+                    />
+                    <Route
+                        path="/admin/users"
+                        element={
+                            <ProtectedAdminRoute>
+                                <AdminUsers />
+                            </ProtectedAdminRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/admin-user-edit"
+                        element={
+                            <ProtectedAdminRoute>
+                                <AdminUserEdit />
+                            </ProtectedAdminRoute>
+                        }
+                    />
                 </Route>
 
             </Routes>
