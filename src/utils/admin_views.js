@@ -1,4 +1,4 @@
-const ADMIN_VIEWS = [
+/*const ADMIN_VIEWS = [
     "admin",
     "admin-users",
     "products-in-review",
@@ -7,3 +7,4 @@ const ADMIN_VIEWS = [
 module.exports = {
     ADMIN_VIEWS,
 }
+ */

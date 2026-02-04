@@ -1,4 +1,4 @@
-const jwt = require("jsonwebtoken");
+/*const jwt = require("jsonwebtoken");
 
 function verifyToken(req, res, next) {
     const token = req.cookies?.token;
@@ -20,3 +20,4 @@ function verifyToken(req, res, next) {
 }
 
 module.exports = { verifyToken };
+*/

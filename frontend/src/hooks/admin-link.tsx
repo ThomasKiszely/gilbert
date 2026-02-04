@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import { api } from "../api/api";
+
 export function useAdmin() {
     const [loading, setLoading] = useState(true);
     const [isAdmin, setIsAdmin] = useState(false);
@@ -7,9 +9,7 @@ export function useAdmin() {
     useEffect(() => {
         async function check() {
             try {
-                const res = await fetch("/api/users/me", {
-                    credentials: "include"
-                });
+                const res = await api("/api/users/me");
 
                 if (!res.ok) {
                     setLoading(false);

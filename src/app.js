@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express();
 const path = require('path');
-const viewRouter = require('./routes/viewRoutes');
+//const viewRouter = require('./routes/viewRoutes');
 const authRouter = require('./routes/authRoutes');
 const userRouter = require('./routes/userRoutes');
 
@@ -20,9 +20,8 @@ const favoriteRouter = require('./routes/favoriteRoutes');
 
 
 const { limitRate } = require('./middlewares/rateLimiter');
-const cookieParser = require('cookie-parser');
 const { log } = require('./middlewares/logger');
-const { verifyToken } = require('./middlewares/verifyToken');
+const { jwtAuth } = require('./middlewares/jwtAuth');
 const { requireAuth } = require('./middlewares/auth');
 const { notFound } = require('./middlewares/notFound');
 const { errorHandler } = require('./middlewares/errorHandler');
@@ -31,11 +30,9 @@ connectToMongo();
 //npx nodemon server eller npm run dev for at starte nodemon - ctrl-c for at afslutte
 
 // Middleware
-app.use(cookieParser());
 app.use(express.json());
 app.use(limitRate);
 app.use(log);
-app.use(verifyToken);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 //app.use("/avatars", express.static(path.join(__dirname, "..", "public", "avatars")));
 
@@ -44,7 +41,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use("/api/images/products", express.static("uploads/products"));
 app.use("/api/images/avatars", express.static("uploads/avatars"));
 
-
+app.use(jwtAuth);
 app.use(requireAuth);
 // Routes
 app.use('/api/auth', authRouter);
@@ -67,7 +64,7 @@ app.use('/api/favorites', favoriteRouter);
 // Admin routes
 app.use('/api/admin', adminRouter);
 
-app.use('/', viewRouter);
+//app.use('/', viewRouter);
 
 app.use(notFound);
 app.use(errorHandler);

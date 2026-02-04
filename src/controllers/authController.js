@@ -44,16 +44,9 @@ async function login(req, res, next) {
         const { email, password } = req.body;
         const { token, user } = await authService.login(email, password);
 
-        // Sæt cookie til views
-        res.cookie("token", token, {
-            httpOnly: true,
-            secure: isProduction(), // true i production
-            sameSite: "lax",
-            maxAge: 1000 * 60 * 60 * 24 * 7 // 7 dage
-        });
-
         return res.status(200).json({
             success: true,
+            token,
             data: user
         });
     } catch (error) {
@@ -64,7 +57,6 @@ async function login(req, res, next) {
 
 async function logout(req, res, next) {
     try {
-        res.clearCookie("token");
         return res.status(200).json({
             success: true,
             message: "You have been logged out"

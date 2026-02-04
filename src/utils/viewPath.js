@@ -1,4 +1,4 @@
-const path = require("path");
+/*const path = require("path");
 
 function view(file) {
     return path.join(process.cwd(), "views", file);
@@ -7,3 +7,4 @@ function view(file) {
 module.exports = {
     view
 };
+*/

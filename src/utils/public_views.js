@@ -1,4 +1,4 @@
-const PUBLIC_VIEWS = [
+/*const PUBLIC_VIEWS = [
     "",
     "index",
     "login",
@@ -11,3 +11,5 @@ const PUBLIC_VIEWS = [
 module.exports = {
     PUBLIC_VIEWS
 };
+
+ */

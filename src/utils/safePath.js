@@ -1,4 +1,4 @@
-const path = require("path");
+/*const path = require("path");
 
 function safePath(baseDir, userPath) {
     const resolved = path.resolve(baseDir, userPath);
@@ -12,3 +12,6 @@ function safePath(baseDir, userPath) {
 }
 
 module.exports = safePath;
+
+
+ */

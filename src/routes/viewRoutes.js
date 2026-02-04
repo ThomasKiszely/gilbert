@@ -1,4 +1,4 @@
-const express = require("express");
+/*const express = require("express");
 const router = express.Router();
 const { renderView } = require("../controllers/viewController");
 
@@ -12,3 +12,4 @@ router.get("/", renderView);
 router.get("/:view", renderView);
 
 module.exports = router;
+*/

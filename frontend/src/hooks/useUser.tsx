@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { api } from "../api/api";
 
 export function useUser() {
     const [user, setUser] = useState<any>(null);
@@ -7,9 +8,7 @@ export function useUser() {
     useEffect(() => {
         async function fetchUser() {
             try {
-                const res = await fetch("/api/users/me", {
-                    credentials: "include"
-                });
+                const res = await api("/api/users/me");
 
                 if (!res.ok) {
                     setLoading(false);

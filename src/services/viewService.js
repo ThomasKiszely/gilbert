@@ -1,4 +1,4 @@
-const fs = require("fs/promises");
+/*const fs = require("fs/promises");
 const path = require("path");
 const safePath = require("../utils/safePath");
 const { view } = require("../utils/viewPath");
@@ -27,3 +27,4 @@ module.exports = {
     resolveView,
     get404View
 };
+*/

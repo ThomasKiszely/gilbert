@@ -1,4 +1,4 @@
-const { resolveView, get404View } = require('../services/viewService');
+/*const { resolveView, get404View } = require('../services/viewService');
 const { PUBLIC_VIEWS } = require('../utils/public_views');
 const { ADMIN_VIEWS } = require('../utils/admin_views');
 
@@ -39,3 +39,4 @@ async function sendView(res, viewName) {
 module.exports = {
     renderView,
 };
+*/
