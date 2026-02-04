@@ -37,11 +37,11 @@ export default function AdminUsers() {
 
     return (
         <div className="max-w-4xl mx-auto p-6">
-            <h1 className="text-3xl font-bold mb-6">Admin – Users</h1>
+            <h1 className="text-3xl font-bold mb-6 text-ivory-dark">Admin – Users</h1>
 
             <div className="space-y-4">
                 {users.map((user) => (
-                    <div key={user._id} className="p-4 bg-ivory rounded-xl shadow-md">
+                    <div key={user._id} className="p-4 bg-ivory-dark text-burgundy rounded-xl shadow-md">
                         <h3 className="text-xl font-semibold">{user.username}</h3>
                         <p><strong>Email:</strong> {user.email}</p>
                         <p><strong>Role:</strong> {user.role}</p>

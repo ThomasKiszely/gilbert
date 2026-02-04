@@ -15,7 +15,6 @@ export default function LoginPage() {
         e.preventDefault();
         const formData = new FormData(e.currentTarget);
         const payload = Object.fromEntries(formData.entries());
-
         submitAuth("login", payload);
     }
 
@@ -109,19 +108,19 @@ export default function LoginPage() {
     }
 
     return (
-        <div className="max-w-md mx-auto mt-20 p-6 bg-white rounded-xl shadow-lg">
+        <div className="max-w-md mx-auto mt-20 p-6 bg-ivory-dark rounded-xl shadow-lg text-burgundy">
 
             {/* Tabs */}
             <div className="flex mb-4">
                 <button
-                    className={`flex-1 py-2 ${activeTab === "login" ? "border-b-2 border-racing-green" : ""}`}
+                    className={`text-burgundy flex-1 py-2 ${activeTab === "login" ? "border-b-2 border-racing-green" : ""}`}
                     onClick={() => switchTab("login")}
                 >
                     Login
                 </button>
 
                 <button
-                    className={`flex-1 py-2 ${activeTab === "register" ? "border-b-2 border-racing-green" : ""}`}
+                    className={`text-burgundy flex-1 py-2 ${activeTab === "register" ? "border-b-2 border-racing-green" : ""}`}
                     onClick={() => switchTab("register")}
                 >
                     Register
@@ -158,9 +157,19 @@ export default function LoginPage() {
                     <input name="password" type="password" placeholder="Password" required className="input" />
                     <input name="confirmPassword" type="password" placeholder="Confirm Password" required className="input" />
 
-                    <label className="flex items-center gap-2">
+                    {/* ⭐ Updated Terms Checkbox with clickable link */}
+                    <label className="flex items-center gap-2 text-sm">
                         <input type="checkbox" name="termsAccepted" />
-                        <span>I accept the terms</span>
+                        <span>
+                            I accept the{" "}
+                            <button
+                                type="button"
+                                className="underline text-racing-green"
+                                onClick={() => setShowTerms(true)}
+                            >
+                                Terms of Service
+                            </button>
+                        </span>
                     </label>
 
                     <button className="btn-primary w-full">Register</button>
@@ -169,16 +178,25 @@ export default function LoginPage() {
 
             {/* Terms Modal */}
             {showTerms && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-                    <div className="bg-white p-6 rounded-xl w-96">
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-xl w-96 max-h-[80vh] overflow-y-auto shadow-xl relative">
+
+                        <button
+                            className="absolute top-3 right-3 text-xl"
+                            onClick={() => setShowTerms(false)}
+                        >
+                            ×
+                        </button>
+
                         <h2 className="text-xl font-semibold mb-3">Terms & Conditions</h2>
 
-                        <p className="text-sm mb-4">
-                            Her indsætter du dine terms-tekster…
-                        </p>
+                        <div className="text-sm space-y-3">
+                            <p><strong>Version 1.0.0</strong></p>
+                            <p>Her indsætter du dine terms-tekster…</p>
+                        </div>
 
                         {showAcceptButton && (
-                            <button onClick={acceptTerms} className="btn-primary w-full">
+                            <button onClick={acceptTerms} className="btn-primary w-full mt-4">
                                 Accept Terms
                             </button>
                         )}

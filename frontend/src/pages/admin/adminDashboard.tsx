@@ -7,19 +7,19 @@ export default function AdminDashboard() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-                <Link to="/admin/products" className="p-6 rounded-xl bg-ivory shadow-md hover:-translate-y-1 transition">
+                <Link to="/admin/products" className="p-6 rounded-xl bg-ivory text-burgundy shadow-md hover:-translate-y-1 transition">
                     <h2 className="text-xl font-semibold">Products</h2>
-                    <p className="text-sm text-muted-foreground">See and administrate all products</p>
+                    <p className="text-sm text-brown">See and administrate all products</p>
                 </Link>
 
-                <Link to="/admin/review" className="p-6 rounded-xl bg-ivory shadow-md hover:-translate-y-1 transition">
+                <Link to="/admin/review" className="p-6 rounded-xl bg-ivory text-burgundy shadow-md hover:-translate-y-1 transition">
                     <h2 className="text-xl font-semibold">Products in review</h2>
-                    <p className="text-sm text-muted-foreground">Approve or reject new products</p>
+                    <p className="text-sm text-brown">Approve or reject new products</p>
                 </Link>
 
-                <Link to="/admin/users" className="p-6 rounded-xl bg-ivory shadow-md hover:-translate-y-1 transition">
+                <Link to="/admin/users" className="p-6 rounded-xl bg-ivory text-burgundy shadow-md hover:-translate-y-1 transition">
                     <h2 className="text-xl font-semibold">Users</h2>
-                    <p className="text-sm text-muted-foreground">Administrate users and roles</p>
+                    <p className="text-sm text-brown">Administrate users and roles</p>
                 </Link>
 
             </div>

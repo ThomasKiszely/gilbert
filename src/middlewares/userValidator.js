@@ -1,5 +1,5 @@
 const { isStrongPassword } = require('../utils/isStrongPassword')
-const {sanitizeString} = require("../utils/sanitize");
+const {sanitizeString, sanitizeEmail} = require("../utils/sanitize");
 const { validateCVR } = require('../utils/validateCVR');
 
 function validateUser(req, res, next) {
@@ -12,7 +12,7 @@ function validateUser(req, res, next) {
     }
 
     if (typeof email === "string") {
-        req.body.email = sanitizeString(email.trim().toLowerCase());
+        req.body.email = sanitizeEmail(email.trim().toLowerCase());
     }
 
     if (location && typeof location === "object"){
