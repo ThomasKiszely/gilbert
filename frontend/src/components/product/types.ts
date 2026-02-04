@@ -9,7 +9,8 @@ export interface Product {
 }
 
 export interface ApiProduct {
-    id: string;
+    _id: string;
+    id?: string;
     title: string;
     brand?: { name: string };
     price: number;
