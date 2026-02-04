@@ -3,6 +3,8 @@ import Layout from "./components/layout/Layout";
 import Index from "./pages/index";
 import CreateProduct from "./pages/CreateProduct";
 import LoginPage from "./pages/LoginPage";
+import ProtectedRoute from "./components/ProtectedRoute";
+
 
 function App() {
     return (
@@ -11,8 +13,13 @@ function App() {
 
                 <Route element={<Layout />}>
                     <Route path="/" element={<Index />} />
-                    <Route path="/create-product" element={<CreateProduct />} />
+                    <Route path="/create-product" element={
+                        <ProtectedRoute>
+                            <CreateProduct />
+                        </ProtectedRoute>
+                        } />
                     <Route path="/login" element={<LoginPage />} />
+
                 </Route>
 
             </Routes>
