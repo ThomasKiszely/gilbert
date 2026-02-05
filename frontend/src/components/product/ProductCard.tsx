@@ -19,10 +19,9 @@ const ProductCard: FC<ProductCardProps> = ({ product, onToggleFavorite }) => {
     }
 
     return (
-        <div className="product-card w-full shadow-sm bg-ivory-dark cursor-pointer">
-            <div className="relative w-full h-56 overflow-hidden">
-
-                {/* Tag badge */}
+        <div className="product-card shadow-sm bg-ivory-dark cursor-pointer">
+            <div className="relative w-full aspect-[3/4] overflow-hidden">
+            {/* Tag badge */}
                 {tag && (
                     <span className="absolute top-2 left-2 bg-black/80 text-white px-2 py-1 rounded-full text-[10px] font-medium">
                         {tag}

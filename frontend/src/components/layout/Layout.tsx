@@ -1,4 +1,5 @@
 import { Outlet } from "react-router-dom";
+import TopBar from "./TopBar";
 import {useUser} from "../../hooks/useUser";
 
 export default function Layout() {
@@ -8,36 +9,11 @@ export default function Layout() {
         <div className="min-h-screen bg-background text-foreground flex flex-col">
 
             {/* Top Navigation */}
-            <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-                <div className="text-2xl font-semibold tracking-wide">GILBERT</div>
-
-                <div className="hidden md:flex gap-6 text-sm">
-
-                    <a href="/me">My Page</a>
-                    <a href="/create-product">Create Product</a>
-
-
-                    {!user && !loading && (
-                        <a href="/login">Login</a>
-                    )}
-
-
-                    {user && (
-                        <>
-                            {/* Kun admins ser Admin */}
-                            {user.role === "admin" && (
-                                <a href="/admin">Admin</a>
-                            )}
-
-                            <button id="logoutBtn">Logout</button>
-                        </>
-                    )}
-                </div>
-            </nav>
+            <TopBar user={user} loading={loading} />
 
             {/* Page Content */}
-            <main className="flex-1 w-full max-w-4xl mx-auto px-4 py-6">
-                <Outlet />   {/* ⭐ Her bliver siderne indsat */}
+            <main className="flex-1 w-full">
+            <Outlet />   {/* Her bliver siderne indsat */}
             </main>
 
             {/* Bottom Navigation */}
