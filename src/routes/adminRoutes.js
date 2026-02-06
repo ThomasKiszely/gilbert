@@ -3,7 +3,6 @@ const router = express.Router();
 
 const adminController = require('../controllers/adminController');
 const userController = require('../controllers/userController');
-const { requireRole } = require('../middlewares/auth');
 const { validateUserRole } = require('../middlewares/validateUserRole');
 const { validateProfessionalStatus } = require('../middlewares/validateprofessionalStatus');
 const { validateUserBadges } = require('../middlewares/validateUserBadges');

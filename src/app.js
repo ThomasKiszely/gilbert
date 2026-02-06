@@ -32,6 +32,8 @@ connectToMongo();
 
 // Middleware
 //app.set('trust proxy', 1); //hvis jeg ligger bag reverse proxy
+
+
 app.use(cookieParser());
 app.use(express.json());
 app.use(limitRate);
@@ -49,14 +51,13 @@ app.use("/api/images/avatars", express.static("uploads/avatars"));
 app.use('/api/auth', authRouter);
 
 
-//app.use(requireAuth);
 app.use('/api/users', userRouter);
 
 //Favorites
 app.use('/api/favorites', favoriteRouter);
 
 // Admin routes
-app.use('/api/admin', requireRole("admin"), adminRouter);
+app.use('/api/admin', requireAuth ,requireRole("admin"), adminRouter);
 
 // Product routes
 app.use('/api/products', productRouter);

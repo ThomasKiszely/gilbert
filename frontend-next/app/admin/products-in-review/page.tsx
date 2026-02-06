@@ -1,16 +1,16 @@
 'use client';
 
 import { useEffect, useState } from "react";
+import { api } from "@/app/api/api";
 
 const API_URL = "/api/admin";
 
 export default function AdminProductsInReview() {
     const [products, setProducts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-
     async function fetchProducts() {
         try {
-            const res = await fetch(`${API_URL}/products/in-review`, {
+            const res = await api(`${API_URL}/products/in-review`, {
                 credentials: "include",
             });
 
@@ -29,7 +29,7 @@ export default function AdminProductsInReview() {
         const endpoint = status === "Approved" ? "approve" : "reject";
 
         try {
-            const res = await fetch(`${API_URL}/products/${id}/${endpoint}`, {
+            const res = await api(`${API_URL}/products/${id}/${endpoint}`, {
                 method: "PUT",
                 credentials: "include",
             });
