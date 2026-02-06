@@ -1,5 +1,6 @@
 'use client';
-
+import {useAuth} from "@/app/context/AuthContext";
+import {useRouter} from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/app/api/api";
 
@@ -15,10 +16,13 @@ const endpoints = {
 };
 
 export default function CreateProduct() {
+
+
     const [dropdowns, setDropdowns] = useState<any>({});
     const [images, setImages] = useState<File[]>([]);
     const [preview, setPreview] = useState<string[]>([]);
-    const [loading, setLoading] = useState(false);
+    const [loadingForm, setLoading] = useState(false);
+
 
     useEffect(() => {
         loadDropdowns();
@@ -160,10 +164,10 @@ export default function CreateProduct() {
 
                 <button
                     type="submit"
-                    disabled={loading}
+                    disabled={loadingForm}
                     className="w-full bg-racing-green text-ivory px-4 py-4 rounded-xl font-bold uppercase tracking-widest hover:bg-racing-green-dark transition-all shadow-lg active:scale-[0.98] disabled:opacity-50"
                 >
-                    {loading ? "Processing..." : "Publish Product"}
+                    {loadingForm ? "Processing..." : "Publish Product"}
                 </button>
             </form>
         </div>

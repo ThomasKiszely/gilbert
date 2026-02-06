@@ -1,28 +1,20 @@
-'use client';
+"use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/context/AuthContext";
 
-export default function ProtectedRoute({ children }: { children: ReactNode }) {
+export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
+    const { user, loading } = useAuth();
     const router = useRouter();
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const token = localStorage.getItem("token");
-
-        if (!token) {
-            // Hvis der ikke er et token, send brugeren til login
+        if (!loading && !user) {
             router.replace("/login");
-        } else {
-            setIsLoggedIn(true);
         }
+    }, [loading, user, router]);
 
-        setLoading(false);
-    }, [router]);
-
-    // Vis ingenting eller en loader, mens vi tjekker om brugeren har adgang
-    if (loading) {
+    if (loading || !user) {
         return (
             <div className="flex items-center justify-center min-h-screen">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-black"></div>
@@ -30,6 +22,5 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
         );
     }
 
-    // Hvis vi er logget ind, vis indholdet. Ellers intet (mens routeren redirecter)
-    return isLoggedIn ? <>{children}</> : null;
+    return <>{children}</>;
 }
