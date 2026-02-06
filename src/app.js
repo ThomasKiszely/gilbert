@@ -18,10 +18,12 @@ const tagRouter = require('./routes/tagRoutes');
 const adminRouter = require('./routes/adminRoutes');
 const favoriteRouter = require('./routes/favoriteRoutes');
 
+const cookieParser = require('cookie-parser') ;
 const { limitRate } = require('./middlewares/rateLimiter');
 const { log } = require('./middlewares/logger');
-const { jwtAuth } = require('./middlewares/jwtAuth');
+//const { jwtAuth } = require('./middlewares/jwtAuth');
 const { requireAuth } = require('./middlewares/auth');
+const { requireRole } = require('./middlewares/requireRole');
 const { notFound } = require('./middlewares/notFound');
 const { errorHandler } = require('./middlewares/errorHandler');
 const { connectToMongo } = require('./services/db');
@@ -30,6 +32,7 @@ connectToMongo();
 
 // Middleware
 //app.set('trust proxy', 1); //hvis jeg ligger bag reverse proxy
+app.use(cookieParser());
 app.use(express.json());
 app.use(limitRate);
 app.use(log);
@@ -41,11 +44,19 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use("/api/images/products", express.static("uploads/products"));
 app.use("/api/images/avatars", express.static("uploads/avatars"));
 
-app.use(jwtAuth);
-//app.use(requireAuth);
+
 // Routes
 app.use('/api/auth', authRouter);
-app.use('/api/users', requireAuth, userRouter);
+
+
+//app.use(requireAuth);
+app.use('/api/users', userRouter);
+
+//Favorites
+app.use('/api/favorites', favoriteRouter);
+
+// Admin routes
+app.use('/api/admin', requireRole("admin"), adminRouter);
 
 // Product routes
 app.use('/api/products', productRouter);
@@ -58,11 +69,7 @@ app.use('/api/sizes', sizeRouter);
 app.use('/api/subcategories', subcategoryRouter);
 app.use('/api/tags', tagRouter);
 
-//Favorites
-app.use('/api/favorites', requireAuth, favoriteRouter);
 
-// Admin routes
-app.use('/api/admin', requireAuth, adminRouter);
 
 //app.use('/', viewRouter);
 

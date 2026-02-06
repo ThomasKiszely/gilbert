@@ -75,18 +75,18 @@ function validateProduct(req, res, next)  {
     next();
 }
 
-function yourProduct(req, res, next)  {
-    const errors = [];
-
+function yourProduct(req, res, next) {
     const user = req.user;
     const product = req.product;
-    if(!product.seller.equals(user._id)) {
-        errors.push('Not your product')
+
+    // Brug 403 Forbidden i stedet for 400
+    if (!product.seller.equals(user._id)) {
+        return res.status(403).json({
+            success: false,
+            message: 'Access denied: You are not the owner of this product'
+        });
     }
 
-    if(errors.length > 0) {
-        return res.status(400).json({ success: false, errors });
-    }
     next();
 }
 

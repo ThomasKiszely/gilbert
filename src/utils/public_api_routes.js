@@ -1,14 +1,16 @@
+const {requireAuth} = require("../middlewares/auth");
 const PUBLIC_API_ROUTES = [
     "/api/auth/login",
     "/api/auth/register",
-    "/api/auth/forgot-password",
-    "/api/auth/reset-password",
-    "/api/auth/verify-email",
-    "/api/auth/resend-verification",
+    "/api/auth/forgotPassword",
+    "/api/auth/resetPassword",
+    "/api/auth/verifyEmail",
+    "/api/auth/resendVerification",
     "/api/users/verify-email-change",
     "/api/products"
 ];
 
+
 module.exports = {
-    PUBLIC_API_ROUTES
-};
+    PUBLIC_API_ROUTES,
+}

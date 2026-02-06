@@ -44,9 +44,15 @@ async function login(req, res, next) {
         const { email, password } = req.body;
         const { token, user } = await authService.login(email, password);
 
+        res.cookie("authToken", token, {
+            httpOnly: true,
+            secure: isProduction(),
+            sameSite: "lax",
+            maxAge: 60 * 60 * 1000,
+        });
+
         return res.status(200).json({
             success: true,
-            token,
             data: user
         });
     } catch (error) {
@@ -57,6 +63,11 @@ async function login(req, res, next) {
 
 async function logout(req, res, next) {
     try {
+        res.clearCookie("authToken", {
+            httpOnly: true,
+            secure: isProduction(),
+            sameSite: "lax",
+        });
         return res.status(200).json({
             success: true,
             message: "You have been logged out"

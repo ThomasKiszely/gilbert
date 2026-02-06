@@ -56,28 +56,19 @@ export default function LoginPage() {
             const res = await fetch(`/api/auth/${endpoint}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include",
+                credentials: "include", // Dette sikrer at cookien modtages/sendes
                 body: JSON.stringify(payload)
             });
 
             const data = await res.json();
 
             if (!data.success) {
+                // ... din eksisterende fejlhåndtering (TERMS_OUTDATED osv.)
                 if (data.code === "TERMS_OUTDATED") {
                     setShowAcceptButton(true);
                     setShowTerms(true);
                     return;
                 }
-
-                if (data.code === "EMAIL_NOT_VERIFIED") {
-                    setMessage("Your email is not verified");
-                    return;
-                }
-
-                if (data.errors) {
-                    return setMessage(data.errors.join(", "));
-                }
-
                 return setMessage(data.error || "Something went wrong");
             }
 
@@ -85,9 +76,10 @@ export default function LoginPage() {
                 return setMessage("User registered. Please verify your email.");
             }
 
-            localStorage.setItem("token", data.token);
+            // ⭐ VIGTIGT: Vi fjerner localStorage.setItem herfra!
+            // Cookien "authToken" er nu sat automatisk i browseren.
 
-            window.location.href = "/";
+            window.location.href = "/"; // Send brugeren videre
         } catch (err) {
             console.error(err);
             setMessage("Server error");

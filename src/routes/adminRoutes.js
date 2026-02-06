@@ -8,7 +8,7 @@ const { validateUserRole } = require('../middlewares/validateUserRole');
 const { validateProfessionalStatus } = require('../middlewares/validateprofessionalStatus');
 const { validateUserBadges } = require('../middlewares/validateUserBadges');
 
-router.use(requireRole("admin"));
+//router.use(requireRole("admin"));
 
 
 router.put('/users/:id/role', validateUserRole, adminController.updateUserRole);

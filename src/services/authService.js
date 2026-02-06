@@ -7,6 +7,7 @@ const { userRoles } = require("../utils/userRoles");
 const { sanitizeUser } = require("../utils/sanitizeUser");
 
 function createToken(user) {
+    console.log("createToken");
     return jwt.sign(
         {
             id: user._id,

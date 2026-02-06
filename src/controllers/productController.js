@@ -41,7 +41,7 @@ async function readAllProducts(req, res, next) {
             err.status = 400;
             return next(err);
         }
-        console.log("USER:", req.user);
+
         return res.status(200).json(products);
     } catch (error) {
         next(error);
@@ -145,7 +145,6 @@ async function filterProducts(req, res, next) {
 
 async function getMyProducts(req, res, next) {
     try{
-        console.log('REQ.USER: ' + req.user);
         const userId = req.user.id;
         const products = await productService.findProductsBySeller(userId);
         return res.status(200).json({ success: true, data: products });
