@@ -10,7 +10,7 @@ const navItems = [
     { icon: Search, label: "Search", path: "/search" },
     { icon: Plus, label: "Sell", path: "/sell", isCenter: true },
     { icon: Heart, label: "Favorites", path: "/favorites" },
-    { icon: User, label: "Profile", path: "/profile" },
+    { icon: User, label: "Profile", path: "/profile/me" },
 ];
 
 const BottomNav = () => {

@@ -10,11 +10,14 @@ const TopBar = () => {
     const { user, loading, logout } = useAuth();
 
     const handleLogoutClick = async () => {
-        try {
-            await logout();
-            // AuthContext håndterer redirect og nulstilling af user
-        } catch (err) {
-            console.error("Logout failed", err);
+        const isConfirmed = window.confirm("Are you sure you want to logout?");
+        if (isConfirmed) {
+            try {
+                await logout();
+                // AuthContext håndterer redirect og nulstilling af user
+            } catch (err) {
+                console.error("Logout failed", err);
+            }
         }
     };
 
