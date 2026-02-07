@@ -8,7 +8,7 @@ import { cn } from "@/app/lib/utils";
 const navItems = [
     { icon: Home, label: "Home", path: "/" },
     { icon: Search, label: "Search", path: "/search" },
-    { icon: Plus, label: "Sell", path: "/sell", isCenter: true },
+    { icon: Plus, label: "Sell", path: "/products/create", isCenter: true },
     { icon: Heart, label: "Favorites", path: "/favorites" },
     { icon: User, label: "Profile", path: "/profile/me" },
 ];
@@ -45,8 +45,8 @@ const BottomNav = () => {
                             className={cn(
                                 "flex flex-col items-center gap-1 py-1 px-3 transition-all duration-200",
                                 isActive
-                                    ? "text-racing-green scale-110"
-                                    : "text-racing-green/40 hover:text-racing-green"
+                                    ? "text-burgundy scale-110"
+                                    : "text-racing-green/80 hover:text-racing-green"
                             )}
                         >
                             <Icon className={cn("h-5 w-5", isActive && "stroke-[2.5px]")} />
