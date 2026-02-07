@@ -103,21 +103,21 @@ const MePage = () => {
 
                     <div className="profile-fields space-y-2">
                         <p><strong>User name:</strong> {user.username}</p>
-                        <p><strong>City:</strong> {user.location?.city || "Ikke angivet"}</p>
-                        <p><strong>Country:</strong> {user.location?.country || "Ikke angivet"}</p>
+                        <p><strong>City:</strong> {user.location?.city || "Not specified"}</p>
+                        <p><strong>Country:</strong> {user.location?.country || "Not specified"}</p>
                         <p><strong>CVR:</strong> {user.cvr || "N/A"}</p>
                         <p><strong>Bio:</strong></p>
-                        <p className="italic text-gray-700">{user.profile?.bio || "Ingen bio endnu..."}</p>
-                        <p><strong>Language:</strong> {user.profile?.language || "da"}</p>
+                        <p className="italic text-gray-700">{user.profile?.bio || "No bio yet..."}</p>
+                        <p><strong>Language:</strong> {user.profile?.language || "en"}</p>
                     </div>
                 </div>
             )}
 
-            <h2 className="section-title text-2xl font-semibold mb-4">Mine produkter</h2>
+            <h2 className="section-title text-2xl font-semibold mb-4">My products</h2>
 
             <div className="product-grid grid grid-cols-2 sm:grid-cols-3 gap-6">
                 {products.length === 0 ? (
-                    <p className="text-gray-500">Du har ikke oprettet nogen produkter endnu.</p>
+                    <p className="text-gray-500">You don't have any products yet.</p>
                 ) : (
                     products.map(p => (
                         <Link
