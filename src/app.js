@@ -17,6 +17,7 @@ const subcategoryRouter = require('./routes/subcategoryRoutes');
 const tagRouter = require('./routes/tagRoutes');
 const adminRouter = require('./routes/adminRoutes');
 const favoriteRouter = require('./routes/favoriteRoutes');
+const bidRouter = require('./routes/bidRoutes');
 
 const cookieParser = require('cookie-parser') ;
 const { limitRate } = require('./middlewares/rateLimiter');
@@ -52,6 +53,7 @@ app.use('/api/auth', authRouter);
 
 
 app.use('/api/users', userRouter);
+app.use('/api/bids', bidRouter)
 
 //Favorites
 app.use('/api/favorites', favoriteRouter);
