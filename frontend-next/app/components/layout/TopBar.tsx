@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { Bell, Search, X, ShoppingBag } from "lucide-react";
 import Link from "next/link";
@@ -14,15 +14,13 @@ const TopBar = () => {
     const [searchQuery, setSearchQuery] = useState("");
 
     const handleSearch = () => {
-        if (searchQuery.trim()) {
-            router.push(`/products/search?q=${encodeURIComponent(searchQuery.trim())}`);
-        }
+        if (!searchQuery.trim()) return;
+        router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
     };
 
     return (
         <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/30">
 
-            {/* MOBILE: lower height, tighter padding */}
             <div className="relative flex items-center px-4 py-1 md:py-3 h-[44px] md:h-auto">
 
                 {/* LEFT — Search (desktop only) */}

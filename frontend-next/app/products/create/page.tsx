@@ -63,7 +63,6 @@ export default function CreateProduct() {
             const res = await api("/api/products", {
                 method: "POST",
                 body: formData,
-                headers: { "Content-Type": "" }
             });
 
             if (!res.ok) {

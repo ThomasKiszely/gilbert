@@ -91,7 +91,6 @@ export default function EditProfilePage() {
                 const uploadRes = await api("/api/users/me/avatar", {
                     method: "POST",
                     body: formData,
-                    headers: { "Content-Type": "" }
                 });
 
                 const uploadJson = await uploadRes.json();

@@ -17,6 +17,7 @@ const subcategoryRouter = require('./routes/subcategoryRoutes');
 const tagRouter = require('./routes/tagRoutes');
 const adminRouter = require('./routes/adminRoutes');
 const favoriteRouter = require('./routes/favoriteRoutes');
+const searchRouter = require('./routes/searchRoutes');
 
 const cookieParser = require('cookie-parser') ;
 const { limitRate } = require('./middlewares/rateLimiter');
@@ -70,6 +71,8 @@ app.use('/api/sizes', sizeRouter);
 app.use('/api/subcategories', subcategoryRouter);
 app.use('/api/tags', tagRouter);
 
+// Search
+app.use('/api/search', searchRouter);
 
 
 //app.use('/', viewRouter);

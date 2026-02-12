@@ -98,6 +98,15 @@ async function deleteUser(userId){
     return await User.findByIdAndDelete(userId);
 }
 
+async function searchUsers(query, limit = 10) {
+    return await User.find({
+        username: { $regex: query, $options: "i" }
+    })
+        .select("username _id profile.avatarUrl")
+        .limit(limit);
+}
+
+
 module.exports = {
     findUserByEmail,
     createUser,
@@ -109,4 +118,5 @@ module.exports = {
     updateProfessionalStatus,
     updateUserBadges,
     deleteUser,
+    searchUsers,
 }

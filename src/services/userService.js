@@ -184,6 +184,10 @@ async function deleteUser(userId) {
     return deleted;
 }
 
+async function searchUsers(query, limit) {
+    return userRepo.searchUsers(query, limit);
+}
+
 module.exports = {
     updateUser,
     updateMe,
@@ -192,4 +196,5 @@ module.exports = {
     requestEmailChange,
     verifyEmailChange,
     deleteUser,
+    searchUsers
 };

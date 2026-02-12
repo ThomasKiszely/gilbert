@@ -17,7 +17,11 @@ export default function SearchOverlay({ open, onClose }: SearchOverlayProps) {
 
     const handleSearch = () => {
         if (!query.trim()) return;
-        router.push(`/products/search?q=${encodeURIComponent(query.trim())}`);
+
+        // Navigér til search-siden
+        router.push(`/search?q=${encodeURIComponent(query.trim())}`);
+
+        // Luk overlayet
         onClose();
     };
 
