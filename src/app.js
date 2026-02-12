@@ -19,6 +19,7 @@ const adminRouter = require('./routes/adminRoutes');
 const favoriteRouter = require('./routes/favoriteRoutes');
 const bidRouter = require('./routes/bidRoutes');
 const searchRouter = require('./routes/searchRoutes');
+const notificationRouter = require('./routes/notificationRoutes');
 const cookieParser = require('cookie-parser') ;
 const { limitRate } = require('./middlewares/rateLimiter');
 const { log } = require('./middlewares/logger');
@@ -54,6 +55,7 @@ app.use('/api/auth', authRouter);
 
 app.use('/api/users', userRouter);
 app.use('/api/bids', bidRouter);
+app.use('/api/notifications', notificationRouter);
 //Favorites
 app.use('/api/favorites', favoriteRouter);
 

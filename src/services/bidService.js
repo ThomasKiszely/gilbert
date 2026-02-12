@@ -1,7 +1,8 @@
 const productRepo = require(`../data/productRepo`);
 const bidRepo = require(`../data/bidRepo`);
 const bidStatusses = require(`../utils/bidStatusses`);
-//const notificationService = require('../services/notificationService');
+const notificationTypes = require(`../utils/notificationTypes`);
+const notificationService = require('../services/notificationService');
 
 
 async function placeBid(productId, buyerId, amount){
@@ -27,12 +28,12 @@ async function placeBid(productId, buyerId, amount){
         amount: amount,
         status: bidStatusses.active
     });
-    //Skal lave notificationsservice
-   /* await notificationService.notifyUser(product.seller, {
-        type: "new_bid",
+
+   await notificationService.notifyUser(bid.seller, {
+        type: notificationTypes.new_bid,
         bidId: bid._id,
-        productId: productId,
-    });*/
+        productId: bid.productId,
+    });
     return bid;
 }
 
@@ -52,6 +53,12 @@ async function rejectBid(bidId, sellerId){
     }
 
     const rejected = await bidRepo.updateBidStatus(bidId, bidStatusses.rejected, sellerId, "Seller rejected bid");
+
+    await notificationService.notifyUser(bid.buyerId, {
+        type: notificationTypes.bid_rejected,
+        bidId: bid._id,
+        productId: bid.productId,
+    });
     return rejected;
 
 }
@@ -77,6 +84,11 @@ async function acceptBid(bidId, sellerId){
         sellerId,
         "Seller accepted bid"
     );
+    await notificationService.notifyUser(bid.buyerId, {
+        type: notificationTypes.bid_accepted,
+        bidId: bid._id,
+        productId: bid.productId,
+    });
 
     //reserver pris i checkout
 
@@ -97,6 +109,11 @@ async function counterBid(bidId, sellerId, counterAmount){
     if (bid.expiresAt < new Date()) {
         throw new Error("Bid has expired");
     }
+    await notificationService.notifyUser(bid.buyerId, {
+        type: notificationTypes.counter_bid,
+        bidId: bid._id,
+        productId: bid.productId,
+    });
 
     return await bidRepo.updateBidWithCounter(
         bidId,
@@ -121,6 +138,12 @@ async function acceptCounterBid(bidId, buyerId){
         throw new Error("Bid has expired");
     }
 
+    await notificationService.notifyUser(bid.sellerId, {
+        type: notificationTypes.bid_accepted,
+        bidId: bid._id,
+        productId: bid.productId,
+    });
+
     return await bidRepo.updateBidStatus(
         bidId,
         bidStatusses.accepted,
@@ -143,6 +166,11 @@ async function rejectCounterBid(bidId, buyerId){
     if (bid.expiresAt < new Date()) {
         throw new Error("Bid has expired");
     }
+    await notificationService.notifyUser(bid.sellerId, {
+        type: notificationTypes.bid_rejected,
+        bidId: bid._id,
+        productId: bid.productId,
+    });
 
     return await bidRepo.updateBidStatus(
         bidId,
