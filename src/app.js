@@ -17,7 +17,8 @@ const subcategoryRouter = require('./routes/subcategoryRoutes');
 const tagRouter = require('./routes/tagRoutes');
 const adminRouter = require('./routes/adminRoutes');
 const favoriteRouter = require('./routes/favoriteRoutes');
-
+const bidRouter = require('./routes/bidRoutes');
+const searchRouter = require('./routes/searchRoutes');
 const cookieParser = require('cookie-parser') ;
 const { limitRate } = require('./middlewares/rateLimiter');
 const { log } = require('./middlewares/logger');
@@ -52,7 +53,7 @@ app.use('/api/auth', authRouter);
 
 
 app.use('/api/users', userRouter);
-
+app.use('/api/bids', bidRouter);
 //Favorites
 app.use('/api/favorites', favoriteRouter);
 
@@ -70,7 +71,8 @@ app.use('/api/sizes', sizeRouter);
 app.use('/api/subcategories', subcategoryRouter);
 app.use('/api/tags', tagRouter);
 
-
+// Search funktionn
+app.use('/api/search', searchRouter);
 
 //app.use('/', viewRouter);
 
