@@ -4,6 +4,7 @@ import "./globals.css";
 import Layout from "@/app/components/layout/Layout";
 // 1. Importer din AuthProvider (husk at oprette filen først!)
 import { AuthProvider } from "@/app/context/AuthContext";
+import TopBarClient from "@/app/components/layout/TopBarClient";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
         {/* 2. Vikl AuthProvider udenom Layout, så alle komponenter kan se brugeren */}
         <AuthProvider>
+            <TopBarClient />
             <Layout>
                 {children}
             </Layout>
