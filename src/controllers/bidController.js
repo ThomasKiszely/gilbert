@@ -69,6 +69,7 @@ async function rejectCounterBid(req, res, next) {
     }
 }
 
+/*
 async function expireBid(req, res, next) {
     try{
         const { bidId } = req.params;
@@ -78,6 +79,7 @@ async function expireBid(req, res, next) {
         next(error);
     }
 }
+ */
 
 module.exports = {
     acceptBid,
@@ -86,5 +88,5 @@ module.exports = {
     placeBid,
     acceptCounterBid,
     rejectCounterBid,
-    expireBid
+    //expireBid
 }

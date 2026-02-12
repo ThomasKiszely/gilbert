@@ -47,6 +47,10 @@ async function rejectBid(bidId, sellerId){
     if ( bid.status !== bidStatusses.active && bid.status !==bidStatusses.countered){
         throw new Error(`Bid cannot be rejected at the moment`);
     }
+    if (bid.expiresAt < new Date()) {
+        throw new Error("Bid has expired");
+    }
+
     const rejected = await bidRepo.updateBidStatus(bidId, bidStatusses.rejected, sellerId, "Seller rejected bid");
     return rejected;
 
@@ -63,6 +67,10 @@ async function acceptBid(bidId, sellerId){
     if (bid.status !== bidStatusses.active){
         throw new Error(`This bid is not active any longer`);
     }
+    if (bid.expiresAt < new Date()) {
+        throw new Error("Bid has expired");
+    }
+
     const updated = await bidRepo.updateBidStatus(
         bidId,
         bidStatusses.accepted,
@@ -86,6 +94,10 @@ async function counterBid(bidId, sellerId, counterAmount){
     if (bid.status !== bidStatusses.active){
         throw new Error(`This bid is not active any longer`);
     }
+    if (bid.expiresAt < new Date()) {
+        throw new Error("Bid has expired");
+    }
+
     return await bidRepo.updateBidWithCounter(
         bidId,
         counterAmount,
@@ -105,6 +117,10 @@ async function acceptCounterBid(bidId, buyerId){
     if (bid.status !== bidStatusses.countered){
         throw new Error(`Bid is not in countered state`);
     }
+    if (bid.expiresAt < new Date()) {
+        throw new Error("Bid has expired");
+    }
+
     return await bidRepo.updateBidStatus(
         bidId,
         bidStatusses.accepted,
@@ -124,6 +140,10 @@ async function rejectCounterBid(bidId, buyerId){
     if (bid.status !== bidStatusses.countered){
         throw new Error(`Bid is not in countered state`);
     }
+    if (bid.expiresAt < new Date()) {
+        throw new Error("Bid has expired");
+    }
+
     return await bidRepo.updateBidStatus(
         bidId,
         bidStatusses.rejected,
@@ -132,6 +152,7 @@ async function rejectCounterBid(bidId, buyerId){
     )
 }
 
+/*
 async function expireBid(bidId){
     const bid = await bidRepo.getBidById(bidId);
     if (!bid) {
@@ -148,12 +169,13 @@ async function expireBid(bidId){
     )
 }
 
+ */
 module.exports = {
     placeBid,
     rejectBid,
     acceptBid,
     rejectCounterBid,
-    expireBid,
+    //expireBid,
     acceptCounterBid,
     counterBid
 }
