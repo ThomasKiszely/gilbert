@@ -35,7 +35,7 @@ const BottomNav = ({ onSearchClick } : BottomNavProps) => {
                                 href={item.path}
                                 className="flex items-center justify-center -mt-10"
                             >
-                                <div className="w-14 h-14 rounded-full bg-racing-green flex items-center justify-center shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:scale-105 transition-transform active:scale-95 border-4 border-ivory-dark">
+                                <div className="w-14 h-14 rounded-full bg-burgundy flex items-center justify-center shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:scale-105 transition-transform active:scale-95 border-4 border-ivory-dark">
                                     <Icon className="h-7 w-7 text-ivory" />
                                 </div>
                             </Link>
