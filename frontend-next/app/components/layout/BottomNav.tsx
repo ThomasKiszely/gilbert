@@ -1,19 +1,23 @@
-'use client';
+"use client";
 
 import { Home, Search, Plus, Heart, User } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation"; // Next.js hook i stedet for useLocation
+import { usePathname } from "next/navigation";
 import { cn } from "@/app/lib/utils";
+
+interface BottomNavProps {
+    onSearchClick: () => void;
+}
 
 const navItems = [
     { icon: Home, label: "Home", path: "/" },
-    { icon: Search, label: "Search", path: "/search" },
+    { icon: Search, label: "Search", path: "/search", isSearch: true },
     { icon: Plus, label: "Sell", path: "/products/create", isCenter: true },
     { icon: Heart, label: "Favorites", path: "/favorites" },
     { icon: User, label: "Profile", path: "/profile/me" },
 ];
 
-const BottomNav = () => {
+const BottomNav = ({ onSearchClick } : BottomNavProps) => {
     const pathname = usePathname();
 
     return (
@@ -23,6 +27,7 @@ const BottomNav = () => {
                     const isActive = pathname === item.path;
                     const Icon = item.icon;
 
+                    // CENTER BUTTON (Sell)
                     if (item.isCenter) {
                         return (
                             <Link
@@ -30,7 +35,6 @@ const BottomNav = () => {
                                 href={item.path}
                                 className="flex items-center justify-center -mt-10"
                             >
-                                {/* Center-knap i Racing Green med hvidt ikon */}
                                 <div className="w-14 h-14 rounded-full bg-racing-green flex items-center justify-center shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:scale-105 transition-transform active:scale-95 border-4 border-ivory-dark">
                                     <Icon className="h-7 w-7 text-ivory" />
                                 </div>
@@ -38,6 +42,26 @@ const BottomNav = () => {
                         );
                     }
 
+                    // SEARCH BUTTON → opens overlay instead of navigating
+                    if (item.isSearch) {
+                        return (
+                            <button
+                                key="search"
+                                onClick={onSearchClick}
+                                className={cn(
+                                    "flex flex-col items-center gap-1 py-1 px-3 transition-all duration-200",
+                                    "text-racing-green/80 hover:text-racing-green"
+                                )}
+                            >
+                                <Icon className="h-5 w-5" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest opacity-70">
+                  Search
+                </span>
+                            </button>
+                        );
+                    }
+
+                    // NORMAL NAV ITEMS
                     return (
                         <Link
                             key={item.path}
@@ -50,9 +74,14 @@ const BottomNav = () => {
                             )}
                         >
                             <Icon className={cn("h-5 w-5", isActive && "stroke-[2.5px]")} />
-                            <span className={cn("text-[10px] font-bold uppercase tracking-widest", !isActive && "opacity-70")}>
-                                {item.label}
-                            </span>
+                            <span
+                                className={cn(
+                                    "text-[10px] font-bold uppercase tracking-widest",
+                                    !isActive && "opacity-70"
+                                )}
+                            >
+                {item.label}
+              </span>
                         </Link>
                     );
                 })}
