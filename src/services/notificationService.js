@@ -15,9 +15,13 @@ async function getUserNotifications(userId){
 async function markNotificationAsRead(notificationId){
     return await notificationRepo.markAsRead(notificationId);
 }
+async function getNotificationById(id){
+    return await notificationRepo.getNotificationById(id);
+}
 
 module.exports = {
     notifyUser,
     getUserNotifications,
-    markNotificationAsRead
+    markNotificationAsRead,
+    getNotificationById,
 }

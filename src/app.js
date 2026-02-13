@@ -20,6 +20,7 @@ const favoriteRouter = require('./routes/favoriteRoutes');
 const bidRouter = require('./routes/bidRoutes');
 const searchRouter = require('./routes/searchRoutes');
 const notificationRouter = require('./routes/notificationRoutes');
+const chatRouter = require('./routes/chatRoutes');
 const cookieParser = require('cookie-parser') ;
 const { limitRate } = require('./middlewares/rateLimiter');
 const { log } = require('./middlewares/logger');
@@ -56,11 +57,12 @@ app.use('/api/auth', authRouter);
 app.use('/api/users', userRouter);
 app.use('/api/bids', bidRouter);
 app.use('/api/notifications', notificationRouter);
+app.use('/api/chats', chatRouter);
 //Favorites
 app.use('/api/favorites', favoriteRouter);
 
 // Admin routes
-app.use('/api/admin', requireAuth ,requireRole("admin"), adminRouter);
+app.use('/api/admin', requireAuth, requireRole("admin"), adminRouter);
 
 // Product routes
 app.use('/api/products', productRouter);

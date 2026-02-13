@@ -18,7 +18,19 @@ async function markAsRead(req, res, next) {
     }
 }
 
+async function getNotificationById(req, res, next) {
+    try{
+        const id = req.params.id;
+        console.log("CONTROLLER: " + req.params.id);
+        const notification = await notificationService.getNotificationById(id);
+        return res.status(200).json({ success: true, notification });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     getNotifications,
     markAsRead,
+    getNotificationById,
 }

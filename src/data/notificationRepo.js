@@ -16,8 +16,13 @@ async function markAsRead(notificationId){
     );
 }
 
+async function getNotificationById(id) {
+    return await Notification.findById(id);
+}
+
 module.exports = {
     createNotification,
     getNotificationsForUser,
     markAsRead,
+    getNotificationById,
 }
