@@ -129,9 +129,10 @@ async function requestEmailChange(userId, currentPassword, newEmail, confirmEmai
         throw new Error("Email is already in use");
     }
     const token = crypto.randomBytes(32).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
     await userRepo.updateUser(userId, {
         pendingEmail: newEmail,
-        emailChangeToken: token,
+        emailChangeToken: hashedToken,
         emailChangeExpires: Date.now() + 1000 * 60 * 60,
     });
 
@@ -151,7 +152,8 @@ async function verifyEmailChange(token) {
     if (!token) {
         throw new Error("Invalid token");
     }
-    const user = await userRepo.findUserByToken(token);
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+    const user = await userRepo.findUserByToken(hashedToken);
     if (!user) {
         throw new Error("Invalid or expired token");
     }
