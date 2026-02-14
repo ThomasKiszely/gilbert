@@ -22,6 +22,7 @@ import ProductCard from "@/app/components/product/ProductCard";
 import type { Product, ApiProduct } from "@/app/components/product/types";
 
 interface UserProfile {
+    _id: string;
     username: string;
     cvr?: string;
     location?: { city?: string; country?: string };
@@ -48,15 +49,16 @@ const MePage = () => {
 
     useEffect(() => {
         async function loadMyProducts() {
+            if(!user) return;
             try {
-                const res = await api("/api/products/me");
+                const res = await api(`/api/products/user/${user._id}?all=true`);
                 const json = await res.json();
                 if (!json.success) throw new Error("Could not fetch products");
                 setProducts(json.data);
             } catch {}
         }
         loadMyProducts();
-    }, []);
+    }, [user]);
 
     async function handleLogout() {
         try {

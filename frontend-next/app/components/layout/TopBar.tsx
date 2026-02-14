@@ -108,7 +108,7 @@ const TopBar = () => {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                        className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-8 text-sm text-black"
+                        className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-8 text-sm text-ivory-dark"
                     />
                     {searchQuery && (
                         <Button variant="ghost" size="icon" onClick={() => setSearchQuery("")} className="h-6 w-6">

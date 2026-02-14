@@ -106,8 +106,12 @@ async function searchProducts(filters, page = 1, limit = 20) {
     return await Product.aggregate(pipeline);
 }
 
-async function findProductsBySeller(sellerId) {
-    return await Product.find({ seller: sellerId, status: "Approved" })
+async function findProductsBySeller(sellerId, includeAll = false) {
+    const filter = {seller: sellerId};
+    if(!includeAll) {
+        filter.status = 'Approved';
+    }
+    return await Product.find(filter)
         .populate("category")
         .populate("subcategory")
         .populate("brand")

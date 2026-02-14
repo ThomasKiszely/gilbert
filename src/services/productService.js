@@ -73,8 +73,8 @@ async function searchProducts(filters, page, limit, userId) {
     return attachFavoriteStatus(products, userId);
 }
 
-async function findProductsBySeller(sellerId){
-    return await productRepo.findProductsBySeller(sellerId);
+async function findProductsBySeller(sellerId, includeAll){
+    return await productRepo.findProductsBySeller(sellerId, includeAll);
 }
 
 module.exports = {

@@ -143,20 +143,13 @@ async function filterProducts(req, res, next) {
     }
 }
 
-async function getMyProducts(req, res, next) {
-    try{
-        const userId = req.user.id;
-        const products = await productService.findProductsBySeller(userId);
-        return res.status(200).json({ success: true, data: products });
-    } catch (error) {
-        next(error);
-    }
-}
+
 
 async function getProductsBySeller(req, res, next) {
     try {
         const sellerId = req.params.id;
-        const products = await productService.findProductsBySeller(sellerId);
+        const includeAll = req.query.all === "true";
+        const products = await productService.findProductsBySeller(sellerId, includeAll);
 
         return res.status(200).json({
             success: true,
@@ -176,6 +169,5 @@ module.exports = {
     updateProduct,
     deleteProduct,
     filterProducts,
-    getMyProducts,
     getProductsBySeller,
 }
