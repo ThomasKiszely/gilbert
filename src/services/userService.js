@@ -188,6 +188,14 @@ async function searchUsers(query, limit) {
     return userRepo.searchUsers(query, limit);
 }
 
+async function getUserById(id) {
+    const user = await userRepo.findUserById(id);
+    if (!user) {
+        throw new Error("User not found");
+    }
+    return sanitizeUser(user);
+}
+
 module.exports = {
     updateUser,
     updateMe,
@@ -196,5 +204,6 @@ module.exports = {
     requestEmailChange,
     verifyEmailChange,
     deleteUser,
-    searchUsers
+    searchUsers,
+    getUserById,
 };

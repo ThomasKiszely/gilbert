@@ -153,6 +153,21 @@ async function getMyProducts(req, res, next) {
     }
 }
 
+async function getProductsBySeller(req, res, next) {
+    try {
+        const sellerId = req.params.id;
+        const products = await productService.findProductsBySeller(sellerId);
+
+        return res.status(200).json({
+            success: true,
+            data: products
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+
 module.exports = {
     createProduct,
     readAllProducts,
@@ -162,4 +177,5 @@ module.exports = {
     deleteProduct,
     filterProducts,
     getMyProducts,
+    getProductsBySeller,
 }

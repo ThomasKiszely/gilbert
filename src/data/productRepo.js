@@ -107,7 +107,7 @@ async function searchProducts(filters, page = 1, limit = 20) {
 }
 
 async function findProductsBySeller(sellerId) {
-    return await Product.find({ seller: sellerId })
+    return await Product.find({ seller: sellerId, status: "Approved" })
         .populate("category")
         .populate("subcategory")
         .populate("brand")

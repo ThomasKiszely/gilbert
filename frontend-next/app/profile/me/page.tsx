@@ -5,143 +5,230 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/app/api/api";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/UI/avatar";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/UI/tabs";
+import { Settings } from "lucide-react";
+import { Button } from "@/app/components/UI/button";
+
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator
+} from "@/app/components/UI/dropdown-menu";
+
+import ProductCard from "@/app/components/product/ProductCard";
+import type { Product, ApiProduct } from "@/app/components/product/types";
+
 interface UserProfile {
     username: string;
     cvr?: string;
     location?: { city?: string; country?: string };
     profile?: { bio?: string; language?: string; avatarUrl?: string };
-}
-
-interface MyProduct {
-    _id: string;
-    title: string;
-    price: number;
-    status: string;
-    images: string[];
+    role: string;
 }
 
 const MePage = () => {
     const [user, setUser] = useState<UserProfile | null>(null);
-    const [products, setProducts] = useState<MyProduct[]>([]);
-    const [status, setStatus] = useState("");
+    const [products, setProducts] = useState<ApiProduct[]>([]);
     const router = useRouter();
 
-    // Load profile
     useEffect(() => {
         async function loadProfile() {
             try {
                 const res = await api("/api/users/me");
                 const json = await res.json();
-
                 if (!json.success) throw new Error("Could not fetch profile");
-
                 setUser(json.data);
-            } catch (err: any) {
-                setStatus("Error: " + err.message);
-            }
+            } catch {}
         }
-
         loadProfile();
     }, []);
 
-    // Load products
     useEffect(() => {
         async function loadMyProducts() {
             try {
                 const res = await api("/api/products/me");
                 const json = await res.json();
-
                 if (!json.success) throw new Error("Could not fetch products");
-
                 setProducts(json.data);
-            } catch (err) {
-                console.error(err);
-            }
+            } catch {}
         }
-
         loadMyProducts();
     }, []);
 
     async function handleLogout() {
         try {
             await api("/api/auth/logout", { method: "POST" });
-        } catch {
-            // backend-fejl er ligegyldige for logout
-        }
-
+        } catch {}
         localStorage.removeItem("token");
         router.push("/");
     }
 
-    return (
-        <div className="p-6 pb-20">
-            <h1 className="profile-title text-3xl font-bold mb-6">My Profile</h1>
+    if (!user) {
+        return <p className="p-6 text-center text-muted-foreground">Loading…</p>;
+    }
 
-            <div className="profile-actions flex flex-wrap gap-3 mb-8">
-                {/* Opdateret hrefs til at matche din nye mappestruktur */}
-                <Link href="/profile/edit" className="profile-btn">Edit profile</Link>
-                <Link href="/profile/change-password" className="profile-btn">Change password</Link>
-                <Link href="/profile/change-email" className="profile-btn">Change email</Link>
-                <Link href="/products/create" className="profile-btn">Post a new product</Link>
-                <button
-                    onClick={handleLogout}
-                    className="profile-btn bg-red-800 text-white px-4 py-2 rounded hover:bg-red-900 transition"
-                >
-                    Log out
-                </button>
+    const initials = user.username.slice(0, 2).toUpperCase();
+
+    return (
+        <div className="px-4 py-6">
+
+            {/* Profile header */}
+            <div className="flex items-start gap-4 mb-4">
+                <Avatar className="h-20 w-20 border-2 border-border/30">
+                    <AvatarImage src={user.profile?.avatarUrl || ""} alt={user.username} />
+                    <AvatarFallback className="bg-muted text-muted-foreground text-lg font-serif">
+                        {initials}
+                    </AvatarFallback>
+                </Avatar>
+
+                <div className="flex-1 pt-1">
+                    <div className="flex items-center gap-6 mb-2">
+                        <div className="text-center">
+                            <p className="text-lg font-semibold text-foreground">{products.length}</p>
+                            <p className="text-xs text-muted-foreground">Listings</p>
+                        </div>
+
+                        <div className="text-center">
+                            <p className="text-lg font-semibold text-foreground">0</p>
+                            <p className="text-xs text-muted-foreground">Followers</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* SETTINGS */}
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="shrink-0 hover:bg-burgundy hover:text-ivory">
+                            <Settings className="h-5 w-5 text-muted-foreground" />
+                        </Button>
+                    </DropdownMenuTrigger>
+
+                    <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem asChild>
+                            <Link href="/profile/edit">Edit profile</Link>
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem asChild>
+                            <Link href="/profile/change-email">Change email</Link>
+                        </DropdownMenuItem>
+
+                        <DropdownMenuItem asChild>
+                            <Link href="/profile/change-password">Change password</Link>
+                        </DropdownMenuItem>
+
+                        <DropdownMenuSeparator />
+
+                        {/* ADMIN ONLY */}
+                        {user?.role === "admin" && (
+                            <DropdownMenuItem asChild>
+                                <Link href="/admin" className="text-accent font-semibold">
+                                    Admin panel
+                                </Link>
+                            </DropdownMenuItem>
+                        )}
+
+                        <DropdownMenuSeparator />
+
+                        <DropdownMenuItem asChild>
+                            <Link href="/products/create">Post a new product</Link>
+                        </DropdownMenuItem>
+
+                        <DropdownMenuSeparator />
+
+                        <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                            Log out
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+
+                </DropdownMenu>
             </div>
 
-            {status && <div className="text-red-600 mb-4">{status}</div>}
+            {/* Name */}
+            <div className="mb-6">
+                <h1 className="text-xl font-serif font-bold text-foreground">{user.username}</h1>
+                <p className="text-sm text-muted-foreground">@{user.username}</p>
+            </div>
 
-            {user && (
-                <div className="profile-view flex flex-col md:flex-row gap-6 mb-10">
-                    <img
-                        src={user.profile?.avatarUrl || "/api/images/avatars/Gilbert.jpg"}
-                        className="profile-avatar w-32 h-32 rounded-full object-cover shadow-sm"
-                        alt="Profile avatar"
-                    />
+            {/* Tabs */}
+            <Tabs defaultValue="listings" className="w-full">
+                <TabsList className="w-full bg-muted/50 rounded-lg h-auto p-1 gap-0">
+                    {["Listings", "Sold", "Orders", "Info", "Help"].map((tab) => (
+                        <TabsTrigger
+                            key={tab}
+                            value={tab.toLowerCase()}
+                            className="flex-1 text-xs py-2 px-1 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md"
+                        >
+                            {tab}
+                        </TabsTrigger>
+                    ))}
+                </TabsList>
 
-                    <div className="profile-fields space-y-2">
-                        <p><strong>User name:</strong> {user.username}</p>
+                {/* LISTINGS */}
+                <TabsContent value="listings" className="mt-4">
+                    {products.length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground text-sm">No listings yet</div>
+                    ) : (
+                        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                            {products.map((p) => {
+                                const mappedProduct: Product = {
+                                    id: p._id,
+                                    title: p.title,
+                                    brand: p.brand?.name || "",
+                                    price: p.price,
+                                    imageUrl: p.images?.[0] || "/images/ImagePlaceholder.jpg",
+                                    tag: p.tags?.[0]?.name,
+                                    isFavorite: p.isFavorite ?? false,
+                                };
+
+                                return (
+                                    <div key={p._id}>
+                                        <ProductCard product={mappedProduct} onToggleFavorite={() => {}} />
+                                        <p className="text-xs mt-1 font-medium text-muted-foreground">
+                                            Status: {p.status}
+                                        </p>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </TabsContent>
+
+                {/* SOLD */}
+                <TabsContent value="sold" className="mt-4">
+                    <div className="text-center py-12 text-muted-foreground text-sm">
+                        No sold items yet
+                    </div>
+                </TabsContent>
+
+                {/* ORDERS */}
+                <TabsContent value="orders" className="mt-4">
+                    <div className="text-center py-12 text-muted-foreground text-sm">
+                        No orders yet
+                    </div>
+                </TabsContent>
+
+                {/* INFO */}
+                <TabsContent value="info" className="mt-4">
+                    <div className="space-y-2 text-sm text-muted-foreground">
                         <p><strong>City:</strong> {user.location?.city || "Not specified"}</p>
                         <p><strong>Country:</strong> {user.location?.country || "Not specified"}</p>
                         <p><strong>CVR:</strong> {user.cvr || "N/A"}</p>
                         <p><strong>Bio:</strong></p>
-                        <p className="italic text-gray-700">{user.profile?.bio || "No bio yet..."}</p>
+                        <p className="italic">{user.profile?.bio || "No bio yet..."}</p>
                         <p><strong>Language:</strong> {user.profile?.language || "en"}</p>
                     </div>
-                </div>
-            )}
+                </TabsContent>
 
-            <h2 className="section-title text-2xl font-semibold mb-4">My products</h2>
-
-            <div className="product-grid grid grid-cols-2 sm:grid-cols-3 gap-6">
-                {products.length === 0 ? (
-                    <p className="text-gray-500">You don't have any products yet.</p>
-                ) : (
-                    products.map(p => (
-                        <Link
-                            key={p._id}
-                            href={`/products/edit/${p._id}`}
-                            className="product-card block shadow bg-white rounded overflow-hidden hover:shadow-md transition"
-                        >
-                            <div className="product-image-wrapper h-40 overflow-hidden bg-gray-100">
-                                <img
-                                    src={p.images?.[0] || "/images/placeholder.jpg"}
-                                    alt={p.title}
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
-
-                            <div className="product-info p-3">
-                                <div className="product-title font-semibold truncate">{p.title}</div>
-                                <div className="product-price">{p.price} kr.</div>
-                                <div className="product-status text-sm text-gray-500 capitalize">{p.status}</div>
-                            </div>
-                        </Link>
-                    ))
-                )}
-            </div>
+                {/* HELP */}
+                <TabsContent value="help" className="mt-4">
+                    <div className="text-center py-12 text-muted-foreground text-sm">
+                        Help and support
+                    </div>
+                </TabsContent>
+            </Tabs>
         </div>
     );
 };
