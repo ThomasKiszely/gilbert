@@ -13,7 +13,7 @@ export default function NotificationDropdown({ notifications, onClose }: Notific
     const getUrl = (n: any) => {
         const d = n.data || {};
         switch (n.type) {
-            case "chat_message": return `/chat/${d.chatId || d.threadId}`;
+            case "chat_message": return `/chats/${d.chatId || d.threadId}`;
             case "new_bid":      return `/products/${d.productId}`;
             case "bid_accepted": return `/profile/orders`;
             default:             return "#";

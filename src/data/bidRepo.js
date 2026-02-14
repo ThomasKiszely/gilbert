@@ -50,6 +50,15 @@ async function findActiveBidsByProductAndBuyer(productId, buyerId){
     return activeBids;
 }
 
+async function findCurrentBidWorkflow(productId, buyerId) {
+    // Vi leder efter det nyeste bud, der stadig er i proces
+    return await Bid.findOne({
+        productId: productId,
+        buyerId: buyerId,
+        status: { $in: [bidStatusses.active, bidStatusses.countered] }
+    }).sort({ createdAt: -1 }); // Tag altid det seneste
+}
+
 async function rejectAllActiveBids(productId){
     return await Bid.updateMany(
         { productId, status: bidStatusses.active },
@@ -76,4 +85,5 @@ module.exports = {
     rejectAllActiveBids,
     getBidById,
     updateBidWithCounter,
+    findCurrentBidWorkflow
 }

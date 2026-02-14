@@ -4,67 +4,82 @@ const productRepo = require('../data/productRepo');
 const notificationService = require('../services/notificationService');
 const notificationTypes = require('../utils/notificationTypes');
 
-
-// chatService.js
 async function sendMessage(id, senderId, text) {
     let thread;
     let productId;
 
-    // Tjek om 'id' er en eksisterende tråd
+    // 1. Find eller opret tråd
     thread = await chatThreadRepo.findThreadById(id);
 
     if (thread) {
-        // Hvis vi har en tråd, ved vi allerede hvem køber/sælger er
         productId = thread.productId;
     } else {
-        // Hvis ikke, må 'id' være et productId (start af ny chat)
         productId = id;
         const product = await productRepo.getProductById(productId);
         if (!product) throw new Error("Product not found");
 
         const sellerId = product.seller;
-        const buyerId = senderId;
-
-        if (senderId === sellerId.toString()) {
+        if (String(senderId) === String(sellerId)) {
             throw new Error("Seller cannot start a chat");
         }
 
-        thread = await chatThreadRepo.findThread(productId, buyerId, sellerId);
+        thread = await chatThreadRepo.findThread(productId, senderId, sellerId);
         if (!thread) {
-            thread = await chatThreadRepo.createThread(productId, buyerId, sellerId);
+            thread = await chatThreadRepo.createThread(productId, senderId, sellerId);
         }
     }
 
-    // Identificer modtager (senderId vs køber/sælger i tråden)
-    const receiverId = String(senderId) === String(thread.sellerId)
-        ? thread.buyerId
-        : thread.sellerId;
+    // 2. Definer modtageren (vigtigt: tjek mod både sellerId og buyerId)
+    // Vi tvinger alt til String for at undgå ObjectId sammenligningsfejl
+    const sellerIdStr = String(thread.sellerId?._id || thread.sellerId);
+    const buyerIdStr = String(thread.buyerId?._id || thread.buyerId);
+    const senderIdStr = String(senderId);
 
+    const receiverId = senderIdStr === sellerIdStr ? buyerIdStr : sellerIdStr;
+
+    // 3. Gem selve beskeden i databasen
     const message = await chatMessageRepo.createMessage(thread._id, senderId, text);
     await chatThreadRepo.updateLastMessage(thread._id);
 
-    await notificationService.notifyUser(receiverId, {
-        type: notificationTypes.chat_message,
-        threadId: thread._id,
-        productId,
-        preview: text.slice(0, 50)
-    });
+    // 4. LOGIK FOR NOTIFIKATION (HER SKAL DEN STOPPE DIG SELV)
+    console.log("--- NOTIFICATION CHECK ---");
+    console.log("Sender:", senderIdStr);
+    console.log("Receiver:", receiverId);
+
+    if (senderIdStr !== String(receiverId)) {
+        console.log("SENDING NOTIFICATION TO MODPART...");
+        await notificationService.notifyUser(receiverId, {
+            type: notificationTypes.chat_message,
+            // .toString() er nøglen her!
+            threadId: thread._id.toString(),
+            productId: productId.toString(),
+            text: text.slice(0, 50)
+        });
+    } else {
+        console.log("BLOCKING NOTIFICATION: You are the receiver of your own message!");
+    }
 
     return message;
 }
 
-async function getThreadMessages(threadId, userId){
+// Husk de andre funktioner i filen...
+async function getThreadMessages(threadId, userId) {
     const messages = await chatMessageRepo.getMessages(threadId);
     await chatMessageRepo.markThreadAsRead(threadId, userId);
     return messages;
 }
 
-async function getUserThreads(userId){
+async function getUserThreads(userId) {
     return await chatThreadRepo.getThreadsForUser(userId);
+}
+
+async function findUserThreadById(threadId) {
+    return await chatThreadRepo.findThreadById(threadId);
 }
 
 module.exports = {
     sendMessage,
     getThreadMessages,
     getUserThreads,
-}
+    findUserThreadById
+};

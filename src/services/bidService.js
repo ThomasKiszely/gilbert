@@ -3,6 +3,7 @@ const bidRepo = require(`../data/bidRepo`);
 const bidStatusses = require(`../utils/bidStatusses`);
 const notificationTypes = require(`../utils/notificationTypes`);
 const notificationService = require('../services/notificationService');
+const chatService = require('../services/chatService');
 
 
 async function placeBid(productId, buyerId, amount){
@@ -28,6 +29,15 @@ async function placeBid(productId, buyerId, amount){
         amount: amount,
         status: bidStatusses.active
     });
+
+    try {
+        const systemText = `SYSTEM_BID: I placed a bid of ${amount} DKK.`;
+        // Vi bruger chatService til at finde/oprette tråden og gemme beskeden
+        await chatService.sendMessage(productId, buyerId, systemText);
+    } catch (chatError) {
+        console.error("Could not make system message:", chatError);
+        // Vi fejler ikke selve buddet, selvom chat-beskeden driller
+    }
 
    await notificationService.notifyUser(bid.seller, {
         type: notificationTypes.new_bid,
@@ -180,6 +190,10 @@ async function rejectCounterBid(bidId, buyerId){
     )
 }
 
+async function findCurrentBidWorkflow(productId, buyerId){
+    return await bidRepo.findCurrentBidWorkflow(productId, buyerId);
+}
+
 /*
 async function expireBid(bidId){
     const bid = await bidRepo.getBidById(bidId);
@@ -205,5 +219,6 @@ module.exports = {
     rejectCounterBid,
     //expireBid,
     acceptCounterBid,
-    counterBid
+    counterBid,
+    findCurrentBidWorkflow
 }

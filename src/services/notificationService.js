@@ -1,11 +1,16 @@
 const notificationRepo = require('../data/notificationRepo');
 
+
 async function notifyUser(userId, payload) {
-    const { type, ...data } = payload;
+    console.log("DEBUG PAYLOAD MODTAGET I SERVICE:", payload); // <--- TILFØJ DENNE
+    const { type, ...extraData } = payload;
+
+    console.log("DEBUG EKSTRA DATA TIL REPO:", extraData);     // <--- TILFØJ DENNE
+
     if (!type) {
         throw new Error("Notification type is required");
     }
-    return await notificationRepo.createNotification(userId, type, data);
+    return await notificationRepo.createNotification(userId, type, extraData);
 }
 
 async function getUserNotifications(userId){

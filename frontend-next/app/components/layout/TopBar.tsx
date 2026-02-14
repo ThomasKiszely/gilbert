@@ -8,7 +8,6 @@ import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 
-// Oversætter dine backend-typer til pæn tekst
 const formatNotificationType = (type: string) => {
     const labels: Record<string, string> = {
         new_bid: "New bid",
@@ -25,13 +24,10 @@ const TopBar = () => {
     const { user, loading, logout } = useAuth();
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState("");
-
-    // --- NOTIFIKATION STATES ---
     const [notifications, setNotifications] = useState<any[]>([]);
     const [showNotis, setShowNotis] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // 1. Hent notifikationer (Husk: din backend pakker dem ind i 'notifications' feltet)
     const fetchNotifications = async () => {
         if (!user) return;
         try {
@@ -47,11 +43,10 @@ const TopBar = () => {
         }
     };
 
-    // 2. Polling og Luk-ved-klik-udenfor
     useEffect(() => {
         if (user) {
             fetchNotifications();
-            const interval = setInterval(fetchNotifications, 30000);
+            const interval = setInterval(fetchNotifications, 10000);
 
             const handleClickOutside = (event: MouseEvent) => {
                 if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -69,29 +64,32 @@ const TopBar = () => {
 
     const unreadCount = notifications.filter((n: any) => !n.read).length;
 
-    // 3. Håndter klik og markér som læst
     const handleNotificationClick = async (notif: any) => {
+        // 1. Markér som læst (Eksisterende logik)
         if (!notif.read) {
             try {
-                const res = await fetch(`/api/notifications/${notif._id}/read`, { method: 'POST' });
-                const data = await res.json();
-                if (data.success) {
-                    setNotifications((prev) =>
-                        prev.map((n) => n._id === notif._id ? { ...n, read: true } : n)
-                    );
-                }
-            } catch (err) {
-                console.error("Kunne ikke markere som læst:", err);
-            }
+                await fetch(`/api/notifications/${notif._id}/read`, { method: 'POST' });
+                setNotifications(prev => prev.map(n => n._id === notif._id ? { ...n, read: true } : n));
+            } catch (err) { console.error("Kunne ikke markere som læst:", err); }
         }
 
         setShowNotis(false);
 
-        // Navigation (App-flow)
-        if (notif.type === 'chat_message' && notif.data?.threadId) {
-            router.push(`/chat/${notif.data.threadId}`);
+        // 2. DEBUG: Se præcis hvad 'data' indeholder i browseren
+        console.log("KLIKKET NOTIF DATA:", notif.data);
+
+        // 3. Robust udtrækning af ID
+        // Vi tjekker notif.data.threadId (det nye format)
+        const threadId = notif.data?.threadId;
+
+        if (notif.type === 'chat_message' && threadId) {
+            // Vi bruger en template literal for at være sikre på ruten
+            router.push(`/chat/${threadId}`);
         } else if (notif.data?.productId) {
             router.push(`/products/${notif.data.productId}`);
+        } else {
+            // Hvis den stadig fejler, vil denne log fortælle os HVAD der manglede
+            console.warn("Mangler threadId. Notif objekt:", notif);
         }
     };
 
@@ -104,7 +102,7 @@ const TopBar = () => {
         <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/30">
             <div className="relative flex items-center px-4 py-1 md:py-3 h-[44px] md:h-auto">
 
-                {/* LEFT — Search (desktop only) */}
+                {/* LEFT — Search */}
                 <div className="hidden md:flex items-center gap-2 bg-muted/50 rounded-xl px-3 py-2 w-[260px]">
                     <Search className="h-4 w-4 text-muted-foreground shrink-0" />
                     <Input
@@ -151,7 +149,7 @@ const TopBar = () => {
                         )}
                     </div>
 
-                    {/* NOTIFICATION BELL & DROPDOWN */}
+                    {/* NOTIFICATION BELL */}
                     <div className="relative" ref={dropdownRef}>
                         <Button
                             variant="ghost"
@@ -168,20 +166,14 @@ const TopBar = () => {
                         </Button>
 
                         {showNotis && (
-                            <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-border bg-popover shadow-2xl z-[100] overflow-hidden animate-in fade-in zoom-in duration-150">
+                            <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-border bg-popover shadow-2xl z-[100] overflow-hidden animate-in fade-in zoom-in duration-150 text-ivory">
                                 <div className="p-4 border-b border-border bg-muted/10 flex justify-between items-center">
-                                    <span className="font-bold text-sm text-foreground">Notifikationer</span>
-                                    {unreadCount > 0 && (
-                                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
-                                            {unreadCount} nye
-                                        </span>
-                                    )}
+                                    <span className="font-bold text-sm">Notifications</span>
                                 </div>
                                 <div className="max-h-[350px] overflow-y-auto">
                                     {notifications.length === 0 ? (
-                                        <div className="p-10 text-center">
-                                            <Bell className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                                            <p className="text-xs text-muted-foreground">Ingen notifikationer endnu</p>
+                                        <div className="p-10 text-center text-muted-foreground text-xs">
+                                            No notifications yet
                                         </div>
                                     ) : (
                                         notifications.map((n: any) => (
@@ -192,16 +184,18 @@ const TopBar = () => {
                                             >
                                                 <div className="flex justify-between items-center mb-1">
                                                     <span className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter">
+                                                        {!n.read && <span className="text-red-600 mr-1">NEW</span>}
                                                         {formatNotificationType(n.type)}
                                                     </span>
                                                     <span className="text-[9px] text-muted-foreground/60">
                                                         {new Date(n.createdAt).toLocaleDateString('da-DK')}
                                                     </span>
                                                 </div>
+
                                                 <p className={`text-sm leading-tight ${!n.read ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
                                                     {n.type === 'chat_message'
-                                                        ? (n.data?.text ? `"${n.data.text}"` : "You have received a new message")
-                                                        : (n.data?.message || "You have a new update on your account")
+                                                        ? (n.data?.text || n.data?.preview || "Ny besked modtaget")
+                                                        : (n.data?.message || "Klik for detaljer")
                                                     }
                                                 </p>
                                             </div>
@@ -210,7 +204,7 @@ const TopBar = () => {
                                 </div>
                                 <Link
                                     href="/profile/notifications"
-                                    className="block p-3 text-center text-[11px] font-bold uppercase tracking-widest bg-muted/20 hover:bg-muted/40 transition text-foreground"
+                                    className="block p-3 text-center text-[11px] font-bold uppercase tracking-widest bg-muted/20 hover:bg-zinc-100 transition text-foreground"
                                     onClick={() => setShowNotis(false)}
                                 >
                                     Se alle

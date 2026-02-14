@@ -1,4 +1,5 @@
 const bidService = require('../services/bidService');
+const chatService = require('../services/chatService');
 
 async function placeBid(req, res, next) {
     try {
@@ -69,6 +70,26 @@ async function rejectCounterBid(req, res, next) {
     }
 }
 
+async function getActiveBidForThread(req, res, next) {
+    try {
+        const { threadId } = req.params;
+        const thread = await chatService.findUserThreadById(threadId);
+        if(!thread){
+            return res.status(404).json({ success: false, message: 'Thread Not Found' });
+        }
+        const bid = await bidService.findCurrentBidWorkflow(
+            thread.productId._id,
+            thread.buyerId._id
+        );
+
+        // Ret 'data' til 'bid', så det matcher ChatPage: if (data.bid)
+        return res.status(200).json({ success: true, bid: bid });
+
+    } catch (error){
+        next(error);
+    }
+}
+
 /*
 async function expireBid(req, res, next) {
     try{
@@ -88,5 +109,6 @@ module.exports = {
     placeBid,
     acceptCounterBid,
     rejectCounterBid,
+    getActiveBidForThread,
     //expireBid
 }

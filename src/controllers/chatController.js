@@ -3,9 +3,13 @@ const chatService = require("../services/chatService");
 
 async function sendMessage(req, res, next) {
     try {
-        const { productId } = req.params;
+        // Vi kalder den bare 'id' – det kan være et threadId ELLER et productId
+        const { id } = req.params;
         const { text } = req.body;
-        const message = await chatService.sendMessage(productId, req.user.id, text);
+
+        // Din service håndterer allerede 'id' logikken internt
+        const message = await chatService.sendMessage(id, req.user.id, text);
+
         return res.status(201).json({ success: true, message });
     } catch (error) {
         console.error("FEJL I SENDMESSAGECTR: " + error.message);
@@ -36,8 +40,19 @@ async function getThreads(req, res, next) {
     }
 }
 
+async function getThreadById(req, res, next) {
+    try{
+        const { threadId } = req.params;
+        const thread = await chatService.findUserThreadById(threadId);
+        return res.status(200).json({ success: true, message: thread });
+    } catch (error){
+        next(error);
+    }
+}
+
 module.exports = {
     sendMessage,
     getMessages,
     getThreads,
+    getThreadById,
 }

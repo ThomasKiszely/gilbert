@@ -6,8 +6,9 @@ const { validateMessage } = require('../middlewares/validateMessage');
 
 router.use(requireAuth);
 
-router.post('/:productId', validateMessage, chatController.sendMessage);
+router.post('/:id', validateMessage, chatController.sendMessage);
 router.get('/threads', chatController.getThreads);
+router.get('/threads/:threadId', chatController.getThreadById);
 router.get('/:threadId/messages', chatController.getMessages);
 
 module.exports = router;

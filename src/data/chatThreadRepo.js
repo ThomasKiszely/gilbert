@@ -15,13 +15,29 @@ async function updateLastMessage(threadId){
 async function getThreadsForUser(userId){
     return await ChatThread.find({
         $or: [{buyerId: userId}, {sellerId: userId}],
-    }).sort({ lastMessageAt: -1 });
+    })
+        .populate({
+        path: 'productId',
+        select: 'title images price'
+    })
+        .populate({
+            path: 'buyerId',
+            select: 'username profile.avatarUrl'
+        })
+        .populate({
+            path: 'sellerId',
+            select: 'username profile.avatarUrl'
+        })
+        .sort({ lastMessageAt: -1 });
 }
 async function findThreadBySeller(productId, sellerId) {
     return await ChatThread.findOne({ productId, sellerId });
 }
 async function findThreadById(threadId){
-    return await ChatThread.findById(threadId);
+    return await ChatThread.findById(threadId)
+        .populate('productId', 'title images price seller')
+        .populate('buyerId', 'username profile.avatarUrl')
+        .populate('sellerId', 'username profile.avatarUrl');
 }
 
 module.exports = {
