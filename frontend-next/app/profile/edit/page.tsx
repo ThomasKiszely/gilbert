@@ -119,7 +119,7 @@ export default function EditProfilePage() {
         <div className="max-w-lg mx-auto mt-10 p-8 bg-ivory-dark rounded-2xl shadow-2xl border border-racing-green/10 text-racing-green">
             <div className="flex justify-between items-center mb-8 border-b border-racing-green/10 pb-4">
                 <h1 className="text-2xl font-serif font-bold uppercase tracking-tight">Edit Profile</h1>
-                <Link href="/me" className="text-sm text-racing-green/60 underline hover:text-racing-green">Back to profile</Link>
+                <Link href="/profile/me" className="text-sm text-racing-green/60 underline hover:text-racing-green">Back to profile</Link>
             </div>
 
             {status && <p className={`${statusClass} mb-6 font-semibold text-center p-3 rounded-lg shadow-sm transition-all`}>{status}</p>}

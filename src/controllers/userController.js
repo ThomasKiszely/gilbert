@@ -109,6 +109,26 @@ async function deleteUser(req, res, next) {
         next(error);
     }
 }
+async function getUserById(req, res, next) {
+    try {
+        const user = await userService.getUserById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: user
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 
 module.exports = {
     updateUser,
@@ -118,5 +138,6 @@ module.exports = {
     changePassword,
     changeEmail,
     verifyEmailChange,
-    deleteUser
+    deleteUser,
+    getUserById,
 }

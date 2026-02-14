@@ -22,7 +22,7 @@ const formatNotificationType = (type: string) => {
 };
 
 const TopBar = () => {
-    const { user, loading, logout } = useAuth();
+    const {user, loading, logout} = useAuth();
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState("");
 
@@ -73,11 +73,11 @@ const TopBar = () => {
     const handleNotificationClick = async (notif: any) => {
         if (!notif.read) {
             try {
-                const res = await fetch(`/api/notifications/${notif._id}/read`, { method: 'POST' });
+                const res = await fetch(`/api/notifications/${notif._id}/read`, {method: 'POST'});
                 const data = await res.json();
                 if (data.success) {
                     setNotifications((prev) =>
-                        prev.map((n) => n._id === notif._id ? { ...n, read: true } : n)
+                        prev.map((n) => n._id === notif._id ? {...n, read: true} : n)
                     );
                 }
             } catch (err) {
@@ -109,7 +109,7 @@ const TopBar = () => {
                     <Search className="h-4 w-4 text-muted-foreground shrink-0" />
                     <Input
                         type="text"
-                        placeholder="Søg efter varer..."
+                        placeholder="Search items, users…"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -129,29 +129,58 @@ const TopBar = () => {
                     </h1>
                 </Link>
 
-                {/* RIGHT — Actions */}
-                <div className="absolute right-4 flex items-center gap-3">
+                {/* RIGHT — EVERYTHING */}
+                <div className="absolute right-4 flex items-center gap-4">
 
-                    <div className="hidden md:flex items-center gap-4 mr-2">
-                        <Link href="/products/create" className="px-4 py-1 rounded-full bg-foreground text-background text-sm font-medium hover:opacity-80 transition">
+                    {/* Admin link */}
+                    {user?.role === "admin" && (
+                        <Link
+                            href="/admin"
+                            className="hidden md:block text-accent font-bold hover:brightness-125"
+                        >
+                            Admin
+                        </Link>
+                    )}
+
+
+                    {/* Sell + Profile + Logout */}
+                    <div className="hidden md:flex items-center gap-4">
+                        <Link
+                            href="/products/create"
+                            className="px-4 py-1 rounded-full bg-foreground text-background text-sm font-medium hover:opacity-80 transition"
+                        >
                             Sell an item
                         </Link>
 
                         {user ? (
                             <>
-                                <Link href="/profile/me" className="text-sm font-medium hover:text-primary transition text-foreground">
+                                <Link
+                                    href="/profile/me"
+                                    className="text-sm font-medium hover:text-primary transition text-foreground"
+                                >
                                     {user.username}
                                 </Link>
-                                <button onClick={logout} className="text-sm text-muted-foreground hover:text-red-400 transition">
+
+                                <button
+                                    onClick={logout}
+                                    className="text-sm text-muted-foreground hover:text-red-400 transition"
+                                >
                                     Logout
                                 </button>
                             </>
                         ) : (
-                            !loading && <Link href="/login" className="text-sm font-medium text-foreground">Login</Link>
+                            !loading && (
+                                <Link
+                                    href="/login"
+                                    className="text-sm font-medium text-foreground"
+                                >
+                                    Login
+                                </Link>
+                            )
                         )}
                     </div>
 
-                    {/* NOTIFICATION BELL & DROPDOWN */}
+                    {/* NOTIFICATION BELL */}
                     <div className="relative" ref={dropdownRef}>
                         <Button
                             variant="ghost"
@@ -162,8 +191,8 @@ const TopBar = () => {
                             <Bell className="h-5 w-5" />
                             {unreadCount > 0 && (
                                 <span className="absolute top-1.5 right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-600 text-[9px] text-white font-bold border-2 border-background">
-                                    {unreadCount}
-                                </span>
+                                {unreadCount}
+                            </span>
                             )}
                         </Button>
 
@@ -173,10 +202,11 @@ const TopBar = () => {
                                     <span className="font-bold text-sm text-foreground">Notifikationer</span>
                                     {unreadCount > 0 && (
                                         <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
-                                            {unreadCount} nye
-                                        </span>
+                                        {unreadCount} nye
+                                    </span>
                                     )}
                                 </div>
+
                                 <div className="max-h-[350px] overflow-y-auto">
                                     {notifications.length === 0 ? (
                                         <div className="p-10 text-center">
@@ -191,12 +221,12 @@ const TopBar = () => {
                                                 className={`p-4 border-b border-border/50 last:border-0 cursor-pointer transition-colors hover:bg-muted/50 ${!n.read ? 'bg-primary/5' : ''}`}
                                             >
                                                 <div className="flex justify-between items-center mb-1">
-                                                    <span className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter">
-                                                        {formatNotificationType(n.type)}
-                                                    </span>
+                                                <span className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter">
+                                                    {formatNotificationType(n.type)}
+                                                </span>
                                                     <span className="text-[9px] text-muted-foreground/60">
-                                                        {new Date(n.createdAt).toLocaleDateString('da-DK')}
-                                                    </span>
+                                                    {new Date(n.createdAt).toLocaleDateString('da-DK')}
+                                                </span>
                                                 </div>
                                                 <p className={`text-sm leading-tight ${!n.read ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
                                                     {n.type === 'chat_message'
@@ -208,6 +238,7 @@ const TopBar = () => {
                                         ))
                                     )}
                                 </div>
+
                                 <Link
                                     href="/profile/notifications"
                                     className="block p-3 text-center text-[11px] font-bold uppercase tracking-widest bg-muted/20 hover:bg-muted/40 transition text-foreground"
@@ -219,13 +250,16 @@ const TopBar = () => {
                         )}
                     </div>
 
+                    {/* CART */}
                     <Button variant="ghost" size="icon" className="text-foreground hover:bg-muted">
                         <ShoppingBag className="h-5 w-5" />
                     </Button>
+
                 </div>
             </div>
         </header>
     );
-};
+
+}
 
 export default TopBar;

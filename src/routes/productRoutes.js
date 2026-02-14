@@ -12,7 +12,9 @@ router.post('/', requireAuth,  canSell, upload.array("images", 4) , validateProd
 router.get('/filter', productController.filterProducts);
 router.get('/search', productController.searchProducts);
 
-router.get('/me', requireAuth, productController.getMyProducts)
+router.get('/me', requireAuth, productController.getMyProducts);
+router.get('/user/:id', productController.getProductsBySeller);
+
 router.get('/:id', productController.getProductById);
 router.put('/:id', requireAuth,  loadProduct, yourProduct, validateProduct ,productController.updateProduct);
 

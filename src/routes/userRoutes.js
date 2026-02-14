@@ -5,6 +5,7 @@ const { canUpdateUser } = require("../middlewares/canUpdateUser");
 const upload = require("../middlewares/avatarUpload");
 const { requireAuth } = require("../middlewares/auth");
 
+router.get("/public/:id", userController.getUserById);
 router.get("/verify-email-change", userController.verifyEmailChange);
 
 router.use(requireAuth);

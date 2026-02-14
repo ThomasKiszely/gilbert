@@ -8,6 +8,7 @@ import type { ApiProduct, Product } from "@/app/components/product/types";
 import { api } from "@/app/api/api";
 import { toggleFavorite } from "@/app/api/favorites"; // ⭐ Rettet sti
 
+
 const Index = () => {
     const [products, setProducts] = useState<Product[]>([]);
 

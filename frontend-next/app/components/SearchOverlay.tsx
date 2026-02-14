@@ -7,6 +7,7 @@ import { Search, X } from "lucide-react";
 interface SearchOverlayProps {
     open: boolean;
     onClose: () => void;
+    onResults?: (data: { products: any[]; users: any[] }) => void;
 }
 
 export default function SearchOverlay({ open, onClose }: SearchOverlayProps) {

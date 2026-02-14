@@ -17,6 +17,7 @@ export interface ApiProduct {
     images?: string[];
     tags?: { name: string }[];
     isFavorite?: boolean;
+    status: string;
 }
 
 
