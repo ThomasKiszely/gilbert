@@ -63,9 +63,22 @@ async function sendMessage(id, senderId, text) {
 }
 
 // Husk de andre funktioner i filen...
-async function getThreadMessages(threadId, userId) {
-    const messages = await chatMessageRepo.getMessages(threadId);
-    await chatMessageRepo.markThreadAsRead(threadId, userId);
+async function getThreadMessages(id, userId) {
+    let thread;
+    thread = await chatThreadRepo.findThreadById(id);
+
+    if (!thread) {
+        thread = await chatThreadRepo.findThreadByProductAndUser(id, userId);
+    }
+
+    if (!thread) {
+        return [];
+    }
+
+    const messages = await chatMessageRepo.getMessages(thread._id);
+
+    await chatMessageRepo.markThreadAsRead(thread._id, userId);
+
     return messages;
 }
 
@@ -73,8 +86,14 @@ async function getUserThreads(userId) {
     return await chatThreadRepo.getThreadsForUser(userId);
 }
 
-async function findUserThreadById(threadId) {
-    return await chatThreadRepo.findThreadById(threadId);
+async function findUserThreadById(id, userId) {
+    let thread = await chatThreadRepo.findThreadById(id);
+
+    if (!thread) {
+        thread = await chatThreadRepo.findThreadByProductAndUser(id, userId);
+    }
+
+    return thread;
 }
 
 module.exports = {

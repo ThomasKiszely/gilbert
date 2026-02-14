@@ -40,6 +40,18 @@ async function findThreadById(threadId){
         .populate('sellerId', 'username profile.avatarUrl');
 }
 
+async function findThreadByProductAndUser(productId, userId) {
+    return await ChatThread.findOne({
+        productId: productId,
+        $or: [
+            { buyerId: userId },
+            { sellerId: userId }
+        ]
+    });
+}
+
+
+
 module.exports = {
     createThread,
     updateLastMessage,
@@ -47,4 +59,5 @@ module.exports = {
     findThread,
     findThreadBySeller,
     findThreadById,
+    findThreadByProductAndUser,
 }

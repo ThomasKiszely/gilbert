@@ -43,7 +43,7 @@ async function getThreads(req, res, next) {
 async function getThreadById(req, res, next) {
     try{
         const { threadId } = req.params;
-        const thread = await chatService.findUserThreadById(threadId);
+        const thread = await chatService.findUserThreadById(threadId, req.user.id);
         return res.status(200).json({ success: true, message: thread });
     } catch (error){
         next(error);
