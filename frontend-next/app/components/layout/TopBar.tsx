@@ -46,7 +46,8 @@ const TopBar = () => {
     useEffect(() => {
         if (user) {
             fetchNotifications();
-            const interval = setInterval(fetchNotifications, 30000);
+            // Opdateret til 10 sekunder (10000ms) for hurtigere respons
+            const interval = setInterval(fetchNotifications, 10000);
 
             const handleClickOutside = (event: MouseEvent) => {
                 if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -62,10 +63,11 @@ const TopBar = () => {
         }
     }, [user]);
 
-    const unreadCount = notifications.filter((n: any) => !n.read).length;
+    // Beregn ulæste (bruges både til Bell-badge og filter)
+    const unreadNotifications = notifications.filter((n: any) => !n.read);
+    const unreadCount = unreadNotifications.length;
 
     const handleNotificationClick = async (notif: any) => {
-        // Log til debug så du altid kan se hvad der sker i F12
         console.log("KLIKKET NOTIF DATA:", notif.data);
 
         if (!notif.read) {
@@ -81,9 +83,7 @@ const TopBar = () => {
 
         setShowNotis(false);
 
-        // NAVIGATION LOGIK (Vi beholder de robuste tjek fra før)
         const threadId = notif.data?.threadId;
-
         if (notif.type === 'chat_message' && threadId) {
             router.push(`/chat/${threadId}`);
         } else if (notif.data?.productId) {
@@ -100,7 +100,6 @@ const TopBar = () => {
         <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/30">
             <div className="relative flex items-center px-4 py-1 md:py-3 h-[44px] md:h-auto">
 
-                {/* LEFT — Search (Din makkers opdatering) */}
                 <div className="hidden md:flex items-center gap-2 bg-muted/50 rounded-xl px-3 py-2 w-[260px]">
                     <Search className="h-4 w-4 text-muted-foreground shrink-0" />
                     <Input
@@ -118,16 +117,13 @@ const TopBar = () => {
                     )}
                 </div>
 
-                {/* CENTER — Logo */}
                 <Link href="/" className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
                     <h1 className="text-xl md:text-2xl font-bold tracking-widest text-foreground font-serif uppercase leading-none">
                         GILBERT
                     </h1>
                 </Link>
 
-                {/* RIGHT — Actions */}
                 <div className="absolute right-4 flex items-center gap-4">
-                    {/* Admin link (Din makkers kode) */}
                     {user?.role === "admin" && (
                         <Link href="/admin" className="hidden md:block text-accent font-bold hover:brightness-125">
                             Admin
@@ -153,7 +149,6 @@ const TopBar = () => {
                         )}
                     </div>
 
-                    {/* NOTIFICATION BELL */}
                     <div className="relative" ref={dropdownRef}>
                         <Button
                             variant="ghost"
@@ -172,27 +167,27 @@ const TopBar = () => {
                         {showNotis && (
                             <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-border bg-popover shadow-2xl z-[100] overflow-hidden animate-in fade-in zoom-in duration-150 text-black">
                                 <div className="p-4 border-b border-border bg-muted/10 flex justify-between items-center">
-                                    {/* BOURGOGNE FARVE PÅ OVERSKRIFT */}
                                     <span className="font-bold text-sm text-[ivory]">Notifications</span>
                                     {unreadCount > 0 && (
-                                        <span className="text-[10px] bg-primary/10 text-[#800020] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
+                                        <span className="text-[10px] bg-primary/10 text-[burgundy] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
                                             {unreadCount} nye
                                         </span>
                                     )}
                                 </div>
 
                                 <div className="max-h-[350px] overflow-y-auto">
-                                    {notifications.length === 0 ? (
+                                    {/* Vi viser kun de ULÆSTE notifikationer her */}
+                                    {unreadNotifications.length === 0 ? (
                                         <div className="p-10 text-center">
                                             <Bell className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                                            <p className="text-xs text-muted-foreground">Ingen notifikationer endnu</p>
+                                            <p className="text-xs text-muted-foreground">Ingen nye beskeder</p>
                                         </div>
                                     ) : (
-                                        notifications.map((n: any) => (
+                                        unreadNotifications.map((n: any) => (
                                             <div
                                                 key={n._id}
                                                 onClick={() => handleNotificationClick(n)}
-                                                className={`p-4 border-b border-border/50 last:border-0 cursor-pointer transition-colors hover:bg-muted/50 ${!n.read ? 'bg-primary/5' : ''}`}
+                                                className="p-4 border-b border-border/50 last:border-0 cursor-pointer transition-colors hover:bg-muted/50 bg-primary/5"
                                             >
                                                 <div className="flex justify-between items-center mb-1">
                                                     <span className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter">
@@ -202,7 +197,7 @@ const TopBar = () => {
                                                         {new Date(n.createdAt).toLocaleDateString('da-DK')}
                                                     </span>
                                                 </div>
-                                                <p className={`text-sm leading-tight ${!n.read ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                                                <p className="text-sm leading-tight font-medium text-foreground">
                                                     {n.type === 'chat_message'
                                                         ? (n.data?.text ? `"${n.data.text}"` : "New message received")
                                                         : (n.data?.message || "Account update")
@@ -214,10 +209,10 @@ const TopBar = () => {
                                 </div>
                                 <Link
                                     href="/profile/notifications"
-                                    className="block p-3 text-center text-[11px] font-bold uppercase tracking-widest bg-muted/20 hover:text-[#800020] transition text-foreground"
+                                    className="block p-3 text-center text-[11px] font-bold uppercase tracking-widest bg-muted/20 hover:text-burgundy transition text-foreground"
                                     onClick={() => setShowNotis(false)}
                                 >
-                                    Se alle
+                                    Se alle (historik)
                                 </Link>
                             </div>
                         )}
