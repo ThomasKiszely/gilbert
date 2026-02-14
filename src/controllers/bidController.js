@@ -89,6 +89,15 @@ async function getActiveBidForThread(req, res, next) {
         next(error);
     }
 }
+async function getMyBids(req, res, next) {
+    try{
+        const userId = req.user.id;
+        const bids = await bidService.getBidsByUser(userId);
+        return res.status(200).json({ success: true, data: bids });
+    } catch (error) {
+        next(error);
+    }
+}
 
 /*
 async function expireBid(req, res, next) {
@@ -110,5 +119,6 @@ module.exports = {
     acceptCounterBid,
     rejectCounterBid,
     getActiveBidForThread,
+    getMyBids,
     //expireBid
 }

@@ -75,6 +75,18 @@ async function rejectAllActiveBids(productId){
         }
     );
 }
+async function getBidsByUser(userId) {
+    return await Bid.find({
+        $or: [
+            { buyerId: userId },
+            { sellerId: userId }
+        ],
+        // Vi henter kun aktive eller modbudte bud til denne oversigt
+        status: { $in: [bidStatusses.active, bidStatusses.countered] }
+    })
+        .populate('productId', 'title images price') // Hent kun nødvendig info fra produktet
+        .sort({ updatedAt: -1 }); // Nyeste øverst
+}
 
 
 
@@ -85,5 +97,6 @@ module.exports = {
     rejectAllActiveBids,
     getBidById,
     updateBidWithCounter,
-    findCurrentBidWorkflow
+    findCurrentBidWorkflow,
+    getBidsByUser,
 }

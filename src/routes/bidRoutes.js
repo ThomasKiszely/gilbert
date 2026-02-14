@@ -16,7 +16,8 @@ router.post('/:bidId/counter', validateCounterBid, bidController.counterBid);
 router.post('/:bidId/accept-counter', bidController.acceptCounterBid);
 router.post('/:bidId/reject-counter', bidController.rejectCounterBid);
 
-// bidRoutes.js
+
 router.get('/active-in-thread/:threadId', bidController.getActiveBidForThread);
+router.get('/my-bids', bidController.getMyBids)
 
 module.exports = router;
