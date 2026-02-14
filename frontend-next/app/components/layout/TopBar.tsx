@@ -8,7 +8,6 @@ import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 
-// Oversætter dine backend-typer til pæn tekst
 const formatNotificationType = (type: string) => {
     const labels: Record<string, string> = {
         new_bid: "New bid",
@@ -25,13 +24,10 @@ const TopBar = () => {
     const {user, loading, logout} = useAuth();
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState("");
-
-    // --- NOTIFIKATION STATES ---
     const [notifications, setNotifications] = useState<any[]>([]);
     const [showNotis, setShowNotis] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // 1. Hent notifikationer (Husk: din backend pakker dem ind i 'notifications' feltet)
     const fetchNotifications = async () => {
         if (!user) return;
         try {
@@ -47,7 +43,6 @@ const TopBar = () => {
         }
     };
 
-    // 2. Polling og Luk-ved-klik-udenfor
     useEffect(() => {
         if (user) {
             fetchNotifications();
@@ -69,17 +64,16 @@ const TopBar = () => {
 
     const unreadCount = notifications.filter((n: any) => !n.read).length;
 
-    // 3. Håndter klik og markér som læst
     const handleNotificationClick = async (notif: any) => {
+        // Log til debug så du altid kan se hvad der sker i F12
+        console.log("KLIKKET NOTIF DATA:", notif.data);
+
         if (!notif.read) {
             try {
-                const res = await fetch(`/api/notifications/${notif._id}/read`, {method: 'POST'});
-                const data = await res.json();
-                if (data.success) {
-                    setNotifications((prev) =>
-                        prev.map((n) => n._id === notif._id ? {...n, read: true} : n)
-                    );
-                }
+                await fetch(`/api/notifications/${notif._id}/read`, {method: 'POST'});
+                setNotifications((prev) =>
+                    prev.map((n) => n._id === notif._id ? {...n, read: true} : n)
+                );
             } catch (err) {
                 console.error("Kunne ikke markere som læst:", err);
             }
@@ -87,9 +81,11 @@ const TopBar = () => {
 
         setShowNotis(false);
 
-        // Navigation (App-flow)
-        if (notif.type === 'chat_message' && notif.data?.threadId) {
-            router.push(`/chat/${notif.data.threadId}`);
+        // NAVIGATION LOGIK (Vi beholder de robuste tjek fra før)
+        const threadId = notif.data?.threadId;
+
+        if (notif.type === 'chat_message' && threadId) {
+            router.push(`/chat/${threadId}`);
         } else if (notif.data?.productId) {
             router.push(`/products/${notif.data.productId}`);
         }
@@ -104,7 +100,7 @@ const TopBar = () => {
         <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/30">
             <div className="relative flex items-center px-4 py-1 md:py-3 h-[44px] md:h-auto">
 
-                {/* LEFT — Search (desktop only) */}
+                {/* LEFT — Search (Din makkers opdatering) */}
                 <div className="hidden md:flex items-center gap-2 bg-muted/50 rounded-xl px-3 py-2 w-[260px]">
                     <Search className="h-4 w-4 text-muted-foreground shrink-0" />
                     <Input
@@ -113,7 +109,7 @@ const TopBar = () => {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                        className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-8 text-sm"
+                        className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-8 text-sm text-black"
                     />
                     {searchQuery && (
                         <Button variant="ghost" size="icon" onClick={() => setSearchQuery("")} className="h-6 w-6">
@@ -129,54 +125,31 @@ const TopBar = () => {
                     </h1>
                 </Link>
 
-                {/* RIGHT — EVERYTHING */}
+                {/* RIGHT — Actions */}
                 <div className="absolute right-4 flex items-center gap-4">
-
-                    {/* Admin link */}
+                    {/* Admin link (Din makkers kode) */}
                     {user?.role === "admin" && (
-                        <Link
-                            href="/admin"
-                            className="hidden md:block text-accent font-bold hover:brightness-125"
-                        >
+                        <Link href="/admin" className="hidden md:block text-accent font-bold hover:brightness-125">
                             Admin
                         </Link>
                     )}
 
-
-                    {/* Sell + Profile + Logout */}
                     <div className="hidden md:flex items-center gap-4">
-                        <Link
-                            href="/products/create"
-                            className="px-4 py-1 rounded-full bg-foreground text-background text-sm font-medium hover:opacity-80 transition"
-                        >
+                        <Link href="/products/create" className="px-4 py-1 rounded-full bg-foreground text-background text-sm font-medium hover:opacity-80 transition">
                             Sell an item
                         </Link>
 
                         {user ? (
                             <>
-                                <Link
-                                    href="/profile/me"
-                                    className="text-sm font-medium hover:text-primary transition text-foreground"
-                                >
+                                <Link href="/profile/me" className="text-sm font-medium hover:text-primary transition text-foreground">
                                     {user.username}
                                 </Link>
-
-                                <button
-                                    onClick={logout}
-                                    className="text-sm text-muted-foreground hover:text-red-400 transition"
-                                >
+                                <button onClick={logout} className="text-sm text-muted-foreground hover:text-red-400 transition">
                                     Logout
                                 </button>
                             </>
                         ) : (
-                            !loading && (
-                                <Link
-                                    href="/login"
-                                    className="text-sm font-medium text-foreground"
-                                >
-                                    Login
-                                </Link>
-                            )
+                            !loading && <Link href="/login" className="text-sm font-medium text-foreground">Login</Link>
                         )}
                     </div>
 
@@ -191,19 +164,20 @@ const TopBar = () => {
                             <Bell className="h-5 w-5" />
                             {unreadCount > 0 && (
                                 <span className="absolute top-1.5 right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-600 text-[9px] text-white font-bold border-2 border-background">
-                                {unreadCount}
-                            </span>
+                                    {unreadCount}
+                                </span>
                             )}
                         </Button>
 
                         {showNotis && (
-                            <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-border bg-popover shadow-2xl z-[100] overflow-hidden animate-in fade-in zoom-in duration-150">
+                            <div className="absolute right-0 mt-3 w-80 rounded-2xl border border-border bg-popover shadow-2xl z-[100] overflow-hidden animate-in fade-in zoom-in duration-150 text-black">
                                 <div className="p-4 border-b border-border bg-muted/10 flex justify-between items-center">
-                                    <span className="font-bold text-sm text-foreground">Notifikationer</span>
+                                    {/* BOURGOGNE FARVE PÅ OVERSKRIFT */}
+                                    <span className="font-bold text-sm text-[ivory]">Notifications</span>
                                     {unreadCount > 0 && (
-                                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
-                                        {unreadCount} nye
-                                    </span>
+                                        <span className="text-[10px] bg-primary/10 text-[#800020] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
+                                            {unreadCount} nye
+                                        </span>
                                     )}
                                 </div>
 
@@ -221,27 +195,26 @@ const TopBar = () => {
                                                 className={`p-4 border-b border-border/50 last:border-0 cursor-pointer transition-colors hover:bg-muted/50 ${!n.read ? 'bg-primary/5' : ''}`}
                                             >
                                                 <div className="flex justify-between items-center mb-1">
-                                                <span className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter">
-                                                    {formatNotificationType(n.type)}
-                                                </span>
+                                                    <span className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter">
+                                                        {formatNotificationType(n.type)}
+                                                    </span>
                                                     <span className="text-[9px] text-muted-foreground/60">
-                                                    {new Date(n.createdAt).toLocaleDateString('da-DK')}
-                                                </span>
+                                                        {new Date(n.createdAt).toLocaleDateString('da-DK')}
+                                                    </span>
                                                 </div>
                                                 <p className={`text-sm leading-tight ${!n.read ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
                                                     {n.type === 'chat_message'
-                                                        ? (n.data?.text ? `"${n.data.text}"` : "You have received a new message")
-                                                        : (n.data?.message || "You have a new update on your account")
+                                                        ? (n.data?.text ? `"${n.data.text}"` : "New message received")
+                                                        : (n.data?.message || "Account update")
                                                     }
                                                 </p>
                                             </div>
                                         ))
                                     )}
                                 </div>
-
                                 <Link
                                     href="/profile/notifications"
-                                    className="block p-3 text-center text-[11px] font-bold uppercase tracking-widest bg-muted/20 hover:bg-muted/40 transition text-foreground"
+                                    className="block p-3 text-center text-[11px] font-bold uppercase tracking-widest bg-muted/20 hover:text-[#800020] transition text-foreground"
                                     onClick={() => setShowNotis(false)}
                                 >
                                     Se alle
@@ -250,16 +223,13 @@ const TopBar = () => {
                         )}
                     </div>
 
-                    {/* CART */}
                     <Button variant="ghost" size="icon" className="text-foreground hover:bg-muted">
                         <ShoppingBag className="h-5 w-5" />
                     </Button>
-
                 </div>
             </div>
         </header>
     );
-
-}
+};
 
 export default TopBar;
