@@ -21,8 +21,7 @@ const bidRouter = require('./routes/bidRoutes');
 const searchRouter = require('./routes/searchRoutes');
 const notificationRouter = require('./routes/notificationRoutes');
 const chatRouter = require('./routes/chatRoutes');
-const followRouter = require('./routes/followRoutes');
-
+const blogRouter = require('./routes/blogRoutes');
 const cookieParser = require('cookie-parser') ;
 const { limitRate } = require('./middlewares/rateLimiter');
 const { log } = require('./middlewares/logger');
@@ -60,6 +59,7 @@ app.use('/api/users', userRouter);
 app.use('/api/bids', bidRouter);
 app.use('/api/notifications', notificationRouter);
 app.use('/api/chats', chatRouter);
+app.use('/api/blogs', blogRouter);
 //Favorites
 app.use('/api/favorites', favoriteRouter);
 
@@ -77,11 +77,8 @@ app.use('/api/sizes', sizeRouter);
 app.use('/api/subcategories', subcategoryRouter);
 app.use('/api/tags', tagRouter);
 
-// Search route
+// Search funktion
 app.use('/api/search', searchRouter);
-
-// Following route
-app.use('/api/follows', followRouter);
 
 //app.use('/', viewRouter);
 
