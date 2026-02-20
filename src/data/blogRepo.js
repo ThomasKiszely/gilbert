@@ -13,18 +13,19 @@ async function deleteBlogPost(id) {
 }
 
 async function getBlogPostBySlug(slug) {
-    return await BlogPost.findOne({ slug });
+    return await BlogPost.findOne({ slug }).populate('relatedProducts');
 }
 
 async function getBlogPostById(id) {
-    return await BlogPost.findById(id);
+    return await BlogPost.findById(id).populate('relatedProducts');
 }
 
 
 async function getLatestBlogPost(limit = 1) {
     return await BlogPost.find({})
         .sort({ publishedAt: -1 })
-        .limit(limit);
+        .limit(limit)
+        .populate('relatedProducts');
 }
 
 async function listBlogPosts(skip = 0, limit = 20) {
@@ -32,6 +33,14 @@ async function listBlogPosts(skip = 0, limit = 20) {
         .sort({ publishedAt: -1 })
         .skip(skip)
         .limit(limit);
+}
+
+async function updateMany(filter, update){
+    return await BlogPost.updateMany(filter, update);
+}
+
+async function getActiveFrontPost() {
+    return await BlogPost.findOne({ isActive: true }).populate('relatedProducts');
 }
 
 module.exports = {
@@ -42,4 +51,6 @@ module.exports = {
     getBlogPostById,
     listBlogPosts,
     getLatestBlogPost,
+    updateMany,
+    getActiveFrontPost,
 }

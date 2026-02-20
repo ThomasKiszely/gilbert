@@ -1,152 +1,189 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Save, Loader2, Upload } from "lucide-react";
+import { useState, useEffect, use } from "react";
+import { api } from "@/app/api/api";
+import ProductPicker from "@/app/components/admin/ProductPicker";
+import { useRouter } from "next/navigation";
 
-export default function EditBlogPost() {
+interface Props {
+    params: Promise<{ id: string }>;
+}
+
+export default function EditBlogPost({ params }: Props) {
     const router = useRouter();
-    const params = useParams();
-    const id = params?.id as string; // Dette fanger ID fra mappenavnet [id]
 
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
+    // Unwrap params using React.use()
+    const resolvedParams = use(params);
+    const postId = resolvedParams.id;
 
-    // Form states
+    // States
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
-    const [preview, setPreview] = useState<string | null>(null);
-    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [image, setImage] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [isActive, setIsActive] = useState(false);
+    const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+    const [loading, setLoading] = useState(true);
 
+    // 1. Fetch existing data on load
     useEffect(() => {
-        // Hvis der ikke er noget ID, kan vi ikke hente noget
-        if (!id) {
-            console.error("Intet ID fundet i URL params");
-            return;
-        }
-
-        const fetchPost = async () => {
+        async function fetchPost() {
             try {
-                console.log("Henter data for ID:", id);
-                const res = await fetch(`/api/blogs/admin/id/${id}`);
-                const json = await res.json();
+                const res = await api(`/api/blogs/${postId}`);
+                const result = await res.json();
 
-                console.log("Modtaget redigerings-data:", json);
+                if (result.success && result.data) {
+                    const post = result.data;
+                    setTitle(post.title);
+                    setContent(post.content);
+                    setPreviewUrl(post.image);
+                    setIsActive(post.isActive || false);
 
-                if (json.success && json.data) {
-                    // VI FIXER _DOC LAGET HER (Præcis som i listen)
-                    const postData = json.data._doc ? json.data._doc : json.data;
-
-                    setTitle(postData.title || "");
-                    setContent(postData.content || "");
-                    setPreview(postData.image || null);
-                } else {
-                    console.error("Kunne ikke finde post data i responset");
+                    // Map populated objects to IDs for the picker
+                    const ids = post.relatedProducts?.map((p: any) => p._id || p.id) || [];
+                    setSelectedProductIds(ids);
                 }
             } catch (err) {
-                console.error("Netværksfejl ved hentning af indlæg:", err);
+                console.error("Error fetching blog post:", err);
             } finally {
                 setLoading(false);
             }
-        };
+        }
+        if (postId) fetchPost();
+    }, [postId]);
 
-        fetchPost();
-    }, [id]);
-
-    const handleSubmit = async (e: React.FormEvent) => {
+    // 2. Handle Submit
+    async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-        setSaving(true);
+
+        const formData = new FormData();
+        formData.append("title", title);
+        formData.append("content", content);
+        formData.append("isActive", String(isActive));
+        formData.append("relatedProducts", JSON.stringify(selectedProductIds));
+
+        if (image) {
+            formData.append("image", image);
+        }
 
         try {
-            const formData = new FormData();
-            formData.append("title", title);
-            formData.append("content", content);
-            if (imageFile) formData.append("image", imageFile);
-
-            const res = await fetch(`/api/blogs/${id}`, {
+            const res = await api(`/api/blogs/${postId}`, {
                 method: "PUT",
                 body: formData,
             });
 
-            const json = await res.json();
-            if (json.success) {
-                router.push("/admin/blog");
-                router.refresh();
+            if (res.ok) {
+                alert("Blog post updated successfully!");
+                router.push("/admin/blogs");
             } else {
-                alert("Could not save: " + json.message);
+                const errData = await res.json();
+                alert("Error: " + (errData.error || "Something went wrong"));
             }
         } catch (err) {
-            alert("Could not update post");
-        } finally {
-            setSaving(false);
+            console.error("Submit error:", err);
         }
-    };
+    }
 
-    if (loading) return (
-        <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
-            <p className="font-mono text-[10px] uppercase tracking-widest text-slate-400">Indlæser indhold...</p>
-        </div>
-    );
+    if (loading) return <p className="text-black p-6">Loading post data...</p>;
 
     return (
-        <div className="max-w-4xl mx-auto mt-24 px-6 mb-20">
-            <button onClick={() => router.back()} className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-slate-400 mb-8 hover:text-black">
-                <ArrowLeft className="h-3 w-3" /> Tilbage
-            </button>
+        <div className="max-w-4xl mx-auto p-6 bg-white rounded-xl shadow-sm border border-gray-100">
+            <h1 className="text-3xl font-bold mb-8 text-black">Edit Blog Post</h1>
 
-            <form onSubmit={handleSubmit} className="space-y-12">
-                <header className="border-b border-black pb-8 flex justify-between items-end">
-                    <div>
-                        <h1 className="text-4xl font-black italic uppercase tracking-tighter">Rediger Post</h1>
-                        <p className="text-[10px] font-mono uppercase text-slate-400 mt-2 tracking-widest">Opdater din historie</p>
-                    </div>
-                    <button
-                        type="submit"
-                        disabled={saving}
-                        className="flex items-center gap-3 bg-black text-white px-8 py-4 text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50"
-                    >
-                        <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save changes"}
-                    </button>
-                </header>
+            <form onSubmit={handleSubmit} className="space-y-8">
+                {/* Title */}
+                <div>
+                    <label className="block font-bold text-black mb-2 uppercase text-xs tracking-wider">Headline</label>
+                    <input
+                        type="text"
+                        className="w-full p-3 border border-gray-300 rounded-lg text-black focus:ring-2 focus:ring-black outline-none"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="Enter post title..."
+                        required
+                    />
+                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-                    <div className="md:col-span-2 space-y-8">
-                        <input
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="w-full text-3xl font-serif border-b border-slate-200 py-2 focus:outline-none focus:border-black bg-transparent italic text-black"
-                            placeholder="Title"
-                        />
-                        <textarea
-                            value={content}
-                            onChange={(e) => setContent(e.target.value)}
-                            className="w-full h-96 border border-slate-100 p-6 focus:outline-none focus:ring-1 focus:ring-black text-black bg-white font-serif text-lg leading-relaxed"
-                            placeholder="Content..."
-                        />
-                    </div>
-
-                    <div className="space-y-4">
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Picture</label>
-                        <div className="relative aspect-[3/4] border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden group hover:border-black transition-colors">
-                            {preview ? (
-                                <img src={preview} alt="Preview" className="w-full h-full object-cover grayscale" />
-                            ) : (
-                                <Upload className="h-6 w-6 text-slate-300" />
-                            )}
+                {/* Image Preview & Upload */}
+                <div>
+                    <label className="block font-bold text-black mb-2 uppercase text-xs tracking-wider">Cover Image</label>
+                    <div className="flex items-start gap-4">
+                        {previewUrl && (
+                            <img src={previewUrl} alt="Preview" className="w-32 h-32 object-cover rounded-lg border border-gray-200" />
+                        )}
+                        <div className="flex-1">
                             <input
                                 type="file"
-                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                accept="image/*"
+                                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-black file:text-white hover:file:bg-gray-800 cursor-pointer"
                                 onChange={(e) => {
-                                    if (e.target.files?.[0]) {
-                                        setImageFile(e.target.files[0]);
-                                        setPreview(URL.createObjectURL(e.target.files[0]));
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        setImage(file);
+                                        setPreviewUrl(URL.createObjectURL(file));
                                     }
                                 }}
                             />
+                            <p className="text-xs text-gray-400 mt-2">Recommended: WebP or JPG. Max 5MB.</p>
                         </div>
                     </div>
+                </div>
+
+                {/* Content */}
+                <div>
+                    <label className="block font-bold text-black mb-2 uppercase text-xs tracking-wider">Content (HTML allowed)</label>
+                    <textarea
+                        className="w-full p-4 border border-gray-300 rounded-lg h-80 text-black focus:ring-2 focus:ring-black outline-none font-mono text-sm"
+                        value={content}
+                        onChange={(e) => setContent(e.target.value)}
+                        placeholder="Write your story here..."
+                        required
+                    />
+                </div>
+
+                <hr className="border-gray-100" />
+
+                {/* SETTINGS SECTION */}
+                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 space-y-6">
+                    <h2 className="text-xl font-bold text-black">Display Settings & Relations</h2>
+
+                    {/* Active Toggle */}
+                    <div className="flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
+                        <input
+                            type="checkbox"
+                            id="isActive"
+                            className="w-6 h-6 accent-black cursor-pointer"
+                            checked={isActive}
+                            onChange={(e) => setIsActive(e.target.checked)}
+                        />
+                        <label htmlFor="isActive" className="font-bold text-black cursor-pointer flex-1">
+                            Feature this post on the homepage
+                            <span className="block font-normal text-gray-500 text-sm">Only one post can be featured at a time.</span>
+                        </label>
+                    </div>
+
+                    {/* Product Picker */}
+                    <ProductPicker
+                        selectedIds={selectedProductIds}
+                        onSelectionChange={setSelectedProductIds}
+                    />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-4 pt-4">
+                    <button
+                        type="submit"
+                        className="flex-1 bg-black text-white px-8 py-4 rounded-xl font-bold hover:bg-gray-800 transition-all shadow-lg active:scale-[0.98]"
+                    >
+                        Save Changes
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => router.back()}
+                        className="bg-gray-100 text-black px-8 py-4 rounded-xl font-bold hover:bg-gray-200 transition-all"
+                    >
+                        Cancel
+                    </button>
                 </div>
             </form>
         </div>

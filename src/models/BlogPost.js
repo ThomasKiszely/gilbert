@@ -7,6 +7,8 @@ const blogPostSchema = new mongoose.Schema({
     authorId: { type: mongoose.Types.ObjectId, ref: 'User' },
     image: { type: String, default: null },
     publishedAt: { type: Date, default: Date.now },
+    isActive: { type: Boolean, default: false },
+    relatedProducts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
     }, { timestamps: true }
 );
 

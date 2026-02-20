@@ -63,15 +63,16 @@ async function createPost(req, res, next){
 async function updatePost(req, res, next){
     try{
         const id = req.params.id;
-        const { title, content } = req.body;
-        const postData = {
-            title,
-            content
-        };
+
+        const postData = { ...req.body };
+
+        if (postData.isActive === 'true') postData.isActive = true;
+        if (postData.isActive === 'false') postData.isActive = false;
 
         if (req.file) {
             postData.image = await saveBlogImage(req.file);
         }
+
         const updated = await blogService.updatePost(id, postData);
         return res.status(200).json({ success: true, data: updated });
     } catch(error){

@@ -24,10 +24,20 @@ async function createPost(data, authorId){
 }
 
 async function updatePost(id, data){
+    if (data.isActive === true){
+        await blogRepo.updateMany({}, { isActive: false });
+    }
     if (data.image) {
         const oldPost = await blogRepo.getBlogPostById(id);
         if (oldPost && oldPost.image && oldPost.image !== data.image){
             await imageService.deleteImage(oldPost.image);
+        }
+    }
+    if(typeof data.relatedProducts === 'string'){
+        try{
+            data.relatedProducts = JSON.parse(data.relatedProducts);
+        } catch(err){
+            data.relatedProducts = data.relatedProducts.split(',').filter(id => id.trim());
         }
     }
     if (data.title){
@@ -64,18 +74,25 @@ async function getPostBySlug(slug){
 }
 
 async function getFrontPost(){
-    const posts = await blogRepo.getLatestBlogPost(1);
-    if(!posts || posts.length === 0){
+    // 1. Forsøg at finde det indlæg admin har sat som 'isActive'
+    let post = await blogRepo.getActiveFrontPost();
+
+    // 2. Hvis intet er markeret som aktivt, tag det nyeste som fallback
+    if(!post) {
+        const posts = await blogRepo.getLatestBlogPost(1);
+        post = posts.length > 0 ? posts[0] : null;
+    }
+
+    if(!post){
         return { post: null, teaser: "" };
     }
 
-    const post = posts[0].toObject ? posts[0].toObject() : posts[0];
-
-    const rawContent = post.content || "";
+    const postObj = post.toObject ? post.toObject() : post;
+    const rawContent = postObj.content || "";
     const teaser = sanitizeHtmlContent(rawContent.slice(0, 300));
 
     return {
-        post: post,
+        post: postObj,
         teaser: teaser
     };
 }

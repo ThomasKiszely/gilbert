@@ -1,117 +1,86 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Calendar, Share2 } from "lucide-react";
 
-export default function BlogPostDetail() {
-    const params = useParams();
-    const router = useRouter();
-    const slug = params?.slug;
+export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = await params;
 
-    const [post, setPost] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+    // Vi henter URL'en fra din .env.local. Hvis den ikke findes, falder vi tilbage til localhost:3000
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
-    useEffect(() => {
-        if (!slug) return;
+    // Fetch kører på serveren, så vi skal bruge den fulde URL (baseUrl)
+    const res = await fetch(`${baseUrl}/api/blogs/${slug}`, { cache: 'no-store' });
+    const result = await res.json();
+    const post = result.data;
 
-        const fetchPost = async () => {
-            try {
-                // Her henter vi via SLUG, da det er den offentlige rute
-                const res = await fetch(`/api/blogs/${slug}`);
-                const json = await res.json();
-
-                if (json.success && json.data) {
-                    // VI FIXER _DOC LAGET HER (Præcis som i de andre filer)
-                    const postData = json.data._doc ? json.data._doc : json.data;
-                    setPost(postData);
-                }
-            } catch (err) {
-                console.error("Fejl ved hentning af artikel:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchPost();
-    }, [slug]);
-
-    if (loading) return (
-        <div className="flex flex-col items-center justify-center min-h-screen">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-200" />
-        </div>
-    );
-
-    if (!post) return (
-        <div className="max-w-xl mx-auto mt-40 text-center px-6">
-            <h1 className="text-2xl font-black uppercase italic italic mb-4">Article does not exist</h1>
-            <Link href="/blog" className="text-[10px] font-mono uppercase tracking-widest underline">Back to the Journal</Link>
-        </div>
-    );
+    if (!post) return <div className="p-20 text-center text-black font-bold">Post not found</div>;
 
     return (
-        <article className="pb-32">
-            {/* Hero Sektion med Billede */}
-            <header className="w-full h-[70vh] relative bg-slate-100 overflow-hidden">
-                {post.image ? (
-                    <img
-                        src={post.image}
-                        alt={post.title}
-                        className="w-full h-full object-cover grayscale"
-                    />
-                ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-300 font-mono text-[10px] uppercase tracking-widest">
-                        No visual presentation
+        <main className="min-h-screen bg-white pb-20 text-black">
+            <article className="max-w-4xl mx-auto px-6 py-12">
+                {/* 1. OVERSKRIFT */}
+                <h1 className="text-4xl md:text-6xl font-bold mb-8 tracking-tight">{post.title}</h1>
+
+                {/* 2. BLOG BILLEDE */}
+                {post.image && (
+                    <div className="relative w-full h-[450px] mb-12 bg-gray-100 rounded-lg overflow-hidden">
+                        <Image
+                            // Vi bruger baseUrl her, så billedet altid findes, uanset om det er lokalt eller live
+                            src={post.image.startsWith('http') ? post.image : `${baseUrl}${post.image}`}
+                            alt={post.title}
+                            fill
+                            priority
+                            className="object-cover"
+                            unoptimized
+                        />
                     </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end">
-                    <div className="max-w-6xl mx-auto w-full px-6 pb-12">
-                        <Link href="/blog" className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/70 hover:text-white mb-8 transition-colors">
-                            <ArrowLeft className="h-3 w-3" /> Back to posts
-                        </Link>
-                        <h1 className="text-6xl md:text-8xl font-black italic uppercase tracking-tighter text-white leading-[0.85] max-w-4xl">
-                            {post.title}
-                        </h1>
-                    </div>
-                </div>
-            </header>
 
-            {/* Indholds sektion */}
-            <div className="max-w-6xl mx-auto px-6 mt-12 grid grid-cols-1 md:grid-cols-12 gap-12">
+                {/* 3. INDHOLD */}
+                <div
+                    className="prose prose-lg max-w-none mb-20 text-black"
+                    dangerouslySetInnerHTML={{ __html: post.content }}
+                />
 
-                {/* Side-info (Dato, Kategori osv.) */}
-                <aside className="md:col-span-3 space-y-8 border-t border-slate-100 pt-8">
-                    <div>
-                        <span className="block text-[10px] font-mono uppercase tracking-widest text-slate-400 mb-2">Published</span>
-                        <div className="flex items-center gap-2 font-bold uppercase italic text-sm">
-                            <Calendar className="h-3 w-3" />
-                            {post.publishedAt ? new Date(post.publishedAt).toLocaleDateString('da-DK', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Ukendt dato'}
+                {/* 4. RELATED PRODUCTS */}
+                {post.relatedProducts && post.relatedProducts.length > 0 ? (
+                    <section className="border-t border-gray-200 pt-16">
+                        <h2 className="text-2xl font-bold mb-10 uppercase tracking-widest">Shop the Story</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            {post.relatedProducts.map((product: any) => (
+                                <Link href={`/product/${product._id}`} key={product._id} className="group">
+                                    <div className="relative aspect-[3/4] mb-4 bg-gray-50 overflow-hidden rounded-lg">
+                                        <Image
+                                            src={product.images?.[0] ? `${baseUrl}/api/images/products/${product.images[0]}` : '/placeholder.jpg'}
+                                            alt={product.title}
+                                            fill
+                                            className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                            unoptimized
+                                        />
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">
+                                            {product.brand?.name || "Vintage"}
+                                        </p>
+                                        <h3 className="font-bold text-black group-hover:underline">{product.title}</h3>
+                                        <p className="text-sm font-medium mt-1">{product.price} DKK</p>
+                                    </div>
+                                </Link>
+                            ))}
                         </div>
-                    </div>
-                    <div className="pt-8">
-                        <button
-                            onClick={() => window.print()}
-                            className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-slate-400 hover:text-black transition-colors"
-                        >
-                            <Share2 className="h-3 w-3" /> Share article
-                        </button>
-                    </div>
-                </aside>
+                    </section>
+                ) : (
+                    <p className="text-gray-400 italic text-center py-10 border-t border-gray-100">
+                        No related products selected for this post.
+                    </p>
+                )}
 
-                {/* Selve Brødteksten */}
-                <main className="md:col-span-8 md:col-start-5">
-                    <div
-                        className="prose prose-slate prose-xl max-w-none font-serif leading-relaxed text-slate-800
-                        first-letter:text-7xl first-letter:font-black first-letter:mr-3 first-letter:float-left first-letter:text-black"
-                        dangerouslySetInnerHTML={{ __html: post.content }}
-                    />
-
-                    <footer className="mt-20 pt-12 border-t border-black">
-                        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-slate-400">Thanks for reading the Journal</p>
-                    </footer>
-                </main>
-            </div>
-        </article>
+                {/* 5. BACK LINK - Nu rettet til /blog */}
+                <div className="mt-20 text-center">
+                    <Link href="/blog" className="text-xs font-bold uppercase tracking-widest border-b-2 border-black pb-1 hover:text-gray-500 hover:border-gray-500 transition">
+                        Back to All Stories
+                    </Link>
+                </div>
+            </article>
+        </main>
     );
 }

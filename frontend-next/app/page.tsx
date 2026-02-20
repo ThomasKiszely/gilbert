@@ -14,7 +14,7 @@ const Index = () => {
 
     async function loadData() {
         try {
-            // 1. Hent produkter
+            // 1. Hent produkter (Vi bruger rewrites, så ingen 'http://localhost:3000' her)
             const res = await api("/api/products");
             const data = await res.json();
             const mapped = data.map((p: ApiProduct): Product => ({
@@ -22,13 +22,14 @@ const Index = () => {
                 title: p.title,
                 brand: p.brand?.name || "",
                 price: p.price,
+                // Rewrites sørger for at /api/images/... rammer rigtigt
                 imageUrl: p.images?.[0] || "/images/ImagePlaceholder.jpg",
                 tag: p.tags?.[0]?.name,
                 isFavorite: p.isFavorite ?? false,
             }));
             setProducts(mapped);
 
-            // 2. HENT BLOG
+            // 2. HENT DET AKTIVE BLOGINDLÆG
             const blogRes = await api("/api/blogs/front");
             const blogData = await blogRes.json();
 
@@ -36,10 +37,12 @@ const Index = () => {
                 const { post, teaser } = blogData.data;
 
                 if (post) {
-                    const cleanPost = post._doc ? post._doc : post;
+                    // Vi fjerner HTML-tags så de ikke ødelægger forsiden, og tager de første 150 tegn
+                    const cleanTeaser = teaser || post.content?.replace(/<[^>]*>/g, '').substring(0, 150);
+
                     setFrontPost({
-                        ...cleanPost,
-                        displayTeaser: teaser || cleanPost.content?.substring(0, 150)
+                        ...post,
+                        displayTeaser: cleanTeaser
                     });
                 }
             }
@@ -48,24 +51,21 @@ const Index = () => {
         }
     }
 
-    // HER ER FUNKTIONEN DER MANGLEDE:
     async function handleToggleFavorite(productId: string) {
+        // Optimistisk update af UI
         setProducts(prev =>
             prev.map(p =>
-                p.id === productId
-                    ? { ...p, isFavorite: !p.isFavorite }
-                    : p
+                p.id === productId ? { ...p, isFavorite: !p.isFavorite } : p
             )
         );
 
         const success = await toggleFavorite(productId);
 
         if (!success) {
+            // Rul tilbage hvis API-kaldet fejler
             setProducts(prev =>
                 prev.map(p =>
-                    p.id === productId
-                        ? { ...p, isFavorite: !p.isFavorite }
-                        : p
+                    p.id === productId ? { ...p, isFavorite: !p.isFavorite } : p
                 )
             );
         }
@@ -77,16 +77,11 @@ const Index = () => {
 
     return (
         <div className="pb-10">
+            {/* HER ER DIN DYNAMISKE BLOG-SEKTION */}
             <BlogPost
                 title={frontPost?.title || "Vintage Office Core"}
-                subtitle={frontPost?.displayTeaser ? (
-                    <div
-                        dangerouslySetInnerHTML={{ __html: frontPost.displayTeaser }}
-                        className="line-clamp-2"
-                    />
-                ) : (
-                    "Shop vintage tailoring – hand-picked pieces for the modern professional."
-                )}
+                subtitle={frontPost?.displayTeaser || "Shop vintage tailoring – hand-picked pieces for the modern professional."}
+                // imageUrl bruger nu også rewrites (f.eks. /api/images/blogs/billede.jpg)
                 imageUrl={frontPost?.image || "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=80"}
                 slug={frontPost?.slug}
             />
