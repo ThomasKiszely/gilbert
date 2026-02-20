@@ -99,6 +99,7 @@ async function filterProducts(req, res, next) {
             subcategoryId,
             typeId,
             brandId,
+            gender,
             page = 1,
             limit = 20
         } = req.query;
@@ -109,6 +110,7 @@ async function filterProducts(req, res, next) {
         if (subcategoryId) filters.subcategory = subcategoryId;
         if (typeId) filters.tags = typeId;
         if (brandId) filters.brand = brandId;
+        if (gender) filters.gender = gender;
 
         const products = await productService.findProducts(filters, page, limit);
 
