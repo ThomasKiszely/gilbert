@@ -47,34 +47,7 @@ async function readAllProducts(req, res, next) {
         next(error);
     }
 }
-async function searchProducts(req, res, next) {
-    try {
-        const {q, page = 1, limit = 20} = req.query;
 
-        const filters = {}
-
-        if(q) {
-            filters.$or = [
-                {title: new RegExp(q, 'i')},
-                {description: new RegExp(q, 'i')},
-                {"brand.name": new RegExp(q, 'i')},
-                {"tags.name": new RegExp(q, 'i')},
-                {"category.name": new RegExp(q, 'i')},
-                {"subcategory.name": new RegExp(q, 'i')},
-            ];
-        }
-        const userId = req.user?.id;
-        const products = await productService.searchProducts(filters, page, limit, userId);
-        if (!products) {
-            const err = new Error('Products not found with filters');
-            err.status = 400;
-            return next(err);
-        }
-        return res.status(200).json(products);
-    } catch (error) {
-        next(error);
-    }
-}
 async function getProductById(req, res, next) {
     try {
         const userId = req.user?.id;
@@ -121,27 +94,32 @@ async function deleteProduct(req, res, next) {
 
 async function filterProducts(req, res, next) {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 20;
+        const {
+            categoryId,
+            subcategoryId,
+            typeId,
+            brandId,
+            page = 1,
+            limit = 20
+        } = req.query;
 
-        const filters = {
-            ...req.query
-        };
-        delete filters.page;
-        delete filters.limit;
+        const filters = { status: "Approved" };
 
-        const userId = req.user?.id;
-        const products = await productService.findProducts(filters, page, limit, userId);
-        if (!products) {
-            const err = new Error('Products not found with filters');
-            err.status = 400;
-            return next(err);
-        }
+        if (categoryId) filters.category = categoryId;
+        if (subcategoryId) filters.subcategory = subcategoryId;
+        if (typeId) filters.tags = typeId;
+        if (brandId) filters.brand = brandId;
+
+        const products = await productService.findProducts(filters, page, limit);
+
         return res.status(200).json(products);
     } catch (error) {
         next(error);
     }
 }
+
+
+
 
 
 
@@ -164,7 +142,7 @@ async function getProductsBySeller(req, res, next) {
 module.exports = {
     createProduct,
     readAllProducts,
-    searchProducts,
+    filterProducts,
     getProductById,
     updateProduct,
     deleteProduct,
