@@ -14,6 +14,16 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
     if (!post) return <div className="p-20 text-center text-black font-bold">Post not found</div>;
 
+    // Hjælper-funktion til at sikre korrekte produktbillede-stier
+    const getProductImageUrl = (img: string) => {
+        if (!img) return '/placeholder.jpg';
+        if (img.startsWith('http')) return img;
+        // Hvis databasen allerede gemmer stien som "/api/images/products/...", så tilføjer vi kun baseUrl
+        if (img.startsWith('/api/images/products/')) return `${baseUrl}${img}`;
+        // Ellers bygger vi den fulde sti manuelt
+        return `${baseUrl}/api/images/products/${img}`;
+    };
+
     return (
         <main className="min-h-screen bg-white pb-20 text-black">
             <article className="max-w-4xl mx-auto px-6 py-12">
@@ -24,8 +34,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                 {post.image && (
                     <div className="relative w-full h-[450px] mb-12 bg-gray-100 rounded-lg overflow-hidden">
                         <Image
-                            // Vi bruger baseUrl her, så billedet altid findes, uanset om det er lokalt eller live
-                            src={post.image.startsWith('http') ? post.image : `${baseUrl}${post.image}`}
+                            src={post.image.startsWith('http') ? post.image : `${baseUrl}${post.image.startsWith('/') ? '' : '/'}${post.image}`}
                             alt={post.title}
                             fill
                             priority
@@ -37,20 +46,20 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
                 {/* 3. INDHOLD */}
                 <div
-                    className="prose prose-lg max-w-none mb-20 text-black"
+                    className="prose prose-lg max-w-none mb-20 text-black leading-relaxed"
                     dangerouslySetInnerHTML={{ __html: post.content }}
                 />
 
                 {/* 4. RELATED PRODUCTS */}
                 {post.relatedProducts && post.relatedProducts.length > 0 ? (
                     <section className="border-t border-gray-200 pt-16">
-                        <h2 className="text-2xl font-bold mb-10 uppercase tracking-widest">Shop the Story</h2>
+                        <h2 className="text-2xl font-bold mb-10 uppercase tracking-widest text-center">Shop the Story</h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                             {post.relatedProducts.map((product: any) => (
                                 <Link href={`/product/${product._id}`} key={product._id} className="group">
-                                    <div className="relative aspect-[3/4] mb-4 bg-gray-50 overflow-hidden rounded-lg">
+                                    <div className="relative aspect-[3/4] mb-4 bg-gray-50 overflow-hidden rounded-lg border border-gray-100">
                                         <Image
-                                            src={product.images?.[0] ? `${baseUrl}/api/images/products/${product.images[0]}` : '/placeholder.jpg'}
+                                            src={getProductImageUrl(product.images?.[0])}
                                             alt={product.title}
                                             fill
                                             className="object-cover transition-transform duration-500 group-hover:scale-105"
@@ -59,9 +68,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                                     </div>
                                     <div className="text-center">
                                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">
-                                            {product.brand?.name || "Vintage"}
+                                            {product.brand?.name || "Vintage Selection"}
                                         </p>
-                                        <h3 className="font-bold text-black group-hover:underline">{product.title}</h3>
+                                        <h3 className="font-bold text-black group-hover:underline text-sm uppercase">{product.title}</h3>
                                         <p className="text-sm font-medium mt-1">{product.price} DKK</p>
                                     </div>
                                 </Link>
@@ -70,13 +79,13 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                     </section>
                 ) : (
                     <p className="text-gray-400 italic text-center py-10 border-t border-gray-100">
-                        No related products selected for this post.
+                        No products tagged in this story yet.
                     </p>
                 )}
 
-                {/* 5. BACK LINK - Nu rettet til /blog */}
-                <div className="mt-20 text-center">
-                    <Link href="/blog" className="text-xs font-bold uppercase tracking-widest border-b-2 border-black pb-1 hover:text-gray-500 hover:border-gray-500 transition">
+                {/* 5. BACK LINK */}
+                <div className="mt-24 text-center">
+                    <Link href="/blog" className="text-[10px] font-bold uppercase tracking-[0.3em] border-b-2 border-black pb-2 hover:text-gray-500 hover:border-gray-500 transition-all">
                         Back to All Stories
                     </Link>
                 </div>
