@@ -1,47 +1,46 @@
-import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/app/components/UI/button";
+
 interface BlogPostProps {
     title: string;
-    subtitle: string;
+    subtitle: React.ReactNode;
     imageUrl: string;
-    link?: string;
+    slug?: string; // Valgfri, så vi ikke ødelægger noget
 }
 
-const BlogPost = ({ title, subtitle, imageUrl, link = "/search" }: BlogPostProps) => {
+const BlogPost = ({ title, subtitle, imageUrl, slug }: BlogPostProps) => {
     return (
-        <section className="w-full">
-            <div className="relative w-full h-[400px] md:h-[500px] overflow-hidden">
+        <section className="relative h-[70vh] min-h-[500px] max-h-[700px] w-full overflow-hidden bg-slate-200">
+            {/* Baggrundsbillede med mørkere overlay direkte på billedet */}
+            <div className="absolute inset-0 bg-black/40 z-10" />
+            <img
+                src={imageUrl}
+                alt={title}
+                className="absolute inset-0 h-full w-full object-cover grayscale brightness-75"
+            />
 
-                <div
-                    className="absolute inset-0 bg-cover bg-center"
-                    style={{ backgroundImage: `url(${imageUrl})` }}
-                >
-                    <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+            {/* Tekstindhold */}
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center text-white text-center px-6">
+                <h2 className="text-4xl md:text-6xl lg:text-8xl font-black italic uppercase tracking-tighter mb-4 leading-[0.8] max-w-4xl">
+                    {title}
+                </h2>
+
+                {/* Her begrænser vi højden på din teaser så den ikke fylder det hele */}
+                <div className="max-w-xl text-sm md:text-base font-light opacity-90 line-clamp-3 mb-8">
+                    {subtitle}
                 </div>
 
-                <div className="relative h-full flex flex-col justify-end p-6 md:p-10">
-                    <span className="text-xs uppercase tracking-widest text-foreground/70 mb-2">
-                        This Week's Selection
-                    </span>
-                    <h2 className="text-3xl md:text-4xl font-serif text-foreground mb-2">
-                        {title}
-                    </h2>
-
-                    <p className="text-foreground/80 mb-4 max-w-md">
-                        {subtitle}
-                    </p>
-
-                    <Link href={link}>
-                        <Button
-                            variant="outline"
-                            className="w-fit border-foreground text-foreground hover:bg-foreground hover:text-background transition-colors"
-                        >
-                            Shop Now
-                            <ChevronRight className="ml-2 h-4 w-4" />
-                        </Button>
+                {slug ? (
+                    <Link
+                        href={`/blog/${slug}`}
+                        className="border border-white px-10 py-4 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-white hover:text-black transition-all"
+                    >
+                        Read Story
                     </Link>
-                </div>
+                ) : (
+                    <button className="border border-white px-10 py-4 text-[10px] font-black uppercase tracking-[0.3em] hover:bg-white hover:text-black transition-all">
+                        Explore Collection
+                    </button>
+                )}
             </div>
         </section>
     );

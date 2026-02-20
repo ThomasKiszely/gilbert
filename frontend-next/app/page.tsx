@@ -6,18 +6,17 @@ import FeaturedProducts from "@/app/components/home/FeaturedProducts";
 import CategoryList from "@/app/components/home/CategoryList";
 import type { ApiProduct, Product } from "@/app/components/product/types";
 import { api } from "@/app/api/api";
-import { toggleFavorite } from "@/app/api/favorites"; // ⭐ Rettet sti
-
+import { toggleFavorite } from "@/app/api/favorites";
 
 const Index = () => {
     const [products, setProducts] = useState<Product[]>([]);
+    const [frontPost, setFrontPost] = useState<any>(null);
 
-    async function loadProducts() {
+    async function loadData() {
         try {
+            // 1. Hent produkter
             const res = await api("/api/products");
             const data = await res.json();
-
-            // Vi mapper data så det passer til vores frontend typer
             const mapped = data.map((p: ApiProduct): Product => ({
                 id: p._id,
                 title: p.title,
@@ -27,15 +26,30 @@ const Index = () => {
                 tag: p.tags?.[0]?.name,
                 isFavorite: p.isFavorite ?? false,
             }));
-
             setProducts(mapped);
+
+            // 2. HENT BLOG
+            const blogRes = await api("/api/blogs/front");
+            const blogData = await blogRes.json();
+
+            if (blogData.success && blogData.data) {
+                const { post, teaser } = blogData.data;
+
+                if (post) {
+                    const cleanPost = post._doc ? post._doc : post;
+                    setFrontPost({
+                        ...cleanPost,
+                        displayTeaser: teaser || cleanPost.content?.substring(0, 150)
+                    });
+                }
+            }
         } catch (err) {
-            console.error("Fejl ved hentning af produkter:", err);
+            console.error("Fejl ved indlæsning af data:", err);
         }
     }
 
+    // HER ER FUNKTIONEN DER MANGLEDE:
     async function handleToggleFavorite(productId: string) {
-        // Opdater UI med det samme (før backend svarer)
         setProducts(prev =>
             prev.map(p =>
                 p.id === productId
@@ -44,10 +58,8 @@ const Index = () => {
             )
         );
 
-        // Synkroniser med backend
         const success = await toggleFavorite(productId);
 
-        // Hvis backenden fejler, ruller vi tilbage (valgfrit men godt)
         if (!success) {
             setProducts(prev =>
                 prev.map(p =>
@@ -60,15 +72,23 @@ const Index = () => {
     }
 
     useEffect(() => {
-        loadProducts();
+        loadData();
     }, []);
 
     return (
         <div className="pb-10">
             <BlogPost
-                title="Vintage Office Core"
-                subtitle="Shop vintage tailoring – hand-picked pieces for the modern professional."
-                imageUrl="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=80"
+                title={frontPost?.title || "Vintage Office Core"}
+                subtitle={frontPost?.displayTeaser ? (
+                    <div
+                        dangerouslySetInnerHTML={{ __html: frontPost.displayTeaser }}
+                        className="line-clamp-2"
+                    />
+                ) : (
+                    "Shop vintage tailoring – hand-picked pieces for the modern professional."
+                )}
+                imageUrl={frontPost?.image || "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=80"}
+                slug={frontPost?.slug}
             />
 
             <CategoryList

@@ -36,10 +36,20 @@ async function listPublicPosts(req, res, next){
 async function createPost(req, res, next){
     try{
         const authorId = req.user?.id;
-        const post = req.body;
-        const created = await blogService.createPost(post, authorId);
+
+        const title = req.body.title;
+        const content = req.body.content;
+
+        const postData = {
+            title: title,
+            content: content,
+            image: req.file ? `/api/images/blogs/${req.file.filename}` : null
+        }
+
+        const created = await blogService.createPost(postData, authorId);
         return res.status(201).json({ success: true, data: created });
     } catch(error){
+        console.error("Fejl i createPost controller:", error);
         next(error);
     }
 }
@@ -47,8 +57,16 @@ async function createPost(req, res, next){
 async function updatePost(req, res, next){
     try{
         const id = req.params.id;
-        const post = req.body;
-        const updated = await blogService.updatePost(id, post);
+        const { title, content } = req.body;
+        const postData = {
+            title,
+            content
+        };
+
+        if (req.file) {
+            postData.image = `/api/images/blogs/${req.file.filename}`;
+        }
+        const updated = await blogService.updatePost(id, postData);
         return res.status(200).json({ success: true, data: updated });
     } catch(error){
         next(error);
@@ -65,6 +83,22 @@ async function deletePost(req, res, next){
     }
 }
 
+async function getPostById(req, res, next) {
+    try {
+        const id = req.params.id;
+        const post = await blogService.getPostById(id);
+
+        if (!post) {
+            return res.status(404).json({ success: false, message: "Post not found by ID" });
+        }
+
+        return res.status(200).json({ success: true, data: post });
+    } catch (error) {
+        next(error);
+    }
+}
+
+
 module.exports = {
     getFrontPost,
     getPostBySlug,
@@ -72,4 +106,5 @@ module.exports = {
     createPost,
     updatePost,
     deletePost,
+    getPostById,
 }

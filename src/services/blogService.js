@@ -51,21 +51,38 @@ async function getPostBySlug(slug){
 async function getFrontPost(){
     const posts = await blogRepo.getLatestBlogPost(1);
     if(!posts || posts.length === 0){
-        return { post: null };
+        return { post: null, teaser: "" };
     }
-    const post = posts[0];
-    const teaser = sanitizeHtmlContent(post.content.slice(0, 300));
 
-    return { post: { ...post, teaser } };
+    const post = posts[0].toObject ? posts[0].toObject() : posts[0];
+
+    const rawContent = post.content || "";
+    const teaser = sanitizeHtmlContent(rawContent.slice(0, 300));
+
+    return {
+        post: post,
+        teaser: teaser
+    };
 }
 
 async function listPublicPosts(skip = 0, limit = 20){
     const posts = await blogRepo.listBlogPosts(skip, limit);
-    return posts.map(p => ({
-        ...p,
-        teaser: sanitizeHtmlContent(p.content.slice(0, 300)),
-    }));
+
+    return posts.map(p => {
+        const postObj = p.toObject ? p.toObject() : p;
+        const rawContent = postObj.content || "";
+
+        return {
+            ...postObj,
+            teaser: sanitizeHtmlContent(rawContent.slice(0, 300)),
+        };
+    });
 }
+async function getPostById(id) {
+    const post = await blogRepo.getBlogPostById(id);
+    return post;
+}
+
 
 module.exports = {
     createPost,
@@ -74,4 +91,5 @@ module.exports = {
     listPublicPosts,
     getPostBySlug,
     getFrontPost,
+    getPostById,
 }
