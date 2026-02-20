@@ -5,7 +5,7 @@ const userRepo = require('../data/userRepo');
 
 const PRODUCT_DIR = path.join(__dirname, '../../uploads/products');
 const PROFILE_DIR = path.join(__dirname, '../../uploads/avatars');
-
+const BLOG_DIR = path.join(__dirname, '../../uploads/blogs');
 function ensureDir(dir) {
     if(!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
@@ -24,6 +24,17 @@ async function saveProductImage(file) {
         .toFile(outputPath);
     fs.unlinkSync(file.path);
     return `/api/images/products/${outputFilename}`;
+}
+
+async function saveBlogImage(file) {
+    const outputFilename = file.filename + ".webp";
+    const outputPath = path.join(BLOG_DIR, outputFilename);
+    await sharp(file.path)
+        .resize(1200)
+        .webp({ quality: 80 })
+        .toFile(outputPath);
+    fs.unlinkSync(file.path);
+    return `/api/images/blogs/${outputFilename}`;
 }
 
 async function saveAvatar(file, userId) {
@@ -68,5 +79,6 @@ async function deleteImage(imageUrl) {
 module.exports = {
     saveProductImage,
     saveAvatar,
+    saveBlogImage,
     deleteImage
 }

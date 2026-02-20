@@ -1,5 +1,5 @@
 const blogService = require('../services/blogService');
-
+const {saveBlogImage} = require('../services/imageService');
 
 async function getFrontPost(req, res, next){
     try{
@@ -40,10 +40,16 @@ async function createPost(req, res, next){
         const title = req.body.title;
         const content = req.body.content;
 
+        if(!req.file){
+            return res.status(400).json({ success: false, message: 'No file uploaded.' });
+        }
+
+        const blogUrl = await saveBlogImage(req.file);
+
         const postData = {
             title: title,
             content: content,
-            image: req.file ? `/api/images/blogs/${req.file.filename}` : null
+            image: blogUrl,
         }
 
         const created = await blogService.createPost(postData, authorId);
@@ -64,7 +70,7 @@ async function updatePost(req, res, next){
         };
 
         if (req.file) {
-            postData.image = `/api/images/blogs/${req.file.filename}`;
+            postData.image = await saveBlogImage(req.file);
         }
         const updated = await blogService.updatePost(id, postData);
         return res.status(200).json({ success: true, data: updated });
