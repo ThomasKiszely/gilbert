@@ -73,10 +73,10 @@ export default function EditBlogPost() {
                 router.push("/admin/blog");
                 router.refresh();
             } else {
-                alert("Fejl ved gem: " + json.message);
+                alert("Could not save: " + json.message);
             }
         } catch (err) {
-            alert("Kunne ikke opdatere indlægget");
+            alert("Could not update post");
         } finally {
             setSaving(false);
         }
@@ -106,7 +106,7 @@ export default function EditBlogPost() {
                         disabled={saving}
                         className="flex items-center gap-3 bg-black text-white px-8 py-4 text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 disabled:opacity-50"
                     >
-                        <Save className="h-4 w-4" /> {saving ? "Gemmer..." : "Gem ændringer"}
+                        <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save changes"}
                     </button>
                 </header>
 
@@ -117,18 +117,18 @@ export default function EditBlogPost() {
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             className="w-full text-3xl font-serif border-b border-slate-200 py-2 focus:outline-none focus:border-black bg-transparent italic text-black"
-                            placeholder="Titel"
+                            placeholder="Title"
                         />
                         <textarea
                             value={content}
                             onChange={(e) => setContent(e.target.value)}
                             className="w-full h-96 border border-slate-100 p-6 focus:outline-none focus:ring-1 focus:ring-black text-black bg-white font-serif text-lg leading-relaxed"
-                            placeholder="Indhold..."
+                            placeholder="Content..."
                         />
                     </div>
 
                     <div className="space-y-4">
-                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Billede</label>
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Picture</label>
                         <div className="relative aspect-[3/4] border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden group hover:border-black transition-colors">
                             {preview ? (
                                 <img src={preview} alt="Preview" className="w-full h-full object-cover grayscale" />

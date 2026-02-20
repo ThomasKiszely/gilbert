@@ -26,15 +26,15 @@ export default function AdminBlogList() {
                 setPosts(cleanPosts);
             }
         } catch (err) {
-            console.error("Fejl ved hentning af blogs:", err);
+            console.error("Error fetching blogs:", err);
         } finally {
             setLoading(false);
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!id) return alert("Fejl: Indlægget har intet ID");
-        if (!confirm("Er du sikker på, at du vil slette dette indlæg?")) return;
+        if (!id) return alert("Error: Post has no ID");
+        if (!confirm("Are you sure you want to delete post?")) return;
 
         try {
             const res = await fetch(`/api/blogs/${id}`, { method: 'DELETE' });
@@ -56,7 +56,7 @@ export default function AdminBlogList() {
     if (loading) return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-slate-300" />
-            <div className="font-mono text-[10px] uppercase tracking-widest text-slate-400">Henter Journal...</div>
+            <div className="font-mono text-[10px] uppercase tracking-widest text-slate-400">Getting Journal...</div>
         </div>
     );
 
@@ -65,13 +65,13 @@ export default function AdminBlogList() {
             <header className="flex justify-between items-end border-b border-black pb-8 mb-12">
                 <div>
                     <h1 className="text-4xl font-black italic uppercase tracking-tighter text-black">Blog Administration</h1>
-                    <p className="text-[10px] font-mono uppercase tracking-widest text-slate-400 mt-2">Styr dine artikler</p>
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-slate-400 mt-2">Article dashboard</p>
                 </div>
                 <Link
                     href="/admin/blog/new"
                     className="bg-black text-white px-6 py-3 text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all flex items-center gap-2"
                 >
-                    <Plus className="h-4 w-4" /> Opret nyt indlæg
+                    <Plus className="h-4 w-4" /> Create new post
                 </Link>
             </header>
 
@@ -79,9 +79,9 @@ export default function AdminBlogList() {
                 <table className="w-full text-left border-collapse">
                     <thead>
                     <tr className="border-b border-slate-100">
-                        <th className="py-4 text-[10px] font-mono uppercase tracking-widest text-slate-400">Dato</th>
-                        <th className="py-4 text-[10px] font-mono uppercase tracking-widest text-slate-400">Titel</th>
-                        <th className="py-4 text-[10px] font-mono uppercase tracking-widest text-slate-400 text-right">Handlinger</th>
+                        <th className="py-4 text-[10px] font-mono uppercase tracking-widest text-slate-400">Date</th>
+                        <th className="py-4 text-[10px] font-mono uppercase tracking-widest text-slate-400">Title</th>
+                        <th className="py-4 text-[10px] font-mono uppercase tracking-widest text-slate-400 text-right">Actions</th>
                     </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -134,7 +134,7 @@ export default function AdminBlogList() {
                 </table>
                 {posts.length === 0 && (
                     <div className="py-20 text-center text-slate-400 font-mono text-[10px] uppercase tracking-widest">
-                        Ingen indlæg fundet...
+                        No posts found...
                     </div>
                 )}
             </div>

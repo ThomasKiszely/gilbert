@@ -45,8 +45,8 @@ export default function BlogPostDetail() {
 
     if (!post) return (
         <div className="max-w-xl mx-auto mt-40 text-center px-6">
-            <h1 className="text-2xl font-black uppercase italic italic mb-4">Artiklen findes ikke</h1>
-            <Link href="/blog" className="text-[10px] font-mono uppercase tracking-widest underline">Tilbage til Journalen</Link>
+            <h1 className="text-2xl font-black uppercase italic italic mb-4">Article does not exist</h1>
+            <Link href="/blog" className="text-[10px] font-mono uppercase tracking-widest underline">Back to the Journal</Link>
         </div>
     );
 
@@ -62,13 +62,13 @@ export default function BlogPostDetail() {
                     />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center text-slate-300 font-mono text-[10px] uppercase tracking-widest">
-                        Ingen visuel repræsentation
+                        No visual presentation
                     </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end">
                     <div className="max-w-6xl mx-auto w-full px-6 pb-12">
                         <Link href="/blog" className="inline-flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-white/70 hover:text-white mb-8 transition-colors">
-                            <ArrowLeft className="h-3 w-3" /> Tilbage til oversigt
+                            <ArrowLeft className="h-3 w-3" /> Back to posts
                         </Link>
                         <h1 className="text-6xl md:text-8xl font-black italic uppercase tracking-tighter text-white leading-[0.85] max-w-4xl">
                             {post.title}
@@ -83,7 +83,7 @@ export default function BlogPostDetail() {
                 {/* Side-info (Dato, Kategori osv.) */}
                 <aside className="md:col-span-3 space-y-8 border-t border-slate-100 pt-8">
                     <div>
-                        <span className="block text-[10px] font-mono uppercase tracking-widest text-slate-400 mb-2">Publiceret</span>
+                        <span className="block text-[10px] font-mono uppercase tracking-widest text-slate-400 mb-2">Published</span>
                         <div className="flex items-center gap-2 font-bold uppercase italic text-sm">
                             <Calendar className="h-3 w-3" />
                             {post.publishedAt ? new Date(post.publishedAt).toLocaleDateString('da-DK', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Ukendt dato'}
@@ -94,7 +94,7 @@ export default function BlogPostDetail() {
                             onClick={() => window.print()}
                             className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-widest text-slate-400 hover:text-black transition-colors"
                         >
-                            <Share2 className="h-3 w-3" /> Del artiklen
+                            <Share2 className="h-3 w-3" /> Share article
                         </button>
                     </div>
                 </aside>
@@ -108,7 +108,7 @@ export default function BlogPostDetail() {
                     />
 
                     <footer className="mt-20 pt-12 border-t border-black">
-                        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-slate-400">Tak for at læse med i Journalen</p>
+                        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-slate-400">Thanks for reading the Journal</p>
                     </footer>
                 </main>
             </div>

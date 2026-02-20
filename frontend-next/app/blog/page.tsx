@@ -44,7 +44,7 @@ export default function PublicBlogIndex() {
         <main className="max-w-6xl mx-auto mt-32 px-6 mb-32">
             <header className="mb-24">
                 <h1 className="text-7xl font-black italic uppercase tracking-tighter mb-4 text-black">Journal</h1>
-                <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-slate-400 italic">Nyheder, taktik og historier fra maskinrummet</p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.4em] text-slate-400 italic">News and stories from Gilbert</p>
             </header>
 
             <div className="grid grid-cols-1 gap-32">
@@ -63,7 +63,7 @@ export default function PublicBlogIndex() {
                                         />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center text-slate-200 font-mono text-[10px] uppercase tracking-widest">
-                                            Intet billede
+                                            No picture
                                         </div>
                                     )}
                                 </div>
@@ -88,7 +88,7 @@ export default function PublicBlogIndex() {
                                     />
 
                                     <div className="flex items-center gap-3 font-black uppercase text-[10px] tracking-[0.2em] pt-6 text-black">
-                                        Læs hele artiklen <ArrowRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
+                                        Read the article <ArrowRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
                                     </div>
                                 </div>
                             </Link>
