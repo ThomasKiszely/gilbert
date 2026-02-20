@@ -6,14 +6,17 @@ const userRepo = require('../data/userRepo');
 const PRODUCT_DIR = path.join(__dirname, '../../uploads/products');
 const PROFILE_DIR = path.join(__dirname, '../../uploads/avatars');
 const BLOG_DIR = path.join(__dirname, '../../uploads/blogs');
+
 function ensureDir(dir) {
     if(!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
     }
 }
 
+// Sørg for at alle mapper eksisterer ved opstart
 ensureDir(PRODUCT_DIR);
 ensureDir(PROFILE_DIR);
+ensureDir(BLOG_DIR); // Vigtigt: Tilføjet her
 
 async function saveProductImage(file) {
     const outputFilename = file.filename + ".webp";
@@ -56,14 +59,17 @@ async function saveAvatar(file, userId) {
 }
 
 async function deleteImage(imageUrl) {
-    const filename = imageUrl.split("/").pop();
+    if (!imageUrl) return;
 
+    const filename = imageUrl.split("/").pop();
     let dir;
 
     if (imageUrl.includes("/products/")) {
         dir = PRODUCT_DIR;
     } else if (imageUrl.includes("/avatars/")) {
         dir = PROFILE_DIR;
+    } else if (imageUrl.includes("/blogs/")) {
+        dir = BLOG_DIR;
     } else {
         return;
     }
@@ -71,10 +77,9 @@ async function deleteImage(imageUrl) {
     const filePath = path.join(dir, filename);
 
     if (fs.existsSync(filePath)) {
-       await fs.unlinkSync(filePath);
+        fs.unlinkSync(filePath); // Fjernet await her
     }
 }
-
 
 module.exports = {
     saveProductImage,

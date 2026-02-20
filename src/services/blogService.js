@@ -1,4 +1,5 @@
 const blogRepo = require('../data/blogRepo');
+const imageService = require('../services/imageService');
 
 const { sanitizeString, sanitizeHtmlContent } = require('../utils/sanitize');
 const { slugify } = require('../utils/slugify');
@@ -23,6 +24,12 @@ async function createPost(data, authorId){
 }
 
 async function updatePost(id, data){
+    if (data.image) {
+        const oldPost = await blogRepo.getBlogPostById(id);
+        if (oldPost && oldPost.image && oldPost.image !== data.image){
+            await imageService.deleteImage(oldPost.image);
+        }
+    }
     if (data.title){
         data.title = sanitizeString(data.title);
     }
@@ -36,6 +43,14 @@ async function updatePost(id, data){
 }
 
 async function removePost(id){
+    const blogPost = await blogRepo.getBlogPostById(id);
+    if (!blogPost) {
+        throw new Error('Blog post not found');
+    }
+    const picture = blogPost.image;
+    if(picture){
+        await imageService.deleteImage(picture);
+    }
     return await blogRepo.deleteBlogPost(id);
 }
 
