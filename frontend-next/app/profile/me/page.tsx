@@ -34,6 +34,11 @@ const MePage = () => {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [products, setProducts] = useState<ApiProduct[]>([]);
     const router = useRouter();
+    const [followers, setFollowers] = useState<any[]>([]);
+    const [following, setFollowing] = useState<any[]>([]);
+    const [showFollowers, setShowFollowers] = useState(false);
+    const [showFollowing, setShowFollowing] = useState(false);
+
 
     useEffect(() => {
         async function loadProfile() {
@@ -59,6 +64,38 @@ const MePage = () => {
         }
         loadMyProducts();
     }, [user]);
+
+
+    useEffect(() => {
+        async function loadFollowData() {
+            if (!user) return;
+            try {
+                const resFollowers = await api(`/api/follows/${user._id}/followers`);
+                const jsonFollowers = await resFollowers.json();
+                if (jsonFollowers.success) setFollowers(jsonFollowers.data);
+
+                const resFollowing = await api(`/api/follows/${user._id}/following`);
+                const jsonFollowing = await resFollowing.json();
+                if (jsonFollowing.success) setFollowing(jsonFollowing.data);
+            } catch (err) {
+                console.error("Could not load follow data", err);
+            }
+        }
+
+        loadFollowData();
+    }, [user]);
+
+    useEffect(() => {
+        if (showFollowers || showFollowing) {
+            document.body.style.overflow = "hidden";
+        } else {
+            document.body.style.overflow = "auto";
+        }
+
+        return () => {
+            document.body.style.overflow = "auto";
+        };
+    }, [showFollowers, showFollowing]);
 
     async function handleLogout() {
         try {
@@ -93,9 +130,13 @@ const MePage = () => {
                             <p className="text-xs text-muted-foreground">Listings</p>
                         </div>
 
-                        <div className="text-center">
-                            <p className="text-lg font-semibold text-foreground">0</p>
+                        <div className="text-center cursor-pointer" onClick={() => setShowFollowers(true)}>
+                            <p className="text-lg font-semibold text-foreground">{followers.length}</p>
                             <p className="text-xs text-muted-foreground">Followers</p>
+                        </div>
+                        <div className="text-center cursor-pointer" onClick={() => setShowFollowing(true)}>
+                            <p className="text-lg font-semibold text-foreground">{following.length}</p>
+                            <p className="text-xs text-muted-foreground">Following</p>
                         </div>
                     </div>
                 </div>
@@ -231,6 +272,100 @@ const MePage = () => {
                     </div>
                 </TabsContent>
             </Tabs>
+
+            {showFollowers && (
+                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-80 max-h-[70vh] overflow-y-auto shadow-xl">
+
+                        <h2 className="text-lg font-semibold mb-4 text-racing-green">
+                            Followers
+                        </h2>
+
+                        {followers.length === 0 ? (
+                            <p className="text-sm text-racing-green">No followers yet</p>
+                        ) : (
+                            <ul className="space-y-3">
+                                {followers.map((f) => {
+                                    const u = f.followerId;
+                                    return (
+                                        <li key={u._id} className="flex items-center gap-3">
+                                            <Avatar className="h-9 w-9 border border-burgundy/40">
+                                                <AvatarImage src={u.profile?.avatarUrl} />
+                                                <AvatarFallback className="bg-racing-green text-ivory-dark">
+                                                    {u.username.slice(0,2).toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+
+                                            <Link
+                                                href={`/profile/${u._id}`}
+                                                className="text-racing-green hover:text-burgundy transition"
+                                            >
+                                                {u.username}
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+
+                        <button
+                            className="mt-5 w-full py-2 rounded-md bg-burgundy text-ivory-dark hover:bg-burgundy/80 transition"
+                            onClick={() => setShowFollowers(false)}
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
+
+
+
+            {showFollowing && (
+                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-80 max-h-[70vh] overflow-y-auto shadow-xl">
+
+                        <h2 className="text-lg font-semibold mb-4 text-racing-green">
+                            Following
+                        </h2>
+
+                        {following.length === 0 ? (
+                            <p className="text-sm text-racing-green">Not following anyone yet</p>
+                        ) : (
+                            <ul className="space-y-3">
+                                {following.map((f) => {
+                                    const u = f.followingId;
+                                    return (
+                                        <li key={u._id} className="flex items-center gap-3">
+                                            <Avatar className="h-9 w-9 border border-burgundy/40">
+                                                <AvatarImage src={u.profile?.avatarUrl} />
+                                                <AvatarFallback className="bg-racing-green text-ivory-dark">
+                                                    {u.username.slice(0,2).toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+
+                                            <Link
+                                                href={`/profile/${u._id}`}
+                                                className="text-racing-green hover:text-burgundy transition"
+                                            >
+                                                {u.username}
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+
+                        <button
+                            className="mt-5 w-full py-2 rounded-md bg-burgundy text-ivory-dark hover:bg-burgundy/80 transition"
+                            onClick={() => setShowFollowing(false)}
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            )}
+
+
         </div>
     );
 };
