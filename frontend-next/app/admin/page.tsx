@@ -1,5 +1,7 @@
+'use client';
+
 import Link from "next/link";
-import { BookOpen } from "lucide-react"; // Hvis du bruger Lucide ikoner ligesom før
+import { BookOpen, AlertCircle } from "lucide-react";
 
 export default function AdminDashboard() {
     return (
@@ -7,6 +9,15 @@ export default function AdminDashboard() {
             <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                {/* USER REPORTS */}
+                <Link href="/admin/reports" className="p-6 rounded-xl bg-ivory text-burgundy shadow-md hover:-translate-y-1 transition border border-transparent hover:border-burgundy/20">
+                    <div className="flex justify-between items-start">
+                        <h2 className="text-xl font-semibold">User Reports</h2>
+                        <AlertCircle className="h-5 w-5 opacity-40" />
+                    </div>
+                    <p className="text-sm text-brown">Handle complaints and safety issues</p>
+                </Link>
 
                 <Link href="/admin/products" className="p-6 rounded-xl bg-ivory text-burgundy shadow-md hover:-translate-y-1 transition border border-transparent hover:border-burgundy/20">
                     <h2 className="text-xl font-semibold">Products</h2>
@@ -23,7 +34,6 @@ export default function AdminDashboard() {
                     <p className="text-sm text-brown">Administrate users and roles</p>
                 </Link>
 
-                {/* HER ER DIN BLOG INTEGRATION */}
                 <Link href="/admin/blog" className="p-6 rounded-xl bg-ivory text-burgundy shadow-md hover:-translate-y-1 transition border border-transparent hover:border-burgundy/20">
                     <div className="flex justify-between items-start">
                         <h2 className="text-xl font-semibold">Journal / Blog</h2>

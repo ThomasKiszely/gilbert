@@ -1,11 +1,10 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link"; // ⭐ Husk at importere Link
 
 export default function LoginPage() {
     const [activeTab, setActiveTab] = useState<"login" | "register">("login");
     const [message, setMessage] = useState("");
-    const [showTerms, setShowTerms] = useState(false);
-    const [showAcceptButton, setShowAcceptButton] = useState(false);
 
     function switchTab(tab: "login" | "register") {
         setActiveTab(tab);
@@ -56,17 +55,16 @@ export default function LoginPage() {
             const res = await fetch(`/api/auth/${endpoint}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                credentials: "include", // Dette sikrer at cookien modtages/sendes
+                credentials: "include",
                 body: JSON.stringify(payload)
             });
 
             const data = await res.json();
 
             if (!data.success) {
-                // ... din eksisterende fejlhåndtering (TERMS_OUTDATED osv.)
+                // Hvis terms er outdated, sender vi dem til den nye side med en besked
                 if (data.code === "TERMS_OUTDATED") {
-                    setShowAcceptButton(true);
-                    setShowTerms(true);
+                    window.location.href = "/terms?action=accept"; // ⭐ Send brugeren til terms-siden
                     return;
                 }
                 return setMessage(data.error || "Something went wrong");
@@ -76,29 +74,10 @@ export default function LoginPage() {
                 return setMessage("User registered. Please verify your email.");
             }
 
-            // ⭐ VIGTIGT: Vi fjerner localStorage.setItem herfra!
-            // Cookien "authToken" er nu sat automatisk i browseren.
-
-            window.location.href = "/"; // Send brugeren videre
+            window.location.href = "/";
         } catch (err) {
             console.error(err);
             setMessage("Server error");
-        }
-    }
-
-    async function acceptTerms() {
-        const res = await fetch("/api/auth/acceptTerms", {
-            method: "POST",
-            credentials: "include"
-        });
-
-        const data = await res.json();
-
-        if (data.success) {
-            setShowTerms(false);
-            window.location.reload();
-        } else {
-            setMessage(data.error || "Could not accept terms");
         }
     }
 
@@ -132,85 +111,43 @@ export default function LoginPage() {
                 <form onSubmit={handleLogin} className="space-y-3">
                     <input name="email" type="email" placeholder="Email" required className="input" />
                     <input name="password" type="password" placeholder="Password" required className="input" />
-
                     <button className="btn-primary w-full">Login</button>
-
                     <div className="text-center mt-3">
                         <a href="/forgot-password" className="text-sm underline text-racing-green">
                             Forgot your password?
                         </a>
                     </div>
-
                 </form>
             )}
 
             {/* Register Form */}
             {activeTab === "register" && (
                 <form onSubmit={handleRegister} className="space-y-3">
-
                     <input name="username" placeholder="Username" required className="input" />
                     <input name="email" type="email" placeholder="Email" required className="input" />
-
                     <input name="city" placeholder="City" required className="input" />
                     <input name="country" placeholder="Country" required className="input" />
-
                     <input name="cvr" placeholder="CVR (optional)" className="input" />
-
                     <input name="password" type="password" placeholder="Password" required className="input" />
                     <input name="confirmPassword" type="password" placeholder="Confirm Password" required className="input" />
 
-                    {/* ⭐ Updated Terms Checkbox with clickable link */}
+                    {/* ⭐ Her linker vi til /terms i stedet for at åbne popup */}
                     <label className="flex items-center gap-2 text-sm">
                         <input type="checkbox" name="termsAccepted" />
                         <span>
                             I accept the{" "}
-                            <button
-                                type="button"
-                                className="underline text-racing-green"
-                                onClick={() => setShowTerms(true)}
+                            <Link
+                                href="/terms"
+                                target="_blank"
+                                className="underline text-racing-green font-semibold"
                             >
                                 Terms of Service
-                            </button>
+                            </Link>
                         </span>
                     </label>
 
                     <button className="btn-primary w-full">Register</button>
                 </form>
-            )}
-
-            {/* Terms Modal */}
-            {showTerms && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                    <div className="bg-white p-6 rounded-xl w-96 max-h-[80vh] overflow-y-auto shadow-xl relative">
-
-                        <button
-                            className="absolute top-3 right-3 text-xl"
-                            onClick={() => setShowTerms(false)}
-                        >
-                            ×
-                        </button>
-
-                        <h2 className="text-xl font-semibold mb-3">Terms & Conditions</h2>
-
-                        <div className="text-sm space-y-3">
-                            <p><strong>Version 1.0.0</strong></p>
-                            <p>Her indsætter du dine terms-tekster…</p>
-                        </div>
-
-                        {showAcceptButton && (
-                            <button onClick={acceptTerms} className="btn-primary w-full mt-4">
-                                Accept Terms
-                            </button>
-                        )}
-
-                        <button
-                            className="mt-3 text-gray-600 underline w-full"
-                            onClick={() => setShowTerms(false)}
-                        >
-                            Close
-                        </button>
-                    </div>
-                </div>
             )}
         </div>
     );

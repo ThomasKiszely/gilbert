@@ -3,8 +3,16 @@ const chatMessageRepo = require('../data/chatMessageRepo');
 const productRepo = require('../data/productRepo');
 const notificationService = require('../services/notificationService');
 const notificationTypes = require('../utils/notificationTypes');
+const userRepo = require('../data/userRepo');
 
 async function sendMessage(id, senderId, text) {
+    const sender = await userRepo.findUserById(senderId);
+    if (sender && sender.isSuspended) {
+        const err = new Error("Your account is suspended. You cannot send messages.");
+        err.status = 403;
+        throw err;
+    }
+
     let thread;
     let productId;
 

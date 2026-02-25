@@ -1,6 +1,7 @@
 const productRepo = require("../data/productRepo");
 const favoriteRepo = require("../data/favoriteRepo");
 const imageService = require("../services/imageService");
+const userRepo = require("../data/userRepo");
 
 async function attachFavoriteStatus(products, userId) {
     if (!userId) return products;
@@ -23,6 +24,12 @@ async function attachFavoriteStatus(products, userId) {
 
 
 async function createProduct(productData) {
+    const user = await userRepo.findUserById(productData.seller);
+    if (user && user.isSuspended) {
+        const err = new Error("Account suspended. You cannot create new listings.");
+        err.status = 403;
+        throw err;
+    }
     return await productRepo.createProduct(productData);
 }
 
@@ -50,6 +57,12 @@ async function getProductById(productId, userId) {
 
 
 async function updateProduct(productId, productData) {
+    const user = await userRepo.findUserById(productData.seller);
+    if (user && user.isSuspended) {
+        const err = new Error("Account suspended. You cannot edit listings.");
+        err.status = 403;
+        throw err;
+    }
     return await productRepo.updateProduct(productId, productData);
 }
 

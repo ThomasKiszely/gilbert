@@ -39,6 +39,8 @@ const userSchema = new mongoose.Schema({
         avatarUrl: {type: String, default: "/avatars/Gilbert.jpg"},
         language: {type: String, default: "en"}
     },
+    isSuspended: {type: Boolean, default: false},
+    suspensionReason: {type: String},
 },
 {timestamps: true });
 

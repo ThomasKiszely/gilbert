@@ -1,4 +1,5 @@
 const User = require("../models/user");
+const { userRoles } = require("../utils/userRoles");
 
 
 async function findUserByEmail(email) {
@@ -106,6 +107,18 @@ async function searchUsers(query, limit = 10) {
         .limit(limit);
 }
 
+async function findAdmins(){
+    return await User.find({ role: userRoles.admin });
+}
+
+async function toggleUserSuspension(id, isSuspended, reason) {
+    return await User.findByIdAndUpdate(
+        id,
+        { isSuspended: isSuspended, suspensionReason: reason },
+        { new: true, runValidators: true }
+        ).select("-passwordHash");
+}
+
 
 module.exports = {
     findUserByEmail,
@@ -119,4 +132,6 @@ module.exports = {
     updateUserBadges,
     deleteUser,
     searchUsers,
+    findAdmins,
+    toggleUserSuspension,
 }

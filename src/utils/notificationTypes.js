@@ -5,4 +5,5 @@ module.exports = {
     bid_rejected: "bid_rejected",
     bid_expired: "bid_expired",
     counter_bid: "counter_bid",
+    report: "report",
 }

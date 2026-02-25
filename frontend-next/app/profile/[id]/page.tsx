@@ -24,109 +24,89 @@ export default function PublicProfilePage() {
     const [showFollowers, setShowFollowers] = useState(false);
     const [showFollowing, setShowFollowing] = useState(false);
 
-    // Lock scroll when modal is open
-    useEffect(() => {
-        if (showFollowers || showFollowing) {
-            document.body.style.overflow = "hidden";
-        } else {
-            document.body.style.overflow = "auto";
-        }
-    }, [showFollowers, showFollowing]);
+    // ⭐ Reporting states
+    const [showReportModal, setShowReportModal] = useState(false);
+    const [reasons, setReasons] = useState<string[]>([]);
+    const [reportReason, setReportReason] = useState("");
+    const [reportDetails, setReportDetails] = useState("");
+    const [reportMessage, setReportMessage] = useState("");
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Load logged-in user
+    // Lock scroll
     useEffect(() => {
-        async function loadCurrentUser() {
-            const res = await api("/api/users/me");
-            const json = await res.json();
-            if (json.success) setCurrentUser(json.data);
+        document.body.style.overflow = (showFollowers || showFollowing || showReportModal) ? "hidden" : "auto";
+    }, [showFollowers, showFollowing, showReportModal]);
+
+    // Load Data
+    useEffect(() => {
+        async function loadInitialData() {
+            try {
+                const [meRes, userRes, prodRes] = await Promise.all([
+                    api("/api/users/me"),
+                    api(`/api/users/public/${id}`),
+                    api(`/api/products/user/${id}`)
+                ]);
+                const meJson = await meRes.json();
+                const userJson = await userRes.json();
+                const prodJson = await prodRes.json();
+
+                if (meJson.success) setCurrentUser(meJson.data);
+                if (userJson.success) setUser(userJson.data);
+                if (prodJson.success) setProducts(prodJson.data);
+            } catch (err) { console.error("Data load error:", err); }
         }
-        loadCurrentUser();
+        loadInitialData();
+    }, [id]);
+
+    // Fetch reasons from backend
+    useEffect(() => {
+        async function fetchReasons() {
+            try {
+                const res = await api('/api/reports/reportReasons');
+                const json = await res.json();
+                if (json.success) setReasons(json.data);
+            } catch (err) { console.error(err); }
+        }
+        fetchReasons();
     }, []);
 
-    // Load public profile user
-    useEffect(() => {
-        async function loadUser() {
-            const res = await api(`/api/users/public/${id}`);
-            const json = await res.json();
-            if (json.success) setUser(json.data);
-        }
-        loadUser();
-    }, [id]);
-
-    // Load products
-    useEffect(() => {
-        async function loadProducts() {
-            const res = await api(`/api/products/user/${id}`);
-            const json = await res.json();
-            if (json.success) setProducts(json.data);
-        }
-        loadProducts();
-    }, [id]);
-
-    // Redirect if user visits own profile
-    useEffect(() => {
-        if (!currentUser || !user) return;
-        if (currentUser._id === user._id) {
-            router.replace("/profile/me");
-        }
-    }, [currentUser, user, router]);
-
-    // Load followers + following
-    useEffect(() => {
-        if (!user) return;
-
-        async function loadFollowData() {
-            const resFollowers = await api(`/api/follows/${user._id}/followers`);
-            const jsonFollowers = await resFollowers.json();
-            if (jsonFollowers.success) setFollowers(jsonFollowers.data);
-
-            const resFollowing = await api(`/api/follows/${user._id}/following`);
-            const jsonFollowing = await resFollowing.json();
-            if (jsonFollowing.success) setFollowing(jsonFollowing.data);
-        }
-
-        loadFollowData();
-    }, [user]);
-
-    // Check if current user follows this profile
-    useEffect(() => {
-        if (!currentUser || !followers) return;
-
-        const already = followers.some(f => f.followerId?._id === currentUser._id);
-        setIsFollowing(already);
-    }, [currentUser, followers]);
-
-    // Follow
-    async function handleFollow() {
+    // Follow action
+    const handleFollowToggle = async () => {
+        const method = isFollowing ? "DELETE" : "POST";
         try {
-            const res = await api(`/api/follows/${user._id}`, { method: "POST" });
-            const json = await res.json();
-            if (json.success) {
-                setIsFollowing(true);
-                setFollowers(prev => [...prev, { followerId: currentUser }]);
+            const res = await api(`/api/follows/${user._id}`, { method });
+            if (res.ok) {
+                setIsFollowing(!isFollowing);
+                const refresh = await api(`/api/follows/${user._id}/followers`);
+                const json = await refresh.json();
+                setFollowers(json.data);
             }
-        } catch (err) {
-            console.error(err);
-        }
+        } catch (err) { console.error(err); }
+    };
+
+    // Report submission
+    async function handleReportSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+            const res = await api('/api/reports', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reportedUserId: user._id, reason: reportReason, details: reportDetails })
+            });
+            if (res.ok) {
+                setReportMessage("Report submitted. Thank you.");
+                setTimeout(() => {
+                    setShowReportModal(false);
+                    setReportMessage("");
+                    setReportReason("");
+                    setReportDetails("");
+                }, 2000);
+            }
+        } finally { setIsSubmitting(false); }
     }
 
-    // Unfollow
-    async function handleUnfollow() {
-        try {
-            const res = await api(`/api/follows/${user._id}`, { method: "DELETE" });
-            const json = await res.json();
-            if (json.success) {
-                setIsFollowing(false);
-                setFollowers(prev => prev.filter(f => f.followerId?._id !== currentUser._id));
-            }
-        } catch (err) {
-            console.error(err);
-        }
-    }
-
-    if (!user) return <p className="p-6 text-center text-muted-foreground">Loading…</p>;
-
-    const initials = user.username.slice(0, 2).toUpperCase();
+    if (!user) return <p className="p-6 text-center text-muted-foreground italic font-serif">Loading profile...</p>;
 
     return (
         <div className="px-4 py-6">
@@ -135,179 +115,116 @@ export default function PublicProfilePage() {
             <div className="flex items-start gap-4 mb-4">
                 <Avatar className="h-20 w-20 border-2 border-border/30">
                     <AvatarImage src={user.profile?.avatarUrl || ""} alt={user.username} />
-                    <AvatarFallback className="bg-muted text-muted-foreground text-lg font-serif">
-                        {initials}
+                    <AvatarFallback className="bg-muted text-muted-foreground text-lg">
+                        {user.username.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                 </Avatar>
 
                 <div className="flex-1 pt-1">
-
                     {/* Stats */}
                     <div className="flex items-center gap-6 mb-2">
                         <div className="text-center">
-                            <p className="text-lg font-semibold text-foreground">{products.length}</p>
+                            <p className="text-lg font-semibold">{products.length}</p>
                             <p className="text-xs text-muted-foreground">Listings</p>
                         </div>
-
                         <div className="text-center cursor-pointer" onClick={() => setShowFollowers(true)}>
-                            <p className="text-lg font-semibold text-foreground">{followers.length}</p>
+                            <p className="text-lg font-semibold">{followers.length}</p>
                             <p className="text-xs text-muted-foreground">Followers</p>
                         </div>
-
                         <div className="text-center cursor-pointer" onClick={() => setShowFollowing(true)}>
-                            <p className="text-lg font-semibold text-foreground">{following.length}</p>
+                            <p className="text-lg font-semibold">{following.length}</p>
                             <p className="text-xs text-muted-foreground">Following</p>
                         </div>
                     </div>
 
-                    {/* Follow button */}
-                    {currentUser && currentUser._id !== user._id && (
-                        isFollowing ? (
-                            <button
-                                onClick={handleUnfollow}
-                                className="mt-2 px-4 py-1 rounded-md bg-muted text-foreground border"
-                            >
-                                Following
-                            </button>
-                        ) : (
-                            <button
-                                onClick={handleFollow}
-                                className="mt-2 px-4 py-1 rounded-md bg-burgundy text-ivory"
-                            >
-                                Follow
-                            </button>
-                        )
-                    )}
+                    {/* Follow button & Report Link */}
+                    <div className="flex items-center gap-4 mt-2">
+                        {currentUser?._id !== user._id && (
+                            <>
+                                <button
+                                    onClick={handleFollowToggle}
+                                    className={`px-6 py-1.5 rounded-md text-sm font-medium transition-all ${isFollowing ? 'bg-muted text-foreground' : 'bg-burgundy text-ivory'}`}
+                                >
+                                    {isFollowing ? "Following" : "Follow"}
+                                </button>
+
+                                {/* ⭐ Simple text link for reporting */}
+                                <button
+                                    onClick={() => setShowReportModal(true)}
+                                    className="text-xs text-muted-foreground hover:text-burgundy underline underline-offset-4 transition-colors font-medium"
+                                >
+                                    Report User
+                                </button>
+                            </>
+                        )}
+                    </div>
                 </div>
             </div>
 
-
-            {/* Name */}
+            {/* Name section */}
             <div className="mb-6">
-                <h1 className="text-xl font-serif font-bold text-foreground">{user.username}</h1>
+                <h1 className="text-xl font-serif font-bold text-foreground leading-tight">{user.username}</h1>
                 <p className="text-sm text-muted-foreground">@{user.username}</p>
             </div>
 
-            {/* Listings */}
-            <h2 className="text-sm font-semibold mb-2 text-foreground">Listings</h2>
+            {/* Listings Grid */}
+            <h2 className="text-sm font-semibold mb-3 border-b pb-2">Listings</h2>
+            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                {products.map((p) => (
+                    <ProductCard key={p._id} product={{
+                        id: p._id, title: p.title, brand: p.brand?.name || "",
+                        price: p.price, imageUrl: p.images?.[0] || "/images/placeholder.jpg",
+                        tag: p.tags?.[0]?.name, isFavorite: false
+                    }} onToggleFavorite={() => {}} />
+                ))}
+            </div>
 
-            {products.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground text-sm">
-                    No listings yet
-                </div>
-            ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                    {products.map((p) => {
-                        const mapped: Product = {
-                            id: p._id,
-                            title: p.title,
-                            brand: p.brand?.name || "",
-                            price: p.price,
-                            imageUrl: p.images?.[0] || "/images/ImagePlaceholder.jpg",
-                            tag: p.tags?.[0]?.name,
-                            isFavorite: false,
-                        };
+            {/* Report Modal */}
+            {showReportModal && (
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+                    <div className="bg-ivory-dark border border-burgundy/20 p-6 rounded-2xl w-full max-w-sm shadow-2xl text-burgundy">
+                        <h2 className="text-lg font-serif font-bold mb-4">Report Profile</h2>
 
-                        return (
-                            <ProductCard key={p._id} product={mapped} onToggleFavorite={() => {}} />
-                        );
-                    })}
-                </div>
-            )}
-
-            {/* Followers Modal */}
-            {showFollowers && (
-                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-80 max-h-[70vh] overflow-y-auto shadow-xl">
-
-                        <h2 className="text-lg font-semibold mb-4 text-racing-green">
-                            Followers
-                        </h2>
-
-                        {followers.length === 0 ? (
-                            <p className="text-sm text-racing-green">No followers yet</p>
+                        {reportMessage ? (
+                            <div className="py-6 text-center text-racing-green font-medium">
+                                {reportMessage}
+                            </div>
                         ) : (
-                            <ul className="space-y-3">
-                                {followers.map((f) => {
-                                    const u = f.followerId;
-                                    return (
-                                        <li key={u._id} className="flex items-center gap-3">
-                                            <Avatar className="h-9 w-9 border border-burgundy/40">
-                                                <AvatarImage src={u.profile?.avatarUrl} />
-                                                <AvatarFallback className="bg-racing-green text-ivory-dark">
-                                                    {u.username.slice(0,2).toUpperCase()}
-                                                </AvatarFallback>
-                                            </Avatar>
+                            <form onSubmit={handleReportSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-semibold uppercase tracking-wider opacity-70 mb-1">Reason</label>
+                                    <select
+                                        className="w-full bg-ivory p-3 rounded-xl border border-burgundy/10 text-sm outline-none focus:ring-1 focus:ring-burgundy"
+                                        value={reportReason}
+                                        onChange={(e) => setReportReason(e.target.value)}
+                                        required
+                                    >
+                                        <option value="">Select reason...</option>
+                                        {reasons.map((r) => <option key={r} value={r}>{r}</option>)}
+                                    </select>
+                                </div>
 
-                                            <Link
-                                                href={`/profile/${u._id}`}
-                                                className="text- hover:text-burgundy transition"
-                                            >
-                                                {u.username}
-                                            </Link>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
+                                <div>
+                                    <label className="block text-xs font-semibold uppercase tracking-wider opacity-70 mb-1">Details (Optional)</label>
+                                    <textarea
+                                        className="w-full bg-ivory p-3 rounded-xl border border-burgundy/10 text-sm h-24 resize-none outline-none focus:ring-1 focus:ring-burgundy"
+                                        placeholder="Please provide more information..."
+                                        value={reportDetails}
+                                        onChange={(e) => setReportDetails(e.target.value)}
+                                    />
+                                </div>
+
+                                <div className="flex gap-4 pt-2">
+                                    <button type="button" onClick={() => setShowReportModal(false)} className="flex-1 text-sm font-medium opacity-60 hover:opacity-100">Cancel</button>
+                                    <button type="submit" disabled={isSubmitting || !reportReason} className="flex-1 bg-burgundy text-ivory py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-burgundy/20 disabled:opacity-50 transition-all">
+                                        {isSubmitting ? "Sending..." : "Submit"}
+                                    </button>
+                                </div>
+                            </form>
                         )}
-
-                        <button
-                            className="mt-5 w-full py-2 rounded-md bg-burgundy text-ivory-dark hover:bg-burgundy/80 transition"
-                            onClick={() => setShowFollowers(false)}
-                        >
-                            Close
-                        </button>
                     </div>
                 </div>
             )}
-
-            {/* Following Modal */}
-            {showFollowing && (
-                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-80 max-h-[70vh] overflow-y-auto shadow-xl">
-
-                        <h2 className="text-lg font-semibold mb-4 text-racing-green">
-                            Following
-                        </h2>
-
-                        {following.length === 0 ? (
-                            <p className="text-sm text-racing-green">Not following anyone yet</p>
-                        ) : (
-                            <ul className="space-y-3">
-                                {following.map((f) => {
-                                    const u = f.followingId;
-                                    return (
-                                        <li key={u._id} className="flex items-center gap-3">
-                                            <Avatar className="h-9 w-9 border border-burgundy/40">
-                                                <AvatarImage src={u.profile?.avatarUrl} />
-                                                <AvatarFallback className="bg-racing-green text-ivory-dark">
-                                                    {u.username.slice(0,2).toUpperCase()}
-                                                </AvatarFallback>
-                                            </Avatar>
-
-                                            <Link
-                                                href={`/profile/${u._id}`}
-                                                className="text-ivory-dark hover:text-burgundy transition"
-                                            >
-                                                {u.username}
-                                            </Link>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
-
-                        <button
-                            className="mt-5 w-full py-2 rounded-md bg-burgundy text-ivory-dark hover:bg-burgundy/80 transition"
-                            onClick={() => setShowFollowing(false)}
-                        >
-                            Close
-                        </button>
-                    </div>
-                </div>
-            )}
-
-
         </div>
     );
 }

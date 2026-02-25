@@ -1,4 +1,4 @@
-'use client'; // Nødvendigt pga. hooks
+'use client';
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
@@ -11,6 +11,10 @@ export default function AdminUserEdit() {
 
     const [user, setUser] = useState<any>(null);
     const [message, setMessage] = useState("");
+
+    // Nye states til ban-funktionalitet
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [suspensionReason, setSuspensionReason] = useState("");
 
     const [role, setRole] = useState("user");
     const [status, setStatus] = useState("none");
@@ -30,9 +34,40 @@ export default function AdminUserEdit() {
                 setRole(data.data.role);
                 setStatus(data.data.professionalStatus);
                 setBadges(data.data.badges);
+                setSuspensionReason(data.data.suspensionReason || "");
             }
         } catch (err) {
             console.error("Could not fetch user", err);
+        }
+    }
+
+    // Funktion til at håndtere ban/unban
+    async function handleToggleSuspension() {
+        const isBanning = !user.isSuspended;
+
+        if (isBanning && !suspensionReason.trim()) {
+            alert("Please provide a reason for the suspension.");
+            return;
+        }
+
+        try {
+            const res = await api(`/api/admin/users/${userId}/suspension`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    isSuspended: isBanning,
+                    reason: suspensionReason
+                })
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                setUser(data.data);
+                setIsModalOpen(false);
+                setMessage(isBanning ? "User suspended!" : "User reinstated!");
+            }
+        } catch (err) {
+            console.error("Suspension error", err);
         }
     }
 
@@ -85,13 +120,23 @@ export default function AdminUserEdit() {
                 ← Back to users
             </Link>
 
-            <h2 className="text-2xl font-semibold mt-6">{user.username}</h2>
+            <div className="flex items-center justify-between mt-6">
+                <h2 className="text-2xl font-semibold">{user.username}</h2>
+                {user.isSuspended && (
+                    <span className="bg-red-600 text-white px-3 py-1 rounded text-xs font-bold uppercase tracking-wider">
+                        Suspended
+                    </span>
+                )}
+            </div>
 
-            {/* User Info Box - Forced text-black so we can see it on bg-gray-50 */}
+            {/* User Info Box */}
             <div className="mt-4 space-y-2 p-4 bg-gray-50 rounded-lg text-black">
                 <p><strong>Email:</strong> {user.email}</p>
                 <p><strong>Role:</strong> {user.role}</p>
                 <p><strong>Status:</strong> {user.professionalStatus}</p>
+                {user.isSuspended && (
+                    <p className="text-red-600"><strong>Reason:</strong> {user.suspensionReason}</p>
+                )}
                 <p>
                     <strong>Badges:</strong>{" "}
                     Professional: {user.badges?.isProfessional ? "✔" : "✘"},{" "}
@@ -169,9 +214,68 @@ export default function AdminUserEdit() {
                 </button>
             </div>
 
+            {/* DANGER ZONE - Suspension */}
+            <hr className="my-10 border-red-500/30" />
+            <h3 className="text-xl font-semibold text-red-500">Danger Zone</h3>
+            <div className="mt-4 p-4 border border-red-500/30 rounded-lg bg-red-500/5">
+                <p className="text-sm mb-4 text-ivory/80">
+                    {user.isSuspended
+                        ? "Account is currently suspended. Reinstating will allow the user to log in again."
+                        : "Suspending the account will block the user and hide all their active listings."}
+                </p>
+                <button
+                    onClick={() => setIsModalOpen(true)}
+                    className={`w-full py-2 rounded font-bold text-white transition-colors ${
+                        user.isSuspended ? "bg-green-700 hover:bg-green-600" : "bg-red-700 hover:bg-red-600"
+                    }`}
+                >
+                    {user.isSuspended ? "Unban / Reinstate User" : "Ban / Suspend User"}
+                </button>
+            </div>
+
             {message && (
                 <div className="mt-4 p-3 bg-green-600 text-white rounded font-semibold text-center">
                     {message}
+                </div>
+            )}
+
+            {/* MODAL FOR REASON */}
+            {isModalOpen && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white text-black p-6 rounded-xl max-w-md w-full shadow-2xl">
+                        <h3 className="text-xl font-bold mb-4">
+                            {user.isSuspended ? "Confirm Unban" : "Provide Reason for Suspension"}
+                        </h3>
+
+                        {!user.isSuspended ? (
+                            <textarea
+                                className="w-full border p-3 rounded-lg mb-4 outline-none focus:border-blue-600"
+                                placeholder="Example: Fraudulent listings or harassment..."
+                                value={suspensionReason}
+                                onChange={(e) => setSuspensionReason(e.target.value)}
+                                rows={4}
+                            />
+                        ) : (
+                            <p className="mb-6">Are you sure you want to lift the suspension for this user?</p>
+                        )}
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setIsModalOpen(false)}
+                                className="flex-1 py-2 bg-gray-200 rounded font-semibold hover:bg-gray-300"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleToggleSuspension}
+                                className={`flex-1 py-2 text-white rounded font-semibold ${
+                                    user.isSuspended ? "bg-green-700 hover:bg-green-800" : "bg-red-700 hover:bg-red-800"
+                                }`}
+                            >
+                                Confirm
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

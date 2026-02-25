@@ -122,6 +122,13 @@ async function findProductsBySeller(sellerId, includeAll = false) {
         .populate("tags");
 }
 
+async function updateManyProductsStatus(sellerId, newStatus) {
+    return await Product.updateMany(
+        { seller: sellerId },
+        { $set: { status: newStatus } }
+    );
+}
+
 
 module.exports = {
     createProduct,
@@ -135,4 +142,5 @@ module.exports = {
     deleteProduct,
     searchProducts,
     findProductsBySeller,
+    updateManyProductsStatus
 }

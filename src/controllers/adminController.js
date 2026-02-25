@@ -119,6 +119,17 @@ async function updateProfessionalStatus(req, res, next) {
     }
 }
 
+async function toggleUserSuspension(req, res, next) {
+    try{
+        const { id } = req.params;
+        const { isSuspended, reason } = req.body;
+        const suspended = await adminService.toggleUserSuspension(id, isSuspended, reason);
+        return res.status(200).json({ success: true, data: suspended });
+    } catch(error) {
+        next(error);
+    }
+}
+
 module.exports = {
     approveProduct,
     rejectProduct,
@@ -129,4 +140,5 @@ module.exports = {
     updateUserBadges,
     updateProfessionalStatus,
     updateUserRole,
+    toggleUserSuspension,
 }

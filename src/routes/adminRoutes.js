@@ -13,6 +13,7 @@ const { validateUserBadges } = require('../middlewares/validateUserBadges');
 router.put('/users/:id/role', validateUserRole, adminController.updateUserRole);
 router.put('/users/:id/professional', validateProfessionalStatus, adminController.updateProfessionalStatus);
 router.put('/users/:id/badges', validateUserBadges, adminController.updateUserBadges);
+router.put('/users/suspend/:id', adminController.toggleUserSuspension);
 router.get('/users/:id', adminController.getUserById);
 router.get('/users', adminController.getAllUsersPaginated);
 router.get('/products', adminController.getAllProducts);

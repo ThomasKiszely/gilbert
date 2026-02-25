@@ -70,6 +70,16 @@ async function login(email, password) {
         throw new Error("Wrong email or password");
     }
 
+    if (user.isSuspended) {
+        const msg = user.suspensionReason
+            ? `Your account is suspended: ${user.suspensionReason}`
+            : "Your account has been suspended. Please contact support.";
+
+        const err = new Error(msg);
+        err.status = 403; // Forbidden
+        throw err;
+    }
+
     if (!user.isEmailVerified) {
         const err = new Error("Email not verified");
         err.code = "EMAIL_NOT_VERIFIED";
