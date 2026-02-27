@@ -3,7 +3,7 @@
 import { useState } from "react";
 import BottomNav from "@/app/components/layout/BottomNav";
 import SearchOverlay from "@/app/components/SearchOverlay";
-
+import Footer from "@/app/components/layout/Footer";
 interface LayoutProps {
     children: React.ReactNode;
 }
@@ -33,7 +33,7 @@ export default function Layout({ children }: LayoutProps) {
             <main className="flex-1 w-full pt-12 md:pt-16 pb-20 md:pb-0">
                 {children}
             </main>
-
+            <Footer />
             <BottomNav onSearchClick={() => setSearchOpen(true)} />
 
         </div>
