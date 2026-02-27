@@ -17,6 +17,25 @@ const endpoints = {
 
 export default function CreateProduct() {
 
+    const {user} = useAuth();
+    // Redirect or block UI if sellerProfile is incomplete
+    if (user && (!user.sellerProfile || !user.sellerProfile.isComplete)) {
+        return (
+            <div className="max-w-xl mx-auto mt-10 p-6 bg-red-50 border border-red-300 rounded-xl text-red-900">
+                <h2 className="text-xl font-bold mb-2">Complete your seller profile</h2>
+                <p className="mb-4">
+                    You need to complete your seller profile before you can create a product.
+                </p>
+                <a
+                    href="/profile/edit"
+                    className="inline-block px-4 py-2 bg-racing-green text-ivory rounded-lg font-semibold"
+                >
+                    Go to Profile edit
+                </a>
+            </div>
+        );
+    }
+
 
     const [dropdowns, setDropdowns] = useState<any>({});
     const [images, setImages] = useState<File[]>([]);

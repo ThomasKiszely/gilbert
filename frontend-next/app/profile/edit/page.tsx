@@ -18,6 +18,16 @@ export default function EditProfilePage() {
     const [avatarPreview, setAvatarPreview] = useState("/avatars/Gilbert.jpeg");
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
+    // Seller profile fields
+    const [fullName, setFullName] = useState("");
+    const [phone, setPhone] = useState("");
+    const [street, setStreet] = useState("");
+    const [postalCode, setPostalCode] = useState("");
+    const [bankReg, setBankReg] = useState("");
+    const [bankAccount, setBankAccount] = useState("");
+
+
+
     // Load profile on mount
     useEffect(() => {
         async function loadProfile() {
@@ -40,6 +50,17 @@ export default function EditProfilePage() {
                 setBio(user.profile?.bio || "");
                 setLanguage(user.profile?.language || "da");
                 setAvatarPreview(user.profile?.avatarUrl || "/avatars/Gilbert.jpeg");
+
+                setFullName(user.sellerProfile?.fullName || "");
+                setPhone(user.sellerProfile?.phone || "");
+
+                setStreet(user.sellerProfile?.address?.street || "");
+                setPostalCode(user.sellerProfile?.address?.postalCode || "");
+
+                setBankReg(user.sellerProfile?.bankAccount?.registrationNumber || "");
+                setBankAccount(user.sellerProfile?.bankAccount?.accountNumber || "");
+
+
 
             } catch {
                 setStatus("Server error");
@@ -109,6 +130,51 @@ export default function EditProfilePage() {
             setStatusClass("bg-red-600 text-white");
         }
     }
+
+    async function handleSellerSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        setStatus("Saving seller profile...");
+        setStatusClass("bg-blue-600 text-white");
+
+        const payload = {
+            fullName,
+            phone,
+            address: {
+                street,
+                city,
+                postalCode,
+                country,
+            },
+            bankAccount: {
+                registrationNumber: bankReg,
+                accountNumber: bankAccount,
+            },
+        };
+
+        try {
+            const res = await api("/api/users/me/seller-profile", {
+                method: "PATCH",
+                body: JSON.stringify(payload),
+            });
+
+            const data = await res.json();
+
+            if (!data.success) {
+                setStatus("Error saving seller profile");
+                setStatusClass("bg-red-600 text-white");
+                return;
+            }
+
+            setStatus("Seller profile updated");
+            setStatusClass("bg-green-700 text-white");
+
+        } catch {
+            setStatus("Server error");
+            setStatusClass("bg-red-600 text-white");
+        }
+    }
+
+
 
     if (loading) {
         return <p className="text-center mt-20 text-ivory">Loading profile…</p>;
@@ -208,9 +274,99 @@ export default function EditProfilePage() {
                     </select>
                 </div>
 
+
+
                 <button className="w-full bg-racing-green text-ivory py-4 rounded-xl hover:bg-racing-green-dark transition-all font-bold uppercase tracking-widest shadow-lg active:scale-[0.98]">
                     Save changes
                 </button>
+
+                <div className="mt-10 pt-8 border-t border-racing-green/20">
+                    <h2 className="text-xl font-serif font-bold mb-4">Seller Information</h2>
+
+                    <div>
+                        <label className="block text-xs font-bold uppercase mb-1">Full Name</label>
+                        <input
+                            className="w-full p-3 bg-ivory border border-racing-green/20 rounded-lg text-black"
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold uppercase mb-1">Phone</label>
+                        <input
+                            className="w-full p-3 bg-ivory border border-racing-green/20 rounded-lg text-black"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold uppercase mb-1">Street</label>
+                        <input
+                            className="w-full p-3 bg-ivory border border-racing-green/20 rounded-lg text-black"
+                            value={street}
+                            onChange={(e) => setStreet(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold uppercase mb-1">Postal Code</label>
+                            <input
+                                className="w-full p-3 bg-ivory border border-racing-green/20 rounded-lg text-black"
+                                value={postalCode}
+                                onChange={(e) => setPostalCode(e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase mb-1">City</label>
+                            <input
+                                className="w-full p-3 bg-ivory border border-racing-green/20 rounded-lg text-black"
+                                value={city}
+                                onChange={(e) => setCity(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold uppercase mb-1">Country</label>
+                        <input
+                            className="w-full p-3 bg-ivory border border-racing-green/20 rounded-lg text-black"
+                            value={country}
+                            onChange={(e) => setCountry(e.target.value)}
+                        />
+                    </div>
+
+                    <h3 className="text-lg font-serif font-bold mt-6 mb-2">Bank Information</h3>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold uppercase mb-1">Reg. Number</label>
+                            <input
+                                className="w-full p-3 bg-ivory border border-racing-green/20 rounded-lg text-black"
+                                value={bankReg}
+                                onChange={(e) => setBankReg(e.target.value)}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold uppercase mb-1">Account Number</label>
+                            <input
+                                className="w-full p-3 bg-ivory border border-racing-green/20 rounded-lg text-black"
+                                value={bankAccount}
+                                onChange={(e) => setBankAccount(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={handleSellerSubmit}
+                        className="w-full bg-burgundy text-ivory py-4 rounded-xl mt-6 hover:bg-burgundy/80 transition-all font-bold uppercase tracking-widest shadow-lg"
+                    >
+                        Save Seller Profile
+                    </button>
+                </div>
+
             </form>
         </div>
     );

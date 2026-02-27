@@ -22,7 +22,22 @@ logger.on('log', async (message) => {
     }
 });
 
-const SENSITIVE_FIELDS = ['password', 'pwd', 'token', 'secret', 'authorization'];
+const SENSITIVE_FIELDS = [
+    'password',
+    'pwd',
+    'token',
+    'secret',
+    'authorization',
+
+    'fullname',
+    'phone',
+    'street',
+    'city',
+    'postalcode',
+    'country',
+    'registrationnumber',
+    'accountnumber'
+];
 
 const sanitizeBody = (body) => {
     if (!body || typeof body !== 'object') return body;
