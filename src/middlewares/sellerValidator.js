@@ -16,6 +16,11 @@ async function canSell(req, res, next) {
 
         const errors = [];
 
+        // Tjek profil
+        if (!user.profile) {
+            errors.push("Need a profile to be able to sell");
+        }
+
         if (!user.location || !user.location.city || !user.location.country) {
             errors.push("Need a location on profile to be able to sell");
         }

@@ -16,7 +16,7 @@ router.post("/me/email", userController.changeEmail);
 router.patch("/user/:id", canUpdateUser, userController.updateUser);
 router.get("/me", userController.getMe);
 router.patch("/me", userController.updateMe);
-router.patch("/me/seller-profile", userController.updateSellerProfile);
+
 router.delete('/me', userController.deleteUser);
 
 

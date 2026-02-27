@@ -16,19 +16,7 @@ async function updateUser(id, user) {
     return updatedUser;
 }
 
-async function updateSellerProfile(id, sellerProfile) {
-    return await User.findByIdAndUpdate(
-        id,
-        {
-            sellerProfile: {
-                ...sellerProfile,
-                isComplete: true,
-                completedAt: new Date(),
-            }
-        },
-        { new: true, runValidators: true }
-    ).select("-passwordHash");
-}
+
 
 
 async function findUserById(id) {
@@ -148,7 +136,6 @@ module.exports = {
     updateUserRole,
     updateProfessionalStatus,
     updateUserBadges,
-    updateSellerProfile,
     deleteUser,
     searchUsers,
     findAdmins,

@@ -129,18 +129,6 @@ async function getUserById(req, res, next) {
     }
 }
 
-async function updateSellerProfile(req, res, next) {
-    try {
-        const userId = req.user.id;
-        const sellerProfile = req.body;
-
-        const updatedUser = await userService.updateSellerProfile(userId, sellerProfile);
-
-        res.json({ success: true, data: updatedUser });
-    } catch (error) {
-        next(error);
-    }
-}
 
 
 module.exports = {
@@ -153,5 +141,4 @@ module.exports = {
     verifyEmailChange,
     deleteUser,
     getUserById,
-    updateSellerProfile,
 }

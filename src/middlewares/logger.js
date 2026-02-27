@@ -29,14 +29,6 @@ const SENSITIVE_FIELDS = [
     'secret',
     'authorization',
 
-    'fullname',
-    'phone',
-    'street',
-    'city',
-    'postalcode',
-    'country',
-    'registrationnumber',
-    'accountnumber'
 ];
 
 const sanitizeBody = (body) => {

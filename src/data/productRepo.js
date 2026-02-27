@@ -1,18 +1,7 @@
 const Product = require("../models/Product");
-const User = require("../models/user");
 const POPULATE_FIELDS = 'category subcategory brand size condition color material tags seller';
 
 async function createProduct(productData) {
-    const user = await User.findById(productData.seller);
-
-    if (!user) {
-        throw new Error("Seller not found.");
-    }
-
-    if (!user.sellerProfile?.isComplete) {
-        throw new Error("You must complete your seller profile before listing products.");
-    }
-
     const newProduct = new Product(productData);
     return await newProduct.save();
 }
@@ -52,17 +41,9 @@ async function getProductsInReview() {
 }
 
 async function updateProduct(productId, productData) {
-    const user = await User.findById(productData.seller);
-
-    if (!user?.sellerProfile?.isComplete) {
-        throw new Error("Seller profile must be completed before editing products.");
-    }
-
-    return await Product.findByIdAndUpdate(
-        productId,
-        productData,
-        { new: true, runValidators: true }
-    );
+    const updatedProduct = await Product.findByIdAndUpdate( productId, productData, { new: true, runValidators: true } )
+        .populate(POPULATE_FIELDS);
+    return updatedProduct;
 }
 
 async function updateStatusProduct(productId, status) {
