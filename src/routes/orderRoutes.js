@@ -1,0 +1,16 @@
+const express = require('express');
+const router = express.Router();
+const orderController = require('../controllers/orderController');
+const { requireAuth } = require('../middlewares/auth');
+
+// Webhook skal IKKE have requireAuth, og den bruger rawBody fra app.js
+router.post('/webhook', orderController.handleStripeWebhook);
+
+// Ruterne skal matche navnene i din controller
+router.post('/create', requireAuth, orderController.initiateOrder);
+router.get('/my-orders', requireAuth, orderController.getMyOrders);
+
+// Husk ruten til dispute, så køberen kan stoppe udbetalingen
+router.post('/:id/dispute', requireAuth, orderController.openOrderDispute);
+
+module.exports = router;

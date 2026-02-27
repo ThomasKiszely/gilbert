@@ -119,6 +119,9 @@ async function toggleUserSuspension(id, isSuspended, reason) {
         ).select("-passwordHash");
 }
 
+async function updateStripeAccountId(userId, stripeAccountId) {
+    return await User.findByIdAndUpdate(userId, { stripeAccountId }, { new: true });
+}
 
 module.exports = {
     findUserByEmail,
@@ -134,4 +137,5 @@ module.exports = {
     searchUsers,
     findAdmins,
     toggleUserSuspension,
+    updateStripeAccountId,
 }

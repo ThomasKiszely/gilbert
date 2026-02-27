@@ -24,6 +24,9 @@ const chatRouter = require('./routes/chatRoutes');
 const blogRouter = require('./routes/blogRoutes');
 const followRouter = require('./routes/followRoutes');
 const reportRouter = require('./routes/reportRoutes');
+const orderRouter = require('./routes/orderRoutes');
+const reviewRouter = require('./routes/reviewRoutes');
+const authenticationRouter = require('./routes/authenticationRoutes');
 const cookieParser = require('cookie-parser') ;
 const { limitRate } = require('./middlewares/rateLimiter');
 const { log } = require('./middlewares/logger');
@@ -41,7 +44,13 @@ connectToMongo();
 
 
 app.use(cookieParser());
-app.use(express.json());
+app.use(express.json({
+    verify: (req, res, buf) => {
+        if (req.originalUrl.startsWith('/api/orders/webhook')) {
+            req.rawBody = buf; // Vi gemmer den rå body til senere brug i controlleren
+        }
+    }
+}));
 app.use(limitRate);
 app.use(log);
 app.use(express.static(path.join(__dirname, '..', 'public')));
@@ -64,11 +73,14 @@ app.use('/api/notifications', notificationRouter);
 app.use('/api/chats', chatRouter);
 app.use('/api/blogs', blogRouter);
 app.use('/api/reports', reportRouter);
+app.use('/api/orders', orderRouter);
+app.use('/api/reviews', reviewRouter);
 //Favorites
 app.use('/api/favorites', favoriteRouter);
 
 // Admin routes
 app.use('/api/admin', requireAuth, requireRole("admin"), adminRouter);
+app.use('/api/authentication', requireAuth, requireRole("admin"), authenticationRouter);
 
 // Product routes
 app.use('/api/products', productRouter);

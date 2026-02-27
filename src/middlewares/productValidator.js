@@ -26,7 +26,7 @@ async function loadProduct(req, res, next) {
 function validateProduct(req, res, next)  {
     const errors = [];
 
-    let {title, category, subcategory, brand, gender, size, condition, color, material, tags, price, description, images, documents, status} = req.body;
+    let {title, category, subcategory, brand, gender, size, condition, color, material, tags, price, description, images, documents, status, weight} = req.body;
 
     if(typeof title === "string") {
         req.body.title = sanitizeString(title);
@@ -69,6 +69,25 @@ function validateProduct(req, res, next)  {
             }
         }
     }
+
+    if (weight !== undefined) {
+        const parsedWeight = parseInt(weight, 10);
+
+        if (isNaN(parsedWeight)) {
+            errors.push("Weight must be a valid number");
+        } else if (parsedWeight < 100) {
+            errors.push("Weight must be at least 100 grams");
+        } else if (parsedWeight > 20000) {
+            errors.push("Weight cannot exceed 20,000 grams (20kg)");
+        } else {
+            // Gem den rensede værdi tilbage i body
+            req.body.weight = parsedWeight;
+        }
+    } else {
+        // Hvis vægten mangler helt, kan vi sætte en standard her eller lade modellen gøre det
+        req.body.weight = 1000;
+    }
+
     if(errors.length > 0) {
         return res.status(400).json({ success: false, errors });
     }

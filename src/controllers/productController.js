@@ -12,6 +12,7 @@ async function createProduct(req, res, next) {
         }
         const productData = {
             ...req.body,
+            weight: req.body.weight ? parseInt(req.body.weight) : 1000,
             images,
             seller: req.user.id
         }

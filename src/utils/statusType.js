@@ -1,4 +1,4 @@
-const statuses = ['Approved', 'Rejected', 'In Review', 'Suspended'];
+const statuses = ['Approved', 'Rejected', 'In Review', 'Suspended', 'Sold', 'Reserved'];
 
 module.exports = {
     statuses,

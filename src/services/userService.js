@@ -10,6 +10,7 @@ const { isStrongPassword } = require('../utils/isStrongPassword');
 const { sanitizeUser } = require('../utils/sanitizeUser');
 const imageService = require('../services/imageService');
 const { allowedUserUpdateFields } = require('../utils/allowedUserUpdateFields');
+const reviewRepo = require('../data/reviewRepo');
 
 async function updateMe(id, data) {
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -17,43 +18,36 @@ async function updateMe(id, data) {
     }
 
     const allowed = allowedUserUpdateFields;
-
     const update = {};
 
     for (const key of allowed) {
-        const [field, subfield] = key.split(".");
+        // Vi splitter nøglen (f.eks. "profile.address.street")
+        const parts = key.split(".");
 
-        // ⭐ Avatar URL må IKKE saniteres
-        if (key === "profile.avatarUrl") {
-            if (data.profile && data.profile.avatarUrl) {
-                update["profile.avatarUrl"] = data.profile.avatarUrl;
-            }
-            continue;
+        // Find værdien i indkommende data (f.eks. data['profile']['address']['street'])
+        let value = data;
+        for (const part of parts) {
+            value = value ? value[part] : undefined;
         }
 
-        if (subfield) {
-            if (data[field] && data[field][subfield] !== undefined) {
-                const value = data[field][subfield];
-                update[`${field}.${subfield}`] =
-                    typeof value === "string" ? sanitizeString(value) : value;
-            }
-        } else {
-            if (data[key] !== undefined) {
-                const value = data[key];
-                update[key] =
-                    typeof value === "string" ? sanitizeString(value) : value;
+        // Hvis værdien findes (ikke er undefined)
+        if (value !== undefined) {
+            // ⭐ Særlig regel: Avatar URL må IKKE saniteres
+            if (key === "profile.avatarUrl") {
+                update[key] = value;
+            } else {
+                // Alle andre strenge bliver vasket rene for ulovlig kode/tags
+                update[key] = typeof value === "string" ? sanitizeString(value) : value;
             }
         }
     }
 
-
+    // Speciel håndtering af CVR
     if (update.cvr) {
-        update.cvr = sanitizeString(update.cvr);
-
+        // update.cvr er allerede saniteret i loopet, men vi tjekker validitet her
         if (!validateCVR(update.cvr)) {
             throw new Error(`Invalid CVR`);
         }
-
         update.professionalStatus = professionalStatus.pending;
     }
 
@@ -61,7 +55,7 @@ async function updateMe(id, data) {
         throw new Error("No valid fields to update");
     }
 
-
+    // Vi sender 'update' til repo. Mongoose forstår "profile.address.street": "Vejnavn"
     const updated = await userRepo.updateUser(id, update);
     if (!updated) {
         throw new Error("User not found");
@@ -195,7 +189,20 @@ async function getUserById(id) {
     if (!user) {
         throw new Error("User not found");
     }
-    return sanitizeUser(user);
+
+    const [reviews, averageRating] = await Promise.all([
+        reviewRepo.getReviewsForUser(id),
+        reviewRepo.getAverageRating(id)
+    ]);
+
+    const sanitizedUser = sanitizeUser(user);
+
+    return {
+        ...sanitizedUser,
+        reviews: reviews,
+        averageRating: averageRating,
+        totalReviews: reviews.length
+    };
 }
 
 module.exports = {

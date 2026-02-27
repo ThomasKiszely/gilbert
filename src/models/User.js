@@ -37,10 +37,18 @@ const userSchema = new mongoose.Schema({
     profile: {
         bio: {type: String},
         avatarUrl: {type: String, default: "/avatars/Gilbert.jpg"},
-        language: {type: String, default: "en"}
+        language: {type: String, default: "en"},
+        address: {
+            street: { type: String },
+            houseNumber: { type: String },
+            zip: { type: String },
+            city: { type: String },
+            country: { type: String, default: "Denmark" }
+        }
     },
     isSuspended: {type: Boolean, default: false},
     suspensionReason: {type: String},
+    stripeAccountId: {type: String, default: null},
 },
 {timestamps: true });
 

@@ -57,7 +57,11 @@ async function getProductById(productId, userId) {
 
 
 async function updateProduct(productId, productData) {
-    const user = await userRepo.findUserById(productData.seller);
+    // Find produktet først for at tjekke ejeren (eller brug req.user fra controlleren)
+    const product = await productRepo.getProductById(productId);
+    if (!product) throw new Error("Product not found");
+
+    const user = await userRepo.findUserById(product.seller); // Brug produktets eksisterende sælger-ID
     if (user && user.isSuspended) {
         const err = new Error("Account suspended. You cannot edit listings.");
         err.status = 403;

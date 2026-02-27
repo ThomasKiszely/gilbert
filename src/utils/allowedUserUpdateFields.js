@@ -5,7 +5,13 @@ const allowedUserUpdateFields = [
     "cvr",
     "profile.bio",
     "profile.avatarUrl",
-    "profile.language"
+    "profile.language",
+    // Nye felter til fragt (Shipmondo-klar)
+    "profile.address.street",
+    "profile.address.houseNumber",
+    "profile.address.zip",
+    "profile.address.city",
+    "profile.address.country"
 ];
 
 module.exports = {

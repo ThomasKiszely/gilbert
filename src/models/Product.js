@@ -19,6 +19,14 @@ const productSchema = new mongoose.Schema({
     documents: {type: [String], default: []},
     seller: {type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
     status: {type: String, enum: statuses, default: 'In Review'},
+        weight: {
+            type: Number,
+            default: 1000,
+            min: [100, 'Weight must be at least 100g'],
+            max: [20000, 'Weight cannot exceed 20kg'],
+            // 'set' runder automatisk op/ned til nærmeste heltal, hvis nogen sender 1000.5
+            set: v => Math.round(v)
+        },
 },
 {timestamps: true });
 module.exports = mongoose.model('Product', productSchema);

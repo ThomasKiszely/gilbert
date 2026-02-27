@@ -9,6 +9,9 @@ function sanitizeUser(user) {
     delete obj.pendingEmail;
     delete obj.resetPasswordToken;
     delete obj.resetPasswordExpires;
+    if (obj.profile && obj.profile.address) {
+        delete obj.profile.address;
+    }
 
     return obj;
 }
