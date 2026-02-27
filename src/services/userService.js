@@ -205,6 +205,28 @@ async function getUserById(id) {
     };
 }
 
+async function updateSellerProfile(id, data) {
+    const { fullName, phone, address, bankAccount } = data;
+    // 1. Tjek at alle felter findes
+    if (!fullName || !phone || !address || !bankAccount) {
+        throw new Error("All seller profile fields must be filled out");
+    }
+    // 2. Adresse-validering
+    if (!address.street || !address.city || !address.postalCode || !address.country) {
+        throw new Error("Address is incomplete"); }
+    // 3. Bank-validering
+    const reg = bankAccount.registrationNumber;
+    const acc = bankAccount.accountNumber;
+    if (!/^\d{4}$/.test(reg)) {
+        throw new Error("Registration number must be 4 digits");
+    }
+    if (!/^\d{6,10}$/.test(acc)) {
+        throw new Error("Account number must be between 6 and 10 digits");
+    }
+    const user = await userRepo.updateSellerProfile(id, data);
+    return sanitizeUser(user);
+}
+
 module.exports = {
     updateUser,
     updateMe,
@@ -215,4 +237,5 @@ module.exports = {
     deleteUser,
     searchUsers,
     getUserById,
+    updateSellerProfile,
 };

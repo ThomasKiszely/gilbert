@@ -1,7 +1,7 @@
 function sanitizeUser(user) {
     if (!user) return null;
 
-    const obj = user.toObject ? user.toObject() : { ...user };
+    const obj = user.toJSON ? user.toJSON() : { ...user };
 
     delete obj.passwordHash;
     delete obj.emailChangeToken;

@@ -8,7 +8,6 @@ async function canSell(req, res, next) {
             return res.status(401).json({ success: false, errors: ["Not authenticated"] });
         }
 
-        // Hent altid frisk user fra DB
         const user = await userRepo.findUserById(userId);
 
         if (!user) {
@@ -17,12 +16,6 @@ async function canSell(req, res, next) {
 
         const errors = [];
 
-        // Tjek profil
-        if (!user.profile) {
-            errors.push("Need a profile to be able to sell");
-        }
-
-        // Tjek location
         if (!user.location || !user.location.city || !user.location.country) {
             errors.push("Need a location on profile to be able to sell");
         }
@@ -31,7 +24,6 @@ async function canSell(req, res, next) {
             return res.status(400).json({ success: false, errors });
         }
 
-        // Alt OK
         next();
 
     } catch (err) {
@@ -39,5 +31,6 @@ async function canSell(req, res, next) {
         return res.status(500).json({ success: false, errors: ["Server error"] });
     }
 }
+
 
 module.exports = { canSell };
