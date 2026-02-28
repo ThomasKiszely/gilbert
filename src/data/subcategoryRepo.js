@@ -8,7 +8,11 @@ async function createSubcategory(subcategoryData) {
 async function readAllSubcategories() {
     return await Subcategory.find({});
 }
+async function getSubcategoryById(id) {
+    return await Subcategory.findById(id).select("_id name category");
+}
 module.exports = {
     createSubcategory,
     readAllSubcategories,
+    getSubcategoryById,
 }

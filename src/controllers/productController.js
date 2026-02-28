@@ -97,23 +97,43 @@ async function filterProducts(req, res, next) {
     try {
         const {
             categoryId,
-            subcategoryId,
+            subcategory,
             typeId,
             brandId,
             gender,
+            priceMin,
+            priceMax,
+            sort,
             page = 1,
             limit = 20
         } = req.query;
 
-        const filters = { status: "Approved" };
+        // Støtter både ?brands=id1&brands=id2 og ?brands=id1,id2
+        const parseArray = (val) => {
+            if (!val) return [];
+            if (Array.isArray(val)) return val.filter(Boolean);
+            return val.split(",").filter(Boolean);
+        };
 
-        if (categoryId) filters.category = categoryId;
-        if (subcategoryId) filters.subcategory = subcategoryId;
-        if (typeId) filters.tags = typeId;
-        if (brandId) filters.brand = brandId;
-        if (gender) filters.gender = gender;
+        const filters = {
+            categoryId,
+            subcategory,
+            typeId,
+            brandId,
+            gender,
+            brands:    parseArray(req.query.brands),
+            conditions: parseArray(req.query.conditions),
+            sizes:     parseArray(req.query.sizes),
+            colors:    parseArray(req.query.colors),
+            materials: parseArray(req.query.materials),
+            priceMin:  priceMin !== undefined ? Number(priceMin) : undefined,
+            priceMax:  priceMax !== undefined ? Number(priceMax) : undefined,
+            sort,
+        };
 
-        const products = await productService.findProducts(filters, page, limit);
+        const userId = req.user?.id;
+        const products = await productService.findProducts(filters, page, limit, userId);
+
 
         return res.status(200).json(products);
     } catch (error) {
@@ -149,6 +169,5 @@ module.exports = {
     getProductById,
     updateProduct,
     deleteProduct,
-    filterProducts,
     getProductsBySeller,
 }

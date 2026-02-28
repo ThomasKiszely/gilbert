@@ -7,6 +7,7 @@ import { Input } from "@/app/components/UI/input";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
+import MegaNav from "@/app/components/nav/MegaNav";
 
 const formatNotificationType = (type: string) => {
     const labels: Record<string, string> = {
@@ -27,6 +28,8 @@ const TopBar = () => {
     const [notifications, setNotifications] = useState<any[]>([]);
     const [showNotis, setShowNotis] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    const [hovered, setHovered] = useState<string | null>(null);
 
     const fetchNotifications = async () => {
         if (!user) return;
@@ -223,6 +226,9 @@ const TopBar = () => {
                     </Button>
                 </div>
             </div>
+
+        <MegaNav />
+
         </header>
     );
 };

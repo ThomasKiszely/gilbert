@@ -26,7 +26,22 @@ async function readAllBrands(req, res, next) {
         next(err);
     }
 }
+async function getBrandById(req, res, next) {
+    try {
+        const brand = await brandService.getBrandById(req.params.id);
+        if (!brand) {
+            const err = new Error('Brand not found');
+            err.status = 404;
+            return next(err);
+        }
+        return res.status(200).json(brand);
+    } catch (err) {
+        next(err);
+    }
+}
+
 module.exports = {
     createBrand,
     readAllBrands,
+    getBrandById,
 }

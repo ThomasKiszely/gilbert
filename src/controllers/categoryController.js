@@ -28,7 +28,18 @@ async function  readAllCategories(req, res, next) {
         next(error);
     }
 }
+
+async function getFullCategoryTree(req, res, next) {
+    try {
+        const gender = req.query.gender;
+        const tree = await categoryService.getFullCategoryTree(gender);
+        return res.status(200).json(tree);
+    } catch (error) {
+        next(error);
+    }
+}
 module.exports = {
     createCategory,
     readAllCategories,
+    getFullCategoryTree,
 }

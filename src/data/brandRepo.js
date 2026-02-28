@@ -10,7 +10,12 @@ async function readAllBrands() {
     return await Brand.find({});
 }
 
+async function getBrandById(id) {
+    return await Brand.findById(id);
+}
+
 module.exports = {
     createBrand,
     readAllBrands,
+    getBrandById,
 }

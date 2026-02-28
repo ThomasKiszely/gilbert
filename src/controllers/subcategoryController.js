@@ -29,7 +29,21 @@ async function readAllSubcategories(req, res, next) {
         next(error);
     }
 }
+
+async function getSubcategory(req, res, next) {
+    try {
+        const {id} = req.params;
+        const sub = await subcategoryService.getSubcategoryName(id);
+        if (!sub) {
+            return res.status(404).json({error: "Subcategory not found"});
+        }
+        res.json(sub);
+    } catch (error) {
+        next(error);
+    }
+}
 module.exports = {
     createSubcategory,
     readAllSubcategories,
+    getSubcategory,
 }

@@ -7,4 +7,6 @@ router.get('/', subcategoryController.readAllSubcategories);
 
 router.post('/', subcategoryController.createSubcategory);
 
+router.get("/:id", subcategoryController.getSubcategory);
+
 module.exports = router;

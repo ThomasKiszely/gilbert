@@ -88,9 +88,9 @@ const Index = () => {
 
             <CategoryList
                 categories={[
-                    { id: "1", name: "Women", imageUrl: "", link: "/search?category=women" },
-                    { id: "2", name: "Men", imageUrl: "", link: "/search?category=men" },
-                    { id: "3", name: "Designers", imageUrl: "", link: "/search?category=designers" },
+                    { id: "1", name: "Women", imageUrl: "", link: "/products/filter?gender=Female" },
+                    { id: "2", name: "Men", imageUrl: "", link: "/products/filter?gender=Male" },
+                    { id: "3", name: "Brands", imageUrl: "", link: "/brands" },
                     { id: "4", name: "Home", imageUrl: "", link: "/search?category=home" },
                     { id: "5", name: "Beauty", imageUrl: "", link: "/search?category=beauty" },
                 ]}

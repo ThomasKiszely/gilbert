@@ -7,4 +7,6 @@ router.get('/', categoryController.readAllCategories);
 
 router.post('/', categoryController.createCategory);
 
+router.get("/full", categoryController.getFullCategoryTree);
+
 module.exports = router;
