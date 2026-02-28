@@ -1,27 +1,40 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { api } from "@/app/api/api";
 import ProductCard from "@/app/components/product/ProductCard";
 import FilterSidebar, { type ActiveFilters } from "@/app/components/filter/FilterSidebar";
 import type { ApiProduct, Product } from "@/app/components/product/types";
 
+// 1. Mapper flyttet ud for at undgå unødvendig re-creation
+const mapProduct = (p: ApiProduct): Product => ({
+    id: p._id,
+    title: p.title,
+    brand: p.brand?.name || "Unknown",
+    price: p.price,
+    imageUrl: p.images?.[0] || "/images/ImagePlaceholder.jpg",
+    tag: p.tags?.[0]?.name,
+    isFavorite: p.isFavorite ?? false,
+});
 
 export default function FilterPage() {
+    const router = useRouter();
+    const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    const gender = searchParams.get("gender");
-    const subcategory = searchParams.get("subcategory");
-
+    // Lokale states
     const [products, setProducts] = useState<Product[]>([]);
     const [subcategoryName, setSubcategoryName] = useState<string | null>(null);
     const [brandName, setBrandName] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
-    // Initialiser filters direkte fra URL
-    const [filters, setFilters] = useState<ActiveFilters>(() => ({
+    // 2. Afledte værdier direkte fra URL (Ingen ekstra useEffect til synkronisering)
+    const gender = searchParams.get("gender");
+    const subcategory = searchParams.get("subcategory");
+
+    const filters = useMemo<ActiveFilters>(() => ({
         sort: searchParams.get("sort") ?? "newest",
         brands: searchParams.getAll("brands"),
         conditions: searchParams.getAll("conditions"),
@@ -30,170 +43,122 @@ export default function FilterPage() {
         materials: searchParams.getAll("materials"),
         priceMin: searchParams.get("priceMin") ?? "",
         priceMax: searchParams.get("priceMax") ?? "",
-    }));
+    }), [searchParams]);
 
-    // Synkroniser filters når URL ændrer sig (fx klik i MegaNav)
-    useEffect(() => {
-        setFilters({
-            sort: searchParams.get("sort") ?? "newest",
-            brands: searchParams.getAll("brands"),
-            conditions: searchParams.getAll("conditions"),
-            sizes: searchParams.getAll("sizes"),
-            colors: searchParams.getAll("colors"),
-            materials: searchParams.getAll("materials"),
-            priceMin: searchParams.get("priceMin") ?? "",
-            priceMax: searchParams.get("priceMax") ?? "",
-        });
-    }, [searchParams]);
-
-    // Toggle favorite
-    function toggleFavorite(id: string) {
-        setProducts((prev) =>
-            prev.map((p) => (p.id === id ? { ...p, isFavorite: !p.isFavorite } : p))
-        );
-    }
-
-    // Hent subcategory-navn
-    useEffect(() => {
-        if (!subcategory) return;
-
-        const fetchSubcategory = async () => {
-            try {
-                const res = await api(`/api/subcategories/${subcategory}`);
-                const data = await res.json();
-                setSubcategoryName(data.name);
-            } catch {
-                setSubcategoryName(null);
-            }
-        };
-
-        fetchSubcategory();
-    }, [subcategory]);
-
-    // Hent brand-navn hvis kun ét brand er sat fra URL (fx fra MegaNav)
-    useEffect(() => {
-        if (filters.brands.length !== 1) {
-            setBrandName(null);
-            return;
-        }
-        const fetchBrand = async () => {
-            try {
-                const res = await api(`/api/brands/${filters.brands[0]}`);
-                const data = await res.json();
-                setBrandName(data.name ?? null);
-            } catch {
-                setBrandName(null);
-            }
-        };
-        fetchBrand();
-    }, [filters.brands]);
-
-    // Hent produkter når filter eller URL-params ændrer sig
-    const fetchProducts = useCallback(async () => {
-        const hasUrlParams = gender || subcategory;
-        const hasSidebarFilters =
-            filters.brands.length > 0 ||
-            filters.conditions.length > 0 ||
-            filters.sizes.length > 0 ||
-            filters.colors.length > 0 ||
-            filters.materials.length > 0 ||
-            filters.priceMin ||
-            filters.priceMax;
-
-        if (!hasUrlParams && !hasSidebarFilters) {
-            setLoading(false);
-            return;
-        }
-
-        setLoading(true);
-
+    // 3. Opdater URL'en når filtre ændres (Sidebar kalder denne)
+    const handleFilterChange = useCallback((newFilters: ActiveFilters) => {
         const params = new URLSearchParams();
         if (gender) params.set("gender", gender);
         if (subcategory) params.set("subcategory", subcategory);
-        if (filters.sort) params.set("sort", filters.sort);
-        if (filters.priceMin) params.set("priceMin", filters.priceMin);
-        if (filters.priceMax) params.set("priceMax", filters.priceMax);
-        filters.brands.forEach((id) => params.append("brands", id));
-        filters.conditions.forEach((id) => params.append("conditions", id));
-        filters.sizes.forEach((id) => params.append("sizes", id));
-        filters.colors.forEach((id) => params.append("colors", id));
-        filters.materials.forEach((id) => params.append("materials", id));
 
-        try {
-            const res = await api(`/api/products/filter?${params.toString()}`);
-            const data: ApiProduct[] = await res.json();
-            const mapped: Product[] = data.map((p) => ({
-                id: p._id,
-                title: p.title,
-                brand: p.brand?.name || "Ukendt",
-                price: p.price,
-                imageUrl: p.images?.[0] || "/images/ImagePlaceholder.jpg",
-                tag: p.tags?.[0]?.name,
-                isFavorite: p.isFavorite || false,
-            }));
+        // Tilføj alle aktive filtre til URL
+        Object.entries(newFilters).forEach(([key, value]) => {
+            if (Array.isArray(value)) {
+                value.forEach(v => params.append(key, v));
+            } else if (value) {
+                params.set(key, value);
+            }
+        });
 
-            setProducts(mapped);
-        } catch (err) {
-            console.error("Fejl ved hentning af produkter:", err);
-            setProducts([]);
-        } finally {
-            setLoading(false);
-        }
-    }, [gender, subcategory, filters]);
+        router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    }, [gender, subcategory, pathname, router]);
 
+    // 4. Hent data (Produkter + Meta)
     useEffect(() => {
-        fetchProducts();
-    }, [fetchProducts]);
+        const controller = new AbortController();
+
+        async function fetchData() {
+            setLoading(true);
+            try {
+                // Vi henter produkter baseret på den aktuelle URL string
+                const productRes = await api(`/api/products/filter?${searchParams.toString()}`, { signal: controller.signal });
+                const productData: ApiProduct[] = await productRes.json();
+                setProducts(productData.map(mapProduct));
+
+                // Hent subcategory navn hvis nødvendigt
+                if (subcategory) {
+                    const subRes = await api(`/api/subcategories/${subcategory}`);
+                    const subData = await subRes.json();
+                    setSubcategoryName(subData?.name || null);
+                } else {
+                    setSubcategoryName(null);
+                }
+
+                // Hent brand navn hvis det er en ren brand-side (kun 1 brand valgt, ingen gender/sub)
+                if (!gender && !subcategory && filters.brands.length === 1) {
+                    const brandRes = await api(`/api/brands/${filters.brands[0]}`);
+                    const brandData = await brandRes.json();
+                    setBrandName(brandData?.name || null);
+                } else {
+                    setBrandName(null);
+                }
+
+            } catch (err: any) {
+                if (err.name !== 'AbortError') {
+                    console.error("Fetch error:", err);
+                    setProducts([]);
+                }
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchData();
+        return () => controller.abort(); // Afbryd hvis brugeren navigerer væk eller ændrer filtre hurtigt
+    }, [searchParams, gender, subcategory, filters.brands]);
+
+    const showBrandTitle = !gender && !subcategory && !!brandName;
+
+    const activeFilterCount = useMemo(() => {
+        return filters.brands.length + filters.conditions.length + filters.sizes.length +
+            filters.colors.length + filters.materials.length +
+            (filters.priceMin ? 1 : 0) + (filters.priceMax ? 1 : 0);
+    }, [filters]);
 
     return (
-        <div className="max-w-7xl mx-auto px-4 pt-24 pb-10">
-
+        <div className="max-w-7xl mx-auto px-4 pt-6 pb-10">
             {/* Breadcrumb */}
-            <div className="text-sm text-foreground/60 mb-4">
-                <span>Forside</span>
-                {brandName ? (
+            <nav className="text-sm text-foreground/60 mb-4">
+                <span>Frontpage</span>
+                {showBrandTitle ? (
                     <>
                         <span> / </span>
-                        <a href="/brands" className="hover:text-foreground transition-colors">Brands</a>
+                        <a href="/brands" className="hover:text-foreground">Brands</a>
                         <span> / {brandName}</span>
                     </>
                 ) : (
                     <>
-                        {gender && <span> / {gender}</span>}
+                        {gender && <span className="capitalize"> / {gender}</span>}
                         {subcategoryName && <span> / {subcategoryName}</span>}
                     </>
                 )}
-            </div>
+            </nav>
 
-            {/* Titel + produkt-antal + mobil filter-knap */}
+            {/* Header */}
             <div className="flex items-center justify-between mb-8">
-                <h1 className="text-2xl font-semibold">
-                    {brandName
-                        ? brandName
-                        : <>
-                            {gender && `${gender}`}
-                            {subcategoryName && ` — ${subcategoryName}`}
-                          </>
-                    }
+                <h1 className="text-2xl font-semibold capitalize">
+                    {showBrandTitle ? brandName : (gender || "Products")}
+                    {subcategoryName && ` — ${subcategoryName}`}
                 </h1>
+
                 <div className="flex items-center gap-3">
                     {!loading && (
                         <span className="text-sm text-muted-foreground">
-                            {products.length} {products.length === 1 ? "produkt" : "produkter"}
+                            {products.length} {products.length === 1 ? "product" : "products"}
                         </span>
                     )}
-                    {/* Filter-knap — kun synlig på mobil */}
+
                     <button
                         onClick={() => setMobileFilterOpen(true)}
-                        className="md:hidden flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground/70 hover:text-foreground hover:bg-muted transition-colors"
+                        className="md:hidden flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-muted transition-colors"
                     >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path d="M3 4h18M7 12h10M10 20h4" strokeLinecap="round" />
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path d="M3 4h18M7 12h10M10 20h4" strokeLinecap="round" strokeWidth="2" />
                         </svg>
                         Filter
-                        {(filters.brands.length + filters.conditions.length + filters.sizes.length + filters.colors.length + filters.materials.length + (filters.priceMin ? 1 : 0) + (filters.priceMax ? 1 : 0)) > 0 && (
-                            <span className="ml-0.5 rounded-full bg-foreground text-background text-xs w-5 h-5 flex items-center justify-center font-bold">
-                                {filters.brands.length + filters.conditions.length + filters.sizes.length + filters.colors.length + filters.materials.length + (filters.priceMin ? 1 : 0) + (filters.priceMax ? 1 : 0)}
+                        {activeFilterCount > 0 && (
+                            <span className="ml-1 rounded-full bg-foreground text-background text-[10px] w-5 h-5 flex items-center justify-center font-bold">
+                                {activeFilterCount}
                             </span>
                         )}
                     </button>
@@ -201,51 +166,42 @@ export default function FilterPage() {
             </div>
 
             <div className="flex gap-8 items-start">
-
-                {/* Sidebar */}
                 <FilterSidebar
                     filters={filters}
-                    onChange={setFilters}
+                    onChange={handleFilterChange}
                     mobileOpen={mobileFilterOpen}
                     onClose={() => setMobileFilterOpen(false)}
+                    hideBrands={showBrandTitle}
                 />
 
-                {/* Produkt grid */}
-                <div className="flex-1 min-w-0">
-                    {loading && (
+                <main className="flex-1 min-w-0">
+                    {loading ? (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                            {Array.from({ length: 8 }).map((_, i) => (
-                                <div
-                                    key={i}
-                                    className="aspect-[3/4] rounded-lg bg-muted animate-pulse"
-                                />
+                            {[...Array(8)].map((_, i) => (
+                                <div key={i} className="aspect-[3/4] rounded-lg bg-muted animate-pulse" />
                             ))}
                         </div>
-                    )}
-
-                    {!loading && products.length === 0 && (
+                    ) : products.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-24 text-center">
-                            <p className="text-lg font-medium text-foreground/70 mb-2">
-                                Ingen produkter fundet
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                                Prøv at justere dine filtre
-                            </p>
+                            <p className="text-lg font-medium text-foreground/70">No products found</p>
+                            <p className="text-sm text-muted-foreground">Try adjusting your filters</p>
                         </div>
-                    )}
-
-                    {!loading && products.length > 0 && (
+                    ) : (
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                             {products.map((product) => (
                                 <ProductCard
                                     key={product.id}
                                     product={product}
-                                    onToggleFavorite={toggleFavorite}
+                                    onToggleFavorite={(id) =>
+                                        setProducts(prev => prev.map(p =>
+                                            p.id === id ? { ...p, isFavorite: !p.isFavorite } : p
+                                        ))
+                                    }
                                 />
                             ))}
                         </div>
                     )}
-                </div>
+                </main>
             </div>
         </div>
     );

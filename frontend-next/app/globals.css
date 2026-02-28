@@ -3,6 +3,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body {
+    overflow-x: hidden;
+}
+
 /* Gilbert Design System - Premium Luxury Marketplace
    Colors: Racing Green, Ivory, Brown/Burgundy
 */

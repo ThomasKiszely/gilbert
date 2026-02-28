@@ -90,9 +90,9 @@ export default function MegaNav() {
                                         <div className="w-3 h-3 bg-popover border-l border-t border-border/50 rotate-45 mx-auto -mb-1.5 relative z-10" />
                                         <div className="bg-popover border border-border/50 rounded-lg shadow-xl p-6 min-w-[28rem]">
                                             {tree === null ? (
-                                                <p className="text-sm text-muted-foreground">Indlæser kategorier…</p>
+                                                <p className="text-sm text-muted-foreground">Loading categories…</p>
                                             ) : treeError || Object.keys(tree).length === 0 ? (
-                                                <p className="text-sm text-muted-foreground">Ingen kategorier fundet.</p>
+                                                <p className="text-sm text-muted-foreground">No categories foud.</p>
                                             ) : (
                                                 <div className="flex gap-8">
                                                     {Object.entries(tree).map(([category, subs]) => (
@@ -102,7 +102,7 @@ export default function MegaNav() {
                                                             </h4>
                                                             <ul className="space-y-2">
                                                                 {Array.isArray(subs) && subs.length === 0 ? (
-                                                                    <li className="text-xs text-muted-foreground/60 italic">Ingen underkategorier</li>
+                                                                    <li className="text-xs text-muted-foreground/60 italic">No subcategories</li>
                                                                 ) : (
                                                                     subs.map((sub) => (
                                                                         <li key={sub.id}>
@@ -128,7 +128,7 @@ export default function MegaNav() {
                                                     href={`/products/filter?gender=${GENDER_MAP[link.label]}`}
                                                     className="text-xs font-medium text-foreground/60 hover:text-foreground transition-colors uppercase tracking-wider"
                                                 >
-                                                    Se alt i {link.label} →
+                                                    See everything in {link.label} →
                                                 </Link>
                                             </div>
                                         </div>
@@ -144,11 +144,11 @@ export default function MegaNav() {
                                         <div className="w-3 h-3 bg-popover border-l border-t border-border/50 rotate-45 mx-auto -mb-1.5 relative z-10" />
                                         <div className="bg-popover border border-border/50 rounded-lg shadow-xl p-6 w-[36rem]">
                                             <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                                                Populære brands
+                                                Popular brands
                                             </h4>
 
                                             {brands.length === 0 ? (
-                                                <p className="text-sm text-muted-foreground">Indlæser brands…</p>
+                                                <p className="text-sm text-muted-foreground">Loading brands…</p>
                                             ) : (
                                                 <div className="grid grid-cols-3 gap-x-6 gap-y-2">
                                                     {brands.slice(0, BRANDS_PREVIEW).map((brand) => (
@@ -168,7 +168,7 @@ export default function MegaNav() {
                                                     href="/brands"
                                                     className="text-xs font-medium text-foreground/60 hover:text-foreground transition-colors uppercase tracking-wider"
                                                 >
-                                                    Se alle brands ({brands.length}) →
+                                                    See all brands ({brands.length}) →
                                                 </Link>
                                             </div>
                                         </div>
