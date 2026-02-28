@@ -163,7 +163,33 @@ async function retryShippingLabel(orderId) {
         data: result
     };
 }
+async function getAllOrders(filters) {
+    const { status, hasError } = filters;
+    let query = {};
 
+    if (hasError === 'true') {
+        query.shippingError = { $ne: null };
+    }
+
+    if (status) {
+        query.status = status;
+    }
+
+    // Her taler servicen med repoet
+    return await orderRepo.findAllOrders(query);
+}
+
+async function getOrderDetails(orderId) {
+    // Vi bruger orderRepo til at hente den dybe data
+    const order = await orderRepo.findOrderById(orderId);
+
+    if (!order) return null;
+
+    // Her kunne vi tilføje ekstra admin-logik,
+    // f.eks. tjekke om pengene stadig er "reserved" hos Stripe
+
+    return order;
+}
 
 module.exports = {
     updateStatusProduct,
@@ -176,4 +202,6 @@ module.exports = {
     updateUserRole,
     toggleUserSuspension,
     retryShippingLabel,
+    getAllOrders,
+    getOrderDetails,
 }

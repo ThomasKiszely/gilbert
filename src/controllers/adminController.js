@@ -139,6 +139,42 @@ async function retryShippingLabel(req, res, next) {
     }
 }
 
+async function getAllOrders(req, res, next) {
+    try {
+        const { status, hasError } = req.query;
+
+        // Vi kalder servicen
+        const orders = await adminService.getAllOrders({ status, hasError });
+
+        return res.status(200).json({
+            success: true,
+            data: orders
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function getOrderDetails(req, res, next) {
+    try {
+        const { id } = req.params;
+        const order = await adminService.getOrderDetails(id);
+
+        if (!order) {
+            const err = new Error('Order not found');
+            err.status = 404;
+            return next(err);
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: order
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     approveProduct,
     rejectProduct,
@@ -151,4 +187,6 @@ module.exports = {
     updateUserRole,
     toggleUserSuspension,
     retryShippingLabel,
+    getAllOrders,
+    getOrderDetails,
 }

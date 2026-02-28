@@ -6,21 +6,21 @@ export function middleware(request: NextRequest) {
     const token = request.cookies.get('authToken')?.value;
     const { pathname } = request.nextUrl;
 
-    // 1. Definition af ruter der KRÆVER login
+    // 1. Ruter der KRÆVER login
+    // Tilføj /order-success herhjemme hvis du vil være MEGET striks,
+    // men jeg anbefaler at lade den være "åben" for at undgå redirect-fejl efter betaling.
     const protectedRoutes = ['/profile', '/favorites', '/checkout', '/my-page'];
 
-    // Tjek om den aktuelle side er i listen over beskyttede ruter
     const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
 
-    // 2. Hvis man prøver at tilgå noget beskyttet uden token -> Login
+    // 2. Redirect til login hvis token mangler på beskyttede ruter
     if (isProtectedRoute && !token) {
         const loginUrl = new URL('/login', request.url);
-        // Gemmer hvor de kom fra, så vi kan sende dem tilbage efter login
         loginUrl.searchParams.set('from', pathname);
         return NextResponse.redirect(loginUrl);
     }
 
-    // 3. Hvis man er logget ind og prøver at gå til login/register -> Forside
+    // 3. Redirect væk fra login/register hvis man ALLEREDE er logget ind
     if (token && (pathname === '/login' || pathname === '/register')) {
         return NextResponse.redirect(new URL('/', request.url));
     }
@@ -31,11 +31,9 @@ export function middleware(request: NextRequest) {
 export const config = {
     matcher: [
         /*
-         * Match alle ruter undtagen:
-         * 1. /api (backend kald)
-         * 2. /_next (Next.js interne filer)
-         * 3. /static, /favicon.ico, osv.
+         * Match alle ruter undtagen de statiske filer og API
+         * Vi fjerner 'public' og tilføjer almindelige billedformater
          */
-        '/((?!api|_next/static|_next/image|favicon.ico|public).*)',
+        '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
     ],
 };

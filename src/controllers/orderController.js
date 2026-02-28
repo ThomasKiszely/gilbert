@@ -4,17 +4,28 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 // 1. Opret en ny ordre (Køb nu / Accepter bud)
 async function initiateOrder(req, res, next) {
     try {
-        const { productId, bidId, wantAuth } = req.body;
-        const buyerId = req.user._id; // ID fra din login-middleware
+        // Vi trækker 'address' ud fra req.body (som vi sender fra Next.js)
+        const { productId, bidId, wantAuth, address } = req.body;
+        const buyerId = req.user._id;
 
-        // Vi kalder servicen og lader DEN styre logikken
-        const order = await orderService.initiateOrder(productId, buyerId, bidId, wantAuth);
+        // VIGTIGT: Vi sender 'address' med som det 3. argument,
+        // præcis som orderService.initiateOrder forventer det.
+        const result = await orderService.initiateOrder(
+            productId,
+            buyerId,
+            address, // <--- Her er den!
+            bidId,
+            wantAuth
+        );
 
+        // Bemærk: orderService returnerer { order, clientSecret }
         return res.status(201).json({
             success: true,
-            data: order
+            order: result.order,
+            clientSecret: result.clientSecret
         });
     } catch (error) {
+        console.error("Controller Error:", error.message);
         next(error);
     }
 }

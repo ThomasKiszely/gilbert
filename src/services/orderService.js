@@ -20,6 +20,7 @@ function validateAddress(address) {
 
     if (!address.name) throw new Error("Full name is required.");
     if (!address.street) throw new Error("Street address is required.");
+    if (!address.houseNumber) throw new Error("House number is required.");
     if (!address.city) throw new Error("City is required.");
     if (!address.zip || !/^\d{4}$/.test(address.zip)) {
         throw new Error("Zip code must be 4 digits.");

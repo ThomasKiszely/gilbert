@@ -58,6 +58,7 @@ function validateUser(req, res, next) {
         }
     }
 
+
     if (termsAccepted !== true && termsAccepted !== "true") {
         errors.push('You must accept the terms to register');
     }

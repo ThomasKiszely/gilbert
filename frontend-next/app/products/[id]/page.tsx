@@ -33,6 +33,16 @@ const ProductDetailsPage = () => {
         fetchProduct();
     }, [id]);
 
+    // ⭐ NY BUY NOW HANDLER ⭐
+    function handleBuyNow() {
+        if (!user) {
+            router.push("/login");
+            return;
+        }
+        // Vi sender dem bare videre til checkout med produktets ID
+        router.push(`/checkout/${product._id}`);
+    }
+
     if (loading) return <div className="p-20 text-center text-zinc-500 font-mono uppercase tracking-widest text-xs">Loading product...</div>;
     if (!product) return <div className="p-20 text-center text-zinc-500">Product not found.</div>;
 
@@ -65,7 +75,6 @@ const ProductDetailsPage = () => {
 
                         <div className="h-px bg-white/10 my-6" />
 
-                        {/* DESCRIPTION - Nu i en blødere Ivory/Zinc farve */}
                         <p className="text-sm text-zinc-400/80 leading-relaxed font-medium italic">
                             {product.description || "No description provided."}
                         </p>
@@ -74,7 +83,7 @@ const ProductDetailsPage = () => {
                     {/* ACTION PANEL */}
                     <div className="mt-auto p-6 bg-white rounded-[2rem] shadow-xl flex flex-col gap-4">
                         <Button
-                            onClick={() => !user && router.push("/login")}
+                            onClick={handleBuyNow}
                             className="w-full bg-black hover:bg-zinc-900 text-white py-8 rounded-2xl text-lg font-bold transition-all hover:scale-[1.01] active:scale-[0.98]"
                         >
                             Buy Now ({product.price} DKK)
@@ -89,7 +98,6 @@ const ProductDetailsPage = () => {
                             </div>
                         </div>
 
-                        {/* BIDDING SECTION */}
                         {user ? (
                             <PlaceBid
                                 productId={String(product._id)}
@@ -119,7 +127,6 @@ const ProductDetailsPage = () => {
                 </div>
             </div>
 
-            {/* CHAT MODAL */}
             {isChatOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10">
                     <div
@@ -128,7 +135,6 @@ const ProductDetailsPage = () => {
                     />
 
                     <div className="relative bg-[#0a1f1a] w-full max-w-2xl h-[85vh] rounded-[3rem] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in duration-300 border border-white/10">
-                        {/* MODAL HEADER */}
                         <div className="p-8 border-b border-white/5 flex justify-between items-center bg-[#0a1f1a]">
                             <div className="flex items-center gap-4">
                                 <div className="h-12 w-12 rounded-2xl bg-[#800020] flex items-center justify-center shadow-lg">
@@ -149,7 +155,6 @@ const ProductDetailsPage = () => {
                             </button>
                         </div>
 
-                        {/* MODAL BODY (CHAT) */}
                         <div className="flex-1 overflow-hidden">
                             <ChatView
                                 threadId={String(product._id)}

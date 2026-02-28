@@ -134,6 +134,19 @@ async function markOrderAsDisputed(orderId, reason = "") {
     );
 }
 
+async function findAllOrders(query = {}) {
+    try {
+        return await Order.find(query)
+            .populate('buyer', 'username email')   // Hent kun de nødvendige felter
+            .populate('seller', 'username email')
+            .populate('product', 'title price images')
+            .sort({ createdAt: -1 });              // Nyeste ordrer først
+    } catch (error) {
+        throw new Error("Repository error: " + error.message);
+    }
+}
+
+
 
 module.exports = {
     createOrder,
@@ -150,4 +163,5 @@ module.exports = {
     updateOrderStatusWithAddress,
     updateAuthenticationStatus,
     markOrderAsDisputed,
+    findAllOrders,
 };
