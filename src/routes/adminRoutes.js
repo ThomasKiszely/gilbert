@@ -21,6 +21,9 @@ router.get('/products/in-review', adminController.getProductsInReview);
 
 router.put('/products/:id/approve',adminController.approveProduct);
 router.put('/products/:id/reject', adminController.rejectProduct);
+//Retry Shipmondo label
+router.post('/orders/:id/retry-shipping', adminController.retryShippingLabel);
+
 router.delete('/users/:id', userController.deleteUser)
 
 module.exports = router;

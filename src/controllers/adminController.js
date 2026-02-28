@@ -130,6 +130,15 @@ async function toggleUserSuspension(req, res, next) {
     }
 }
 
+async function retryShippingLabel(req, res, next) {
+    try{
+        const result = await adminService.retryShippingLabel(req.params.id);
+        return res.status(200).json( { success: true, data: result });
+    } catch(error) {
+        next(error);
+    }
+}
+
 module.exports = {
     approveProduct,
     rejectProduct,
@@ -141,4 +150,5 @@ module.exports = {
     updateProfessionalStatus,
     updateUserRole,
     toggleUserSuspension,
+    retryShippingLabel,
 }
