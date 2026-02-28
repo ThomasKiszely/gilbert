@@ -1,10 +1,10 @@
+// src/services/orderService.js
 const orderRepo = require('../data/orderRepo');
 const productRepo = require('../data/productRepo');
 const bidRepo = require('../data/bidRepo');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const mailer = require('../utils/mailer'); // ⭐ Ny import
-const shippingService = require('./shippingService'); // ⭐ Sørg for at denne er her
-
+const mailer = require('../utils/mailer');
+const shippingService = require('./shippingService');
 const bidStatusses = require('../utils/bidStatusses');
 
 const {
@@ -14,12 +14,45 @@ const {
 } = require('../utils/platformSettings');
 
 
-async function initiateOrder(productId, buyerId, bidId = null, wantAuth = false) {
+// ⭐ Dansk kommentar: Validering af købers adresse
+function validateAddress(address) {
+    if (!address) throw new Error("A shipping address is required.");
+
+    if (!address.name) throw new Error("Full name is required.");
+    if (!address.street) throw new Error("Street address is required.");
+    if (!address.city) throw new Error("City is required.");
+    if (!address.zip || !/^\d{4}$/.test(address.zip)) {
+        throw new Error("Zip code must be 4 digits.");
+    }
+    if (!address.country) throw new Error("Country is required.");
+
+    return true;
+}
+
+
+// ⭐ initiateOrder kræver nu adresse fra frontend
+async function initiateOrder(productId, buyerId, address, bidId = null, wantAuth = false) {
+
+    // ⭐ Valider adresse INDEN noget andet
+    validateAddress(address);
+
     // 1. Hent produktet og valider status
     const product = await productRepo.getProductById(productId);
     if (!product || product.status !== 'Approved') {
-        throw new Error("Product is not available for purchase");
+        throw new Error("This product is not available for purchase.");
     }
+
+    // Valider sælger adresse:
+    const seller = product.seller;
+
+    if (!seller.profile?.address?.street ||
+        !seller.profile?.address?.houseNumber ||
+        !seller.profile?.address?.city ||
+        !seller.profile?.address?.zip ||
+        !seller.profile?.address?.country) {
+        throw new Error("The seller has not completed their address. This product cannot be purchased at the moment.");
+    }
+
 
     let finalPrice = product.price;
 
@@ -27,53 +60,55 @@ async function initiateOrder(productId, buyerId, bidId = null, wantAuth = false)
     if (bidId) {
         const bid = await bidRepo.getBidById(bidId);
         if (!bid || bid.productId.toString() !== productId.toString()) {
-            throw new Error("The offer is no longer valid for this product");
+            throw new Error("This offer is no longer valid for this product.");
         }
         if (bid.status !== bidStatusses.accepted) {
-            throw new Error("This offer has not been accepted by the seller");
+            throw new Error("This offer has not been accepted by the seller.");
         }
         if (bid.buyerId.toString() !== buyerId.toString()) {
-            throw new Error("This offer does not belong to your account");
+            throw new Error("This offer does not belong to your account.");
         }
-        // Brug bud-prisen
         finalPrice = bid.counterAmount || bid.amount;
     }
 
-    // 3. Authentication logik (Gilbert-tjek)
+    // 3. Authentication logik
     const isAuthForced = finalPrice >= AUTH_THRESHOLD;
     const requiresAuthentication = isAuthForced || wantAuth;
     const currentAuthFee = requiresAuthentication ? AUTHENTICATION_FEE : 0;
 
-    // 4. Beregn økonomi (Altid i øre til Stripe)
+    // 4. Beregn økonomi
     const platformFee = Math.round(finalPrice * (PLATFORM_FEE_PERCENT / 100));
     const sellerPayout = finalPrice - platformFee;
     const totalAmount = finalPrice + currentAuthFee;
 
-    // 5. Forbered ordre-data til databasen
+    // 5. Forbered ordre-data
     const orderData = {
         product: productId,
         buyer: buyerId,
         seller: product.seller._id,
-        totalAmount: totalAmount,
-        platformFee: platformFee,
-        sellerPayout: sellerPayout,
-        requiresAuthentication: requiresAuthentication,
+        totalAmount,
+        platformFee,
+        sellerPayout,
+        requiresAuthentication,
         authenticationFee: currentAuthFee,
         authenticationStatus: requiresAuthentication ? 'pending' : 'not_required',
-        status: 'pending'
+        status: 'pending',
+
+        // ⭐ Gem køberens adresse direkte på ordren
+        shippingAddress: address
     };
 
-    // 6. Opret ordren i databasen
+    // 6. Opret ordren
     const order = await orderRepo.createOrder(orderData);
 
-// 7. Opret Stripe PaymentIntent (ESCROW + CONNECT + PLATFORM FEE)
+    // 7. Opret Stripe PaymentIntent
     const paymentIntent = await stripe.paymentIntents.create({
-        amount: totalAmount * 100, // i øre
+        amount: totalAmount * 100,
         currency: 'dkk',
-        capture_method: 'manual', // ⭐ ESCROW – vi capturer først efter 72 timer
-        application_fee_amount: platformFee * 100, // ⭐ Gilberts fee
+        capture_method: 'manual',
+        application_fee_amount: platformFee * 100,
         transfer_data: {
-            destination: product.seller.stripeAccountId // ⭐ Sælgers Connect-konto
+            destination: product.seller.stripeAccountId
         },
         metadata: {
             orderId: order._id.toString(),
@@ -83,34 +118,28 @@ async function initiateOrder(productId, buyerId, bidId = null, wantAuth = false)
         }
     });
 
-// 8. Gem PaymentIntent ID på ordren
+    // 8. Gem PaymentIntent ID
     await orderRepo.updateOrderSession(order._id, paymentIntent.id);
 
-// 9. Returnér client_secret til frontend (Stripe.js)
     return {
         order,
         clientSecret: paymentIntent.client_secret
     };
 }
 
-async function getUserOrders(userId) {
-    // Her kan vi tilføje logik senere, f.eks. hvis vi vil
-    // beregne om reklamationsfristen er aktiv for hver ordre
 
+async function getUserOrders(userId) {
     const orders = await orderRepo.getOrdersByBuyer(userId);
     return orders.map(order => {
-        // Vi kan tilføje en virtuel property her, som frontenden kan bruge
         const orderObj = order.toObject();
-
         if (order.deliveredAt) {
             const now = new Date();
             orderObj.isReclamable = now <= order.payoutEligibleAt;
         }
-
         return orderObj;
     });
-
 }
+
 
 async function processEligiblePayouts() {
     const now = new Date();
@@ -119,96 +148,77 @@ async function processEligiblePayouts() {
     for (const order of eligibleOrders) {
         try {
             console.log(`🤖 Cron: Capturing PaymentIntent for order ${order._id}`);
-
-            // ⭐ Capture PaymentIntent → Stripe udbetaler automatisk til sælger
             const capture = await stripe.paymentIntents.capture(order.stripePaymentIntentId);
-
-            // ⭐ Opdater ordren som udbetalt
             await orderRepo.updateOrderAsPaidOut(order._id, capture.id);
-
-            console.log(`✅ PaymentIntent captured og udbetalt for ordre: ${order._id}`);
+            console.log(`✅ PaymentIntent captured and paid out for order: ${order._id}`);
         } catch (error) {
-            console.error(`❌ Fejl ved capture for ordre ${order._id}:`, error.message);
+            console.error(`❌ Error capturing PaymentIntent for order ${order._id}:`, error.message);
         }
     }
 }
 
 
 async function openOrderDispute(orderId, userId) {
-    // 1. Find ordren
     const order = await orderRepo.findOrderById(orderId);
+    if (!order) throw new Error("Order not found.");
 
-    if (!order) {
-        throw new Error("Ordren blev ikke fundet.");
-    }
-
-    // 2. Sikkerhedstjek: Er det køberen, der forsøger at lave indsigelsen?
     if (order.buyer._id.toString() !== userId.toString()) {
-        throw new Error("Du har ikke tilladelse til at lave indsigelse på denne ordre.");
+        throw new Error("You are not allowed to dispute this order.");
     }
 
-    // 3. Status-tjek: Kan man overhovedet lave indsigelse?
-    // Man kan kun lave indsigelse, hvis varen er markeret som 'delivered'
-    // og endnu ikke er 'completed' eller 'paid_out'.
     if (order.status !== 'delivered') {
-        throw new Error("Du kan kun lave en indsigelse efter varen er markeret som leveret.");
+        throw new Error("You can only dispute an order after it has been marked as delivered.");
     }
 
-    // 4. Tids-tjek: Er de 72 timer udløbet?
     if (new Date() > order.payoutEligibleAt) {
-        throw new Error("Fristen på 72 timer for indsigelse er udløbet.");
+        throw new Error("The 72-hour dispute window has expired.");
     }
 
-    // 5. Udfør opdateringen via repo
     return await orderRepo.disputeOrder(orderId);
 }
 
+
+// ⭐ Stripe-adresse ignoreres nu — vi bruger KUN vores egen adresse
 async function handlePaymentIntentSucceeded(intent) {
     const orderId = intent.metadata.orderId;
-    if (!orderId) throw new Error("Missing orderId in PaymentIntent metadata");
+    if (!orderId) throw new Error("Missing orderId in PaymentIntent metadata.");
 
-    // Stripe sender shipping info via separate events, så vi bruger billing_details her
-    const shippingAddress = {
-        name: intent.shipping?.name || intent.billing_details?.name || "Ukendt",
-        street: intent.shipping?.address?.line1 || null,
-        city: intent.shipping?.address?.city || null,
-        zip: intent.shipping?.address?.postal_code || null,
-        country: intent.shipping?.address?.country || "DK"
-    };
+    const order = await orderRepo.findOrderById(orderId);
+    if (!order) throw new Error("Order not found.");
 
-    // 1. Opdater ordren til 'paid'
+    // 1. Opdater ordren til 'paid' — behold vores egen adresse
     const updatedOrder = await orderRepo.updateOrderStatusWithAddress(orderId, {
         status: 'paid',
-        shippingAddress: shippingAddress,
+        shippingAddress: order.shippingAddress,
         stripePaymentIntentId: intent.id
     });
 
     // 2. Opret fragtlabel hos Shipmondo
     try {
-        console.log(`Beder Shipmondo om label til ordre: ${orderId}`);
+        console.log(`Requesting Shipmondo label for order: ${orderId}`);
         await shippingService.createShipmondoLabel(orderId);
-        console.log(`✅ Shipmondo label oprettet og gemt på ordren.`);
+        console.log(`✅ Shipmondo label created and saved on order.`);
     } catch (shippingError) {
-        console.error(`❌ Shipmondo fejl for ordre ${orderId}:`, shippingError.message);
+        console.error(`❌ Shipmondo error for order ${orderId}:`, shippingError.message);
 
         await orderRepo.updateOrderShipping(orderId, {
             trackingNumber: 'ERROR',
             labelUrl: null,
-            externalId: `FEJL: ${shippingError.message}`
+            externalId: `ERROR: ${shippingError.message}`
         });
 
         try {
             await mailer.send({
                 to: process.env.ADMIN_EMAIL,
-                subject: `⚠️ Shipmondo fejl (Ordre: ${orderId})`,
+                subject: `⚠️ Shipmondo label creation failed (Order: ${orderId})`,
                 html: `
-                    <h2>Fragtlabel kunne ikke oprettes</h2>
-                    <p>Ordre: <strong>${orderId}</strong></p>
-                    <p>Fejl: ${shippingError.message}</p>
+                    <h2>Shipping label could not be created</h2>
+                    <p>Order: <strong>${orderId}</strong></p>
+                    <p>Error: ${shippingError.message}</p>
                 `
             });
         } catch (mailErr) {
-            console.error("Kunne ikke sende fejl-mail til admin:", mailErr.message);
+            console.error("Failed to send admin error email:", mailErr.message);
         }
     }
 

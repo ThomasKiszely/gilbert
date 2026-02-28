@@ -30,6 +30,16 @@ async function createProduct(productData) {
         err.status = 403;
         throw err;
     }
+
+    if (!user.profile?.address?.street ||
+        !user.profile?.address?.houseNumber ||
+        !user.profile?.address?.city ||
+        !user.profile?.address?.zip ||
+        !user.profile?.address?.country) {
+        throw new Error("You must complete your address before listing a product for sale.");
+    }
+
+
     return await productRepo.createProduct(productData);
 }
 
@@ -67,6 +77,16 @@ async function updateProduct(productId, productData) {
         err.status = 403;
         throw err;
     }
+
+    if (!user.profile?.address?.street ||
+        !user.profile?.address?.houseNumber ||
+        !user.profile?.address?.city ||
+        !user.profile?.address?.zip ||
+        !user.profile?.address?.country) {
+        throw new Error("You must complete your address before editing a product.");
+    }
+
+
     return await productRepo.updateProduct(productId, productData);
 }
 

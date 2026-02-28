@@ -1,5 +1,7 @@
 const productRepo = require('../data/productRepo');
 const userRepo = require("../data/userRepo");
+const orderRepo = require("../data/orderRepo");
+const shippingService = require("../services/shippingService");
 const { sanitizeUser } = require('../utils/sanitizeUser');
 const mailer = require('../utils/mailer');
 
@@ -109,6 +111,60 @@ async function toggleUserSuspension(id, isSuspended, reason) {
     return sanitizeUser(user);
 }
 
+async function retryShippingLabel(orderId) {
+    const order = await orderRepo.findOrderById(orderId);
+    if (!order) {
+        throw new Error("Order not found");
+    }
+
+    const result = await shippingService.createShipmondoLabel(orderId);
+
+    if (!result) {
+        // Mail til admin
+        await mailer.send({
+            to: process.env.ADMIN_EMAIL,
+            subject: `⚠️ Shipmondo retry FAILED (Order: ${orderId})`,
+            html: `
+                <h2>Shipmondo retry failed</h2>
+                <p>Order: <strong>${orderId}</strong></p>
+                <p>Check shippingError in the database.</p>
+            `
+        });
+
+        // Mail til sælger
+        await mailer.send({
+            to: order.seller.email,
+            subject: `Your order cannot be shipped yet (Order: ${orderId})`,
+            html: `
+                <p>Hello ${order.seller.username},</p>
+                <p>We could not create a shipping label for your order yet.</p>
+                <p>Gilbert is working on a solution.</p>
+            `
+        });
+
+        return {
+            message: "Shipmondo failed again. Seller and admin have been notified.",
+            error: true
+        };
+    }
+
+    await mailer.send({
+        to: order.seller.email,
+        subject: `Your shipping label is ready (Order: ${orderId})`,
+        html: `
+            <p>Hello ${order.seller.username},</p>
+            <p>Your shipping label has now been created successfully.</p>
+            <p>Tracking number: <strong>${result.tracking_number}</strong></p>
+        `
+    });
+
+    return {
+        message: "Shipping label created successfully.",
+        data: result
+    };
+}
+
+
 module.exports = {
     updateStatusProduct,
     adminGetAllProducts,
@@ -119,4 +175,5 @@ module.exports = {
     updateUserBadges,
     updateUserRole,
     toggleUserSuspension,
+    retryShippingLabel,
 }
