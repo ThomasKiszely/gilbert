@@ -187,6 +187,20 @@ async function resolveDispute(req, res, next) {
     }
 }
 
+async function requestReturn(req, res, next) {
+    try {
+        const { id } = req.params;
+        const { reason } = req.body;
+
+        const result = await adminService.requestReturn(id, reason);
+
+        return res.status(200).json(result);
+    } catch (error) {
+        next(error);
+    }
+}
+
+
 module.exports = {
     approveProduct,
     rejectProduct,
@@ -202,4 +216,5 @@ module.exports = {
     getAllOrders,
     getOrderDetails,
     resolveDispute,
+    requestReturn,
 }

@@ -16,13 +16,6 @@ async function findOrderById(id) {
         });
 }
 
-async function updateOrderStatus(id, status) {
-    return await Order.findByIdAndUpdate(
-        id,
-        { status },
-        { new: true, runValidators: true }
-    );
-}
 
 async function updateOrderPaymentIntentId(orderId, paymentIntentId) {
     return await Order.findByIdAndUpdate(
@@ -122,16 +115,25 @@ async function updateAuthenticationStatus(orderId, data) {
     );
 }
 
-async function markOrderAsDisputed(orderId, reason = "") {
+async function markOrderAsDisputed(orderId, reason) {
     return await Order.findByIdAndUpdate(
         orderId,
         {
             status: 'disputed',
-            disputeReason: reason
+            disputeReason: reason || ''
         },
         { new: true, runValidators: true }
     );
 }
+
+async function updateOrderStatus(orderId, status) {
+    return await Order.findByIdAndUpdate(
+        orderId,
+        { status },
+        { new: true, runValidators: true }
+    );
+}
+
 
 async function findAllOrders(query = {}) {
     try {

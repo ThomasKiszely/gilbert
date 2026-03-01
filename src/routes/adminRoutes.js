@@ -34,6 +34,8 @@ router.get('/orders/:id', adminController.getOrderDetails);
 
 // Afgørelse af disputes (Refund køber / Betal sælger)
 router.post('/orders/:id/resolve-dispute', adminController.resolveDispute);
+router.post('/orders/:id/request-return', adminController.requestReturn);
+
 
 //Retry Shipmondo label
 router.post('/orders/:id/retry-shipping', adminController.retryShippingLabel);

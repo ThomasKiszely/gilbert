@@ -49,10 +49,11 @@ async function getMyOrders(req, res, next) {
 // 3. Åben en sag/indsigelse (Dispute)
 async function openOrderDispute(req, res, next) {
     try {
-        const { id } = req.params; // Ordre ID fra URL'en
+        const { id } = req.params; // Ordre ID
         const userId = req.user._id;
+        const { reason } = req.body; // begrundelse fra køber
 
-        const updatedOrder = await orderService.openOrderDispute(id, userId);
+        const updatedOrder = await orderService.openOrderDispute(id, userId, reason);
 
         return res.status(200).json({
             success: true,
@@ -63,6 +64,7 @@ async function openOrderDispute(req, res, next) {
         next(error);
     }
 }
+
 
 async function handleStripeWebhook(req, res, next) {
     const sig = req.headers['stripe-signature'];

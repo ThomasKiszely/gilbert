@@ -4,6 +4,8 @@ const orderRepo = require("../data/orderRepo");
 const shippingService = require("../services/shippingService");
 const { sanitizeUser } = require('../utils/sanitizeUser');
 const mailer = require('../utils/mailer');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
 
 async function updateStatusProduct(productId, status) {
     return await productRepo.updateStatusProduct(productId, status);
@@ -191,6 +193,131 @@ async function getOrderDetails(orderId) {
     return order;
 }
 
+async function resolveDispute(orderId, resolution, reason = "") {
+    const order = await orderRepo.findOrderById(orderId);
+    if (!order) throw new Error("Order not found");
+
+    if (order.status !== 'disputed') {
+        throw new Error("Order is not in dispute");
+    }
+
+    // A) Admin giver køber ret → refund / cancel
+    if (resolution === 'refund_buyer') {
+        // PaymentIntent er ikke captured (manual), så vi canceller den
+        const cancelResult = await stripe.paymentIntents.cancel(order.stripePaymentIntentId);
+
+        await orderRepo.updateOrderStatus(orderId, 'cancelled');
+
+        // Mail til køber
+        try {
+            await mailer.send({
+                to: order.buyer.email,
+                subject: "Your dispute has been resolved in your favor",
+                html: `
+                    <p>Your dispute for order <strong>${orderId}</strong> has been resolved in your favor.</p>
+                    <p>You will receive a refund (or release of reserved funds) shortly.</p>
+                    <p>Reason: ${reason}</p>
+                `
+            });
+        } catch (err) {
+            console.error("Failed to notify buyer about dispute resolution:", err.message);
+        }
+
+        // Mail til sælger
+        try {
+            await mailer.send({
+                to: order.seller.email,
+                subject: "Dispute resolved in favor of the buyer",
+                html: `
+                    <p>The dispute for order <strong>${orderId}</strong> has been resolved in favor of the buyer.</p>
+                    <p>Reason: ${reason}</p>
+                `
+            });
+        } catch (err) {
+            console.error("Failed to notify seller about dispute resolution:", err.message);
+        }
+
+        return {
+            success: true,
+            action: 'refund_buyer',
+            cancelResult
+        };
+    }
+
+    // B) Admin giver sælger ret → payout
+    if (resolution === 'payout_seller') {
+        const capture = await stripe.paymentIntents.capture(order.stripePaymentIntentId);
+
+        await orderRepo.updateOrderAsPaidOut(orderId, capture.id);
+
+        // Mail til køber
+        try {
+            await mailer.send({
+                to: order.buyer.email,
+                subject: "Dispute resolved in favor of the seller",
+                html: `
+                    <p>The dispute for order <strong>${orderId}</strong> has been resolved in favor of the seller.</p>
+                    <p>Reason: ${reason}</p>
+                `
+            });
+        } catch (err) {
+            console.error("Failed to notify buyer about dispute resolution:", err.message);
+        }
+
+        // Mail til sælger
+        try {
+            await mailer.send({
+                to: order.seller.email,
+                subject: "Your dispute has been resolved in your favor",
+                html: `
+                    <p>The dispute for order <strong>${orderId}</strong> has been resolved in your favor.</p>
+                    <p>You will receive your payout shortly.</p>
+                    <p>Reason: ${reason}</p>
+                `
+            });
+        } catch (err) {
+            console.error("Failed to notify seller about dispute resolution:", err.message);
+        }
+
+        return {
+            success: true,
+            action: 'payout_seller',
+            capture
+        };
+    }
+
+    throw new Error("Invalid resolution type");
+}
+
+async function requestReturn(orderId, reason = "") {
+    const order = await orderRepo.findOrderById(orderId);
+    if (!order) throw new Error("Order not found");
+
+    if (order.status !== 'disputed') {
+        throw new Error("Order must be in dispute to request a return");
+    }
+
+    // ⭐ Sæt status til awaiting_return
+    await orderRepo.updateOrderStatus(orderId, 'awaiting_return');
+
+    // ⭐ Send mail til køber
+    await mailer.send({
+        to: order.buyer.email,
+        subject: "Please return the item for inspection",
+        html: `
+            <p>We need to inspect the item for order <strong>${orderId}</strong>.</p>
+            <p>Please send it to:</p>
+            <p><strong>${process.env.RETURN_ADDRESS}</strong></p>
+            <p>Reason: ${reason}</p>
+            <p>Once we receive the item, we will complete the dispute review.</p>
+        `
+    });
+
+    return { success: true, message: "Return requested" };
+}
+
+
+
 module.exports = {
     updateStatusProduct,
     adminGetAllProducts,
@@ -204,4 +331,6 @@ module.exports = {
     retryShippingLabel,
     getAllOrders,
     getOrderDetails,
+    resolveDispute,
+    requestReturn
 }

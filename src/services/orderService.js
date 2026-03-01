@@ -6,6 +6,8 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const mailer = require('../utils/mailer');
 const shippingService = require('./shippingService');
 const bidStatusses = require('../utils/bidStatusses');
+const userRepo = require('../data/userRepo');
+
 
 const {
     PLATFORM_FEE_PERCENT,
@@ -171,7 +173,7 @@ async function processEligiblePayouts() {
 }
 
 
-async function openOrderDispute(orderId, userId) {
+async function openOrderDispute(orderId, userId, reason = "") {
     const order = await orderRepo.findOrderById(orderId);
     if (!order) throw new Error("Order not found.");
 
@@ -187,8 +189,60 @@ async function openOrderDispute(orderId, userId) {
         throw new Error("The 72-hour dispute window has expired.");
     }
 
-    return await orderRepo.disputeOrder(orderId);
+    // 1) Sæt status + gem begrundelse
+    const updatedOrder = await orderRepo.markOrderAsDisputed(orderId, reason);
+
+    // 2) Find alle admins
+    const admins = await userRepo.findAdmins();
+
+    // 3) Mail til admins
+    for (const admin of admins) {
+        try {
+            await mailer.send({
+                to: admin.email,
+                subject: `New dispute opened (Order ${orderId})`,
+                html: `
+                    <p>A buyer has opened a dispute.</p>
+                    <p>Order: <strong>${orderId}</strong></p>
+                    <p>Reason: ${reason || 'No reason provided.'}</p>
+                `
+            });
+        } catch (err) {
+            console.error("Failed to notify admin about dispute:", err.message);
+        }
+    }
+
+    // 4) Mail til køber
+    try {
+        await mailer.send({
+            to: order.buyer.email,
+            subject: "Your dispute has been registered",
+            html: `
+                <p>Your dispute for order <strong>${orderId}</strong> has been registered.</p>
+                <p>Our team will review your case as soon as possible.</p>
+            `
+        });
+    } catch (err) {
+        console.error("Failed to notify buyer about dispute:", err.message);
+    }
+
+    // 5) Mail til sælger
+    try {
+        await mailer.send({
+            to: order.seller.email,
+            subject: "A buyer has opened a dispute on your order",
+            html: `
+                <p>The buyer has opened a dispute for order <strong>${orderId}</strong>.</p>
+                <p>Payout is currently on hold until the case is resolved.</p>
+            `
+        });
+    } catch (err) {
+        console.error("Failed to notify seller about dispute:", err.message);
+    }
+
+    return updatedOrder;
 }
+
 
 
 // ⭐ Stripe-adresse ignoreres nu — vi bruger KUN vores egen adresse
