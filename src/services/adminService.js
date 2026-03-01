@@ -322,6 +322,33 @@ async function requestReturn(orderId, reason = "") {
     return { success: true, message: "Return requested" };
 }
 
+async function markOrderDeliveredToBuyer(orderId) {
+    const order = await orderRepo.findOrderById(orderId);
+    if (!order) throw new Error("Order not found");
+
+    // Kun authentication-ordrer må bruge denne funktion
+    if (!order.requiresAuthentication) {
+        throw new Error("This order does not require authentication.");
+    }
+
+    // Auth skal være passed
+    if (order.authenticationStatus !== "passed") {
+        throw new Error("Authentication has not been passed yet.");
+    }
+
+    // Sæt leveringstidspunkt og start 72 timer
+    const deliveredAt = new Date();
+    const payoutEligibleAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
+
+    const updated = await orderRepo.updateOrderStatus(orderId, "delivered");
+    updated.deliveredAt = deliveredAt;
+    updated.payoutEligibleAt = payoutEligibleAt;
+
+    await updated.save();
+
+    return updated;
+}
+
 
 
 module.exports = {
@@ -338,5 +365,6 @@ module.exports = {
     getAllOrders,
     getOrderDetails,
     resolveDispute,
-    requestReturn
+    requestReturn,
+    markOrderDeliveredToBuyer,
 }

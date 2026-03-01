@@ -173,6 +173,22 @@ async function approveDelivery(orderId, transactionId) {
     );
 }
 
+async function setDeliveredAt(orderId, deliveredAt) {
+    return await Order.findByIdAndUpdate(
+        orderId,
+        { deliveredAt },
+        { new: true }
+    );
+}
+
+async function setPayoutEligibleAt(orderId, payoutEligibleAt) {
+    return await Order.findByIdAndUpdate(
+        orderId,
+        { payoutEligibleAt },
+        { new: true }
+    );
+}
+
 
 module.exports = {
     createOrder,
@@ -191,5 +207,7 @@ module.exports = {
     findAllOrders,
     getOrdersBySeller,
     findByShipmondoOrderId,
-    approveDelivery
+    approveDelivery,
+    setDeliveredAt,
+    setPayoutEligibleAt,
 };

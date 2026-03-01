@@ -199,6 +199,22 @@ async function requestReturn(req, res, next) {
         next(error);
     }
 }
+async function markOrderDeliveredToBuyer(req, res, next) {
+    try {
+        const { id } = req.params;
+
+        const updated = await adminService.markOrderDeliveredToBuyer(id);
+
+        return res.status(200).json({
+            success: true,
+            message: "Order marked as delivered to buyer. 72-hour payout timer started.",
+            data: updated
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 
 
 module.exports = {
@@ -217,4 +233,5 @@ module.exports = {
     getOrderDetails,
     resolveDispute,
     requestReturn,
+    markOrderDeliveredToBuyer
 }

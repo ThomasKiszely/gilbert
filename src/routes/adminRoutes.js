@@ -28,6 +28,9 @@ router.get('/orders', adminController.getAllOrders);
 
 // Specifik ordre detaljer (inklusiv Stripe status og Shipmondo fejl)
 router.get('/orders/:id', adminController.getOrderDetails);
+// Mark order as delivered to buyer (after authentication)
+router.post('/orders/:id/mark-delivered', adminController.markOrderDeliveredToBuyer);
+
 
 // Håndtering af autentificering (Sneakers/Luksusvarer)
 //router.put('/orders/:id/authenticate', adminController.updateAuthStatus);

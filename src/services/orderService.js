@@ -162,6 +162,21 @@ async function processEligiblePayouts() {
 
     for (const order of eligibleOrders) {
         try {
+
+            if (order.requiresAuthentication) {
+                // Auth ikke færdig → skip
+                if (order.authenticationStatus !== 'passed') {
+                    console.log(`⏸ Skipping payout for order ${order._id} – auth not passed`);
+                    continue;
+                }
+
+                // Auth passed, men varen ikke leveret → skip
+                if (order.status !== 'delivered') {
+                    console.log(`⏸ Skipping payout for order ${order._id} – not delivered yet`);
+                    continue;
+                }
+            }
+
             console.log(`🤖 Cron: Capturing PaymentIntent for order ${order._id}`);
             const capture = await stripe.paymentIntents.capture(order.stripePaymentIntentId);
             await orderRepo.updateOrderAsPaidOut(order._id, capture.id);

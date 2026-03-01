@@ -52,6 +52,11 @@ async function createShipmondoLabel(orderId) {
     const order = await orderRepo.findOrderById(orderId);
     if (!order) throw new Error("Order not found");
 
+    if (order.requiresAuthentication && order.authenticationStatus === 'passed') {
+        throw new Error("Cannot create shipping label after authentication. Gilbert handles forwarding manually.");
+    }
+
+
     const seller = order.seller;
 
     // ⭐ Vælg korrekt modtageradresse
