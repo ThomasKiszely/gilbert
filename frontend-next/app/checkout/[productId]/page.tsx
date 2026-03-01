@@ -6,21 +6,22 @@ import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import StripePayment from "./StripePayment";
 import { Button } from "@/app/components/UI/button";
+import { useAuth } from "@/app/context/AuthContext";
 
-// Load Stripe outside of component.
-// Make sure NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is in your frontend .env.local
+// Load Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 export default function CheckoutPage() {
     const { productId } = useParams();
     const router = useRouter();
+    const { user } = useAuth();
 
     const [product, setProduct] = useState<any>(null);
     const [clientSecret, setClientSecret] = useState("");
     const [orderId, setOrderId] = useState("");
     const [loading, setLoading] = useState(true);
 
-    // Address state matching your backend validateAddress expectations
+    // Address state (must match backend validateAddress)
     const [address, setAddress] = useState({
         name: "",
         street: "",
@@ -30,7 +31,7 @@ export default function CheckoutPage() {
         country: "Denmark"
     });
 
-    // 1. Fetch product details
+    // 1. Fetch product
     useEffect(() => {
         const fetchProduct = async () => {
             try {
@@ -50,36 +51,43 @@ export default function CheckoutPage() {
 
     // 2. Create order in backend
     const handlePreparePayment = async () => {
-        // Simple frontend validation to prevent unnecessary 400 errors
+        if (!user) {
+            router.push("/login");
+            return;
+        }
+
+        // Simple validation
         if (!address.name || !address.street || !address.houseNumber || !address.zip || !address.city) {
             alert("Please fill in all shipping details.");
             return;
         }
 
         try {
-            // This calls your Next.js proxy route (app/api/orders/route.ts)
-            // Which then forwards to Express: POST /api/orders/create
-            const res = await fetch("/api/orders", {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders/create`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${user.token}`
+                },
                 body: JSON.stringify({
                     productId,
                     address,
-                    // bidId: null, // Optional: Add if you have a bid flow
-                    // wantAuth: false // Optional: Add if user toggles authentication
+                    bidId: null,
+                    wantAuth: false
                 })
             });
 
             const data = await res.json();
 
-            if (res.ok) {
-                // Your backend returns { order, clientSecret }
-                setClientSecret(data.clientSecret);
-                setOrderId(data.order?._id || data.orderId);
-            } else {
-                // Show the specific error from your backend (e.g., "Zip code must be 4 digits")
+            if (!res.ok) {
                 alert(data.error || data.message || "Failed to initiate order");
+                return;
             }
+
+            // Backend returns { order, clientSecret }
+            setClientSecret(data.clientSecret);
+            setOrderId(data.order._id);
+
         } catch (err) {
             console.error("Payment preparation failed:", err);
             alert("An error occurred connecting to the server.");
@@ -93,7 +101,7 @@ export default function CheckoutPage() {
         <div className="max-w-5xl mx-auto p-6 pt-24 min-h-screen">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
 
-                {/* LEFT SIDE: Address or Stripe Payment */}
+                {/* LEFT SIDE */}
                 <div className="space-y-8">
                     <h2 className="text-3xl font-black uppercase italic tracking-tighter text-[#800020]">
                         {clientSecret ? "Secure Payment" : "Shipping Details"}
@@ -149,13 +157,13 @@ export default function CheckoutPage() {
                     ) : (
                         <div className="bg-white p-8 rounded-[2rem] shadow-2xl">
                             <Elements stripe={stripePromise} options={{ clientSecret }}>
-                                <StripePayment orderId={orderId} />
+                                <StripePayment orderId={orderId} clientSecret={clientSecret} />
                             </Elements>
                         </div>
                     )}
                 </div>
 
-                {/* RIGHT SIDE: Order Summary */}
+                {/* RIGHT SIDE */}
                 <div className="bg-[#16302b] rounded-[3rem] p-10 border border-white/5 shadow-2xl h-fit lg:sticky lg:top-24 text-white">
                     <h3 className="text-xs uppercase tracking-[0.2em] font-bold text-zinc-500 mb-8">Order Summary</h3>
 

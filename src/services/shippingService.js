@@ -99,7 +99,8 @@ async function createShipmondoLabel(orderId) {
             trackingNumber: response.data.tracking_number,
             labelUrl: response.data.base64,
             externalId: response.data.id,
-            shippingError: null
+            shippingError: null,
+            orderId: response.data.order_id,
         });
 
         return response.data;

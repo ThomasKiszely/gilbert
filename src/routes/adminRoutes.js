@@ -33,7 +33,7 @@ router.get('/orders/:id', adminController.getOrderDetails);
 //router.put('/orders/:id/authenticate', adminController.updateAuthStatus);
 
 // Afgørelse af disputes (Refund køber / Betal sælger)
-//router.post('/orders/:id/resolve-dispute', adminController.resolveDispute);
+router.post('/orders/:id/resolve-dispute', adminController.resolveDispute);
 
 //Retry Shipmondo label
 router.post('/orders/:id/retry-shipping', adminController.retryShippingLabel);

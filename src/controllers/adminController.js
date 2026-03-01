@@ -175,6 +175,18 @@ async function getOrderDetails(req, res, next) {
     }
 }
 
+async function resolveDispute(req, res, next) {
+    try {
+        const { id } = req.params;
+        const { resolution, reason } = req.body; // 'refund_buyer' eller 'payout_seller'
+
+        const result = await adminService.resolveDispute(id, resolution, reason);
+        return res.status(200).json(result);
+    } catch (error) {
+        next(error);
+    }
+}
+
 module.exports = {
     approveProduct,
     rejectProduct,
@@ -189,4 +201,5 @@ module.exports = {
     retryShippingLabel,
     getAllOrders,
     getOrderDetails,
+    resolveDispute,
 }

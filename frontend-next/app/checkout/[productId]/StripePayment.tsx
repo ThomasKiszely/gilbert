@@ -1,55 +1,77 @@
 "use client";
-import { PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
+
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { Button } from "@/app/components/UI/button";
 
-export default function StripePayment({ orderId }: { orderId: string }) {
+export default function StripePayment({
+                                          orderId,
+                                          clientSecret
+                                      }: {
+    orderId: string;
+    clientSecret: string;
+}) {
     const stripe = useStripe();
     const elements = useElements();
-    const [message, setMessage] = useState<string | null>(null);
-    const [isProcessing, setIsProcessing] = useState(false);
+    const router = useRouter();
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const [loading, setLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState("");
 
-        // Safety check to ensure Stripe is fully loaded
+    const handlePayment = async () => {
         if (!stripe || !elements) return;
 
-        setIsProcessing(true);
+        setLoading(true);
+        setErrorMessage("");
 
-        const { error } = await stripe.confirmPayment({
-            elements,
-            confirmParams: {
-                // Redirect URL after successful payment
-                return_url: `${window.location.origin}/order-success?orderId=${orderId}`,
+        const cardElement = elements.getElement(CardElement);
+
+        const result = await stripe.confirmCardPayment(clientSecret, {
+            payment_method: {
+                card: cardElement!,
             },
         });
 
-        if (error) {
-            // Stripe provides descriptive error messages in error.message
-            setMessage(error.message ?? "An unexpected error occurred.");
+        if (result.error) {
+            setErrorMessage(result.error.message || "Payment failed.");
+            setLoading(false);
+            return;
         }
 
-        setIsProcessing(false);
+        if (result.paymentIntent?.status === "succeeded") {
+            router.push(`/orders/success?orderId=${orderId}`);
+        }
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-6">
-            {/* PaymentElement handles credit cards, Apple Pay, etc. */}
-            <PaymentElement />
+        <div className="space-y-6">
+            <div className="p-4 border border-zinc-200 rounded-xl bg-white shadow-sm">
+                <CardElement
+                    options={{
+                        style: {
+                            base: {
+                                fontSize: "16px",
+                                color: "#000",
+                                "::placeholder": { color: "#999" },
+                            },
+                            invalid: { color: "#e5424d" },
+                        },
+                    }}
+                />
+            </div>
+
+            {errorMessage && (
+                <p className="text-red-500 text-sm font-medium">{errorMessage}</p>
+            )}
 
             <Button
-                disabled={isProcessing || !stripe || !elements}
-                className="w-full bg-[#800020] hover:bg-[#600018] text-white py-6 rounded-2xl font-bold uppercase tracking-widest mt-4"
+                onClick={handlePayment}
+                disabled={loading}
+                className="w-full bg-black hover:bg-zinc-900 text-white py-6 rounded-2xl text-lg font-bold transition-all"
             >
-                {isProcessing ? "Processing..." : "Confirm & Pay"}
+                {loading ? "Processing..." : "Pay Now"}
             </Button>
-
-            {message && (
-                <div className="text-red-500 text-sm mt-2 font-medium">
-                    {message}
-                </div>
-            )}
-        </form>
+        </div>
     );
 }

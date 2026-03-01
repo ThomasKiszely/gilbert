@@ -26,7 +26,6 @@ const orderSchema = new mongoose.Schema({
     discountAmount: { type: Number, default: 0 },
 
     // Stripe referencer
-    stripeSessionId: { type: String },
     stripePaymentIntentId: { type: String },
 
     status: {
@@ -56,7 +55,8 @@ const orderSchema = new mongoose.Schema({
     shippingTrackingNumber: { type: String },
     shippingLabelUrl: { type: String },
     externalShippingId: { type: String }, // Shipmondos interne ID
-    shippingError: { type: String }       // Logning hvis automatiseringen fejler
+    shippingError: { type: String },       // Logning hvis automatiseringen fejler
+    shipmondoOrderId: { type: String },
 
 }, { timestamps: true });
 

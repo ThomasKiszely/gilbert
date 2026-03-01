@@ -102,6 +102,54 @@ async function handleStripeWebhook(req, res, next) {
     res.json({ received: true });
 }
 
+async function getOrderById(req, res, next) {
+    try {
+        const order = await orderService.getOrderById(req.params.id, req.user._id);
+        return res.status(200).json({ success: true, data: order });
+    } catch (err) {
+        next(err);
+    }
+}
+async function getMySales(req, res, next) {
+    try {
+        const userId = req.user._id;
+        const sales = await orderService.getUserSales(userId);
+
+        return res.status(200).json({
+            success: true,
+            count: sales.length,
+            data: sales
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function handleShipmondoWebhook(req, res, next) {
+    try {
+        await orderService.handleShipmondoWebhook(req.body);
+        return res.status(200).json({ received: true });
+    } catch (err) {
+        console.error("Shipmondo webhook error:", err);
+        return res.status(400).json({ error: err.message });
+    }
+}
+async function approveDelivery(req, res, next) {
+    try {
+        const { id } = req.params;
+        const userId = req.user._id;
+
+        const updatedOrder = await orderService.approveDelivery(id, userId);
+
+        return res.status(200).json({
+            success: true,
+            message: "Delivery approved. Payment released to the seller.",
+            data: updatedOrder
+        });
+    } catch (error) {
+        next(error);
+    }
+}
 
 
 module.exports = {
@@ -109,4 +157,8 @@ module.exports = {
     getMyOrders,
     openOrderDispute,
     handleStripeWebhook,
+    getOrderById,
+    getMySales,
+    handleShipmondoWebhook,
+    approveDelivery
 };

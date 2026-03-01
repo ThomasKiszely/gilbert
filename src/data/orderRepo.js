@@ -12,39 +12,38 @@ async function findOrderById(id) {
         .populate('buyer')
         .populate({
             path: 'seller',
-            // Vi vælger eksplicit profil-feltet, så vi får adressen med
             select: 'username email profile stripeAccountId'
         });
 }
 
 async function updateOrderStatus(id, status) {
-    return await Order.findByIdAndUpdate(id, { status }, { new: true, runValidators: true });
-}
-
-async function updateOrderSession(orderId, sessionId) {
     return await Order.findByIdAndUpdate(
-        orderId,
-        { stripeSessionId: sessionId },
-        { new: true }
+        id,
+        { status },
+        { new: true, runValidators: true }
     );
 }
 
-async function findOrderBySessionId(sessionId) {
-    return await Order.findOne({ stripeSessionId: sessionId });
+async function updateOrderPaymentIntentId(orderId, paymentIntentId) {
+    return await Order.findByIdAndUpdate(
+        orderId,
+        { stripePaymentIntentId: paymentIntentId },
+        { new: true, runValidators: true }
+    );
 }
-
 
 async function markAsDelivered(orderId) {
     const deliveredAt = new Date();
-    // Vi lægger 72 timer til nuværende tidspunkt
-    const payoutEligibleAt = new Date(deliveredAt.getTime() + (72 * 60 * 60 * 1000));
+    const payoutEligibleAt = new Date(
+        deliveredAt.getTime() + (72 * 60 * 60 * 1000)
+    );
 
     return await Order.findByIdAndUpdate(
         orderId,
         {
             status: 'delivered',
-            deliveredAt: deliveredAt,
-            payoutEligibleAt: payoutEligibleAt
+            deliveredAt,
+            payoutEligibleAt
         },
         { new: true, runValidators: true }
     );
@@ -52,27 +51,25 @@ async function markAsDelivered(orderId) {
 
 async function getOrdersByBuyer(buyerId) {
     return await Order.find({ buyer: buyerId })
-        .populate('product') // Så vi kan se hvad der er købt (titel, billede osv.)
-        .populate('seller', 'username') // Så vi kan se hvem vi har købt af
-        .sort({ createdAt: -1 }); // Nyeste øverst
+        .populate('product')
+        .populate('seller', 'username')
+        .sort({ createdAt: -1 });
 }
 
-// Finder ordrer, hvor 72-timers fristen er udløbet
 async function findOrdersReadyForPayout(now) {
     return await Order.find({
-        status: 'delivered',       // Varen skal være modtaget
-        isPaidOut: false,          // Sælger må ikke have fået penge endnu
-        payoutEligibleAt: { $lte: now } // Tiden skal være gået ud (less than or equal to nu)
-    }).populate('seller');         // Vi skal bruge sælgerens Stripe-ID
+        status: 'delivered',
+        isPaidOut: false,
+        payoutEligibleAt: { $lte: now }
+    }).populate('seller');
 }
 
-// Opdaterer ordren, når vi har sendt pengene via Stripe
 async function updateOrderAsPaidOut(orderId, transactionId) {
     return await Order.findByIdAndUpdate(
         orderId,
         {
             isPaidOut: true,
-            status: 'completed', // Nu er handlen officielt slut
+            status: 'completed',
             payoutTransactionId: transactionId
         },
         { new: true, runValidators: true }
@@ -82,7 +79,7 @@ async function updateOrderAsPaidOut(orderId, transactionId) {
 async function disputeOrder(orderId) {
     return await Order.findByIdAndUpdate(
         orderId,
-        { status: 'disputed' }, // Dette stopper 'processEligiblePayouts'
+        { status: 'disputed' },
         { new: true, runValidators: true }
     );
 }
@@ -93,12 +90,14 @@ async function updateOrderShipping(orderId, shippingData) {
         {
             shippingTrackingNumber: shippingData.trackingNumber,
             shippingLabelUrl: shippingData.labelUrl,
-            // Vi kan også gemme Shipmondo's interne ID hvis PO siger god for det
-            externalShippingId: shippingData.externalId
+            externalShippingId: shippingData.externalId,
+            shipmondoOrderId: shippingData.orderId,   // ⭐ NYT
+            shippingError: shippingData.shippingError || null
         },
         { new: true, runValidators: true }
     );
 }
+
 
 async function updateOrderStatusWithAddress(orderId, updateData) {
     return await Order.findByIdAndUpdate(
@@ -137,23 +136,47 @@ async function markOrderAsDisputed(orderId, reason = "") {
 async function findAllOrders(query = {}) {
     try {
         return await Order.find(query)
-            .populate('buyer', 'username email')   // Hent kun de nødvendige felter
+            .populate('buyer', 'username email')
             .populate('seller', 'username email')
             .populate('product', 'title price images')
-            .sort({ createdAt: -1 });              // Nyeste ordrer først
+            .sort({ createdAt: -1 });
     } catch (error) {
         throw new Error("Repository error: " + error.message);
     }
 }
+async function getOrdersBySeller(sellerId) {
+    return await Order.find({ seller: sellerId })
+        .populate('product')
+        .populate('buyer', 'username email')
+        .sort({ createdAt: -1 });
+}
 
+
+async function findByShipmondoOrderId(shipmondoOrderId) {
+    return Order.findOne({ shipmondoOrderId })
+        .populate("product")
+        .populate("buyer")
+        .populate("seller");
+}
+
+async function approveDelivery(orderId, transactionId) {
+    return await Order.findByIdAndUpdate(
+        orderId,
+        {
+            status: 'completed',
+            isPaidOut: true,
+            payoutTransactionId: transactionId
+        },
+        { new: true, runValidators: true }
+    );
+}
 
 
 module.exports = {
     createOrder,
     findOrderById,
     updateOrderStatus,
-    updateOrderSession,
-    findOrderBySessionId,
+    updateOrderPaymentIntentId,
     markAsDelivered,
     getOrdersByBuyer,
     findOrdersReadyForPayout,
@@ -164,4 +187,7 @@ module.exports = {
     updateAuthenticationStatus,
     markOrderAsDisputed,
     findAllOrders,
+    getOrdersBySeller,
+    findByShipmondoOrderId,
+    approveDelivery
 };
