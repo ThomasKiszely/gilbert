@@ -24,8 +24,8 @@ async function findReviewByOrderAndReviewer(orderId, reviewerId) {
  */
 async function getReviewsForUser(userId) {
     return await Review.find({ targetUser: userId })
-        .populate('reviewer', 'username avatar') // Så vi kan se hvem der har skrevet anmeldelsen
-        .sort({ createdAt: -1 }) // Nyeste anmeldelser først
+        .populate('reviewer', 'username profile.avatarUrl') // Rettet fra 'avatar' til 'profile.avatarUrl'
+        .sort({ createdAt: -1 })
         .lean();
 }
 

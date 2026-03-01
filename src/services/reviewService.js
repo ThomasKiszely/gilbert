@@ -1,5 +1,6 @@
 const reviewRepo = require('../data/reviewRepo');
 const orderRepo = require('../data/orderRepo');
+const userRepo = require('../data/userRepo');
 const { buyerSellerRoles } = require('../utils/buyerSellerRoles');
 const { sanitizeString } = require('../utils/sanitize');
 
@@ -11,11 +12,11 @@ async function createReview(orderId, reviewerId, reviewData) {
     }
 
     // 1. Valider status
-    if (order.status !== 'completed') {
+    if (order.status !== 'delivered') {
         throw new Error("Du kan kun anmelde en fuldført handel.");
     }
 
-    // 2. NYT: Tjek om denne bruger allerede har anmeldt denne ordre
+    // 2. Tjek om denne bruger allerede har anmeldt denne ordre
     const existing = await reviewRepo.findReviewByOrderAndReviewer(orderId, reviewerId);
     if (existing) {
         throw new Error("Du har allerede anmeldt denne handel.");
@@ -35,8 +36,8 @@ async function createReview(orderId, reviewerId, reviewData) {
 
     const cleanComment = reviewData.comment ? sanitizeString(reviewData.comment) : "";
 
-    // 5. Gem via Repo
-    return await reviewRepo.createReview({
+    // 5. Gem selve anmeldelsen
+    const review = await reviewRepo.createReview({
         order: orderId,
         reviewer: reviewerId,
         targetUser: targetUser,
@@ -44,6 +45,22 @@ async function createReview(orderId, reviewerId, reviewData) {
         rating: reviewData.rating,
         comment: cleanComment
     });
+
+    // ⭐ 6. OPDATER SÆLGERENS (ELLER KØBERENS) STATS
+    const user = await userRepo.findById(targetUser);
+
+    const oldCount = user.stats.ratingCount;
+    const oldAverage = user.stats.ratingAverage;
+
+    const newCount = oldCount + 1;
+    const newAverage = ((oldAverage * oldCount) + reviewData.rating) / newCount;
+
+    user.stats.ratingCount = newCount;
+    user.stats.ratingAverage = newAverage;
+
+    await user.save();
+
+    return review;
 }
 
 async function getReviewsForUser(userId) {
