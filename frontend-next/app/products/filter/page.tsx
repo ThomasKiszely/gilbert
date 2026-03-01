@@ -3,6 +3,8 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { api } from "@/app/api/api";
+import { ChevronRight } from "lucide-react";
+import Link from "next/link";
 import ProductCard from "@/app/components/product/ProductCard";
 import FilterSidebar, { type ActiveFilters } from "@/app/components/filter/FilterSidebar";
 import type { ApiProduct, Product } from "@/app/components/product/types";
@@ -118,18 +120,34 @@ export default function FilterPage() {
     return (
         <div className="max-w-7xl mx-auto px-4 pt-6 pb-10">
             {/* Breadcrumb */}
-            <nav className="text-sm text-foreground/60 mb-4">
-                <span>Frontpage</span>
+            <nav className="flex items-center gap-1.5 text-xs text-muted-foreground py-4 mb-2">
+                <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
                 {showBrandTitle ? (
                     <>
-                        <span> / </span>
-                        <a href="/brands" className="hover:text-foreground">Brands</a>
-                        <span> / {brandName}</span>
+                        <ChevronRight className="h-3 w-3" />
+                        <Link href="/brands" className="hover:text-foreground transition-colors">Brands</Link>
+                        <ChevronRight className="h-3 w-3" />
+                        <span className="text-foreground">{brandName}</span>
                     </>
                 ) : (
                     <>
-                        {gender && <span className="capitalize"> / {gender}</span>}
-                        {subcategoryName && <span> / {subcategoryName}</span>}
+                        {gender && (
+                            <>
+                                <ChevronRight className="h-3 w-3" />
+                                <Link
+                                    href={`/products/filter?gender=${gender}`}
+                                    className="hover:text-foreground transition-colors capitalize"
+                                >
+                                    {gender}
+                                </Link>
+                            </>
+                        )}
+                        {subcategoryName && (
+                            <>
+                                <ChevronRight className="h-3 w-3" />
+                                <span className="text-foreground">{subcategoryName}</span>
+                            </>
+                        )}
                     </>
                 )}
             </nav>

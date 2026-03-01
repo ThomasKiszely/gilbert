@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { api } from "@/app/api/api";
+import { useRouter } from "next/navigation";import { api } from "@/app/api/api";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/UI/avatar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/UI/tabs";
-import { Settings } from "lucide-react";
+import { Settings, X } from "lucide-react";
 import { Button } from "@/app/components/UI/button";
 
 import {
@@ -86,14 +85,12 @@ const MePage = () => {
     }, [user]);
 
     useEffect(() => {
-        if (showFollowers || showFollowing) {
-            document.body.style.overflow = "hidden";
-        } else {
-            document.body.style.overflow = "auto";
-        }
-
+        const locked = showFollowers || showFollowing;
+        document.body.style.overflow = locked ? "hidden" : "";
+        document.documentElement.style.overflow = locked ? "hidden" : "";
         return () => {
-            document.body.style.overflow = "auto";
+            document.body.style.overflow = "";
+            document.documentElement.style.overflow = "";
         };
     }, [showFollowers, showFollowing]);
 
@@ -274,93 +271,79 @@ const MePage = () => {
             </Tabs>
 
             {showFollowers && (
-                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-80 max-h-[70vh] overflow-y-auto shadow-xl">
-
-                        <h2 className="text-lg font-semibold mb-4 text-racing-green">
-                            Followers
-                        </h2>
-
+                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowFollowers(false)}>
+                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-80 max-h-[70vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-semibold text-racing-green">Followers</h2>
+                            <button onClick={() => setShowFollowers(false)} className="text-racing-green hover:text-burgundy transition">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
                         {followers.length === 0 ? (
                             <p className="text-sm text-racing-green">No followers yet</p>
                         ) : (
                             <ul className="space-y-3">
                                 {followers.map((f) => {
                                     const u = f.followerId;
+                                    if (!u) return null;
                                     return (
                                         <li key={u._id} className="flex items-center gap-3">
                                             <Avatar className="h-9 w-9 border border-burgundy/40">
                                                 <AvatarImage src={u.profile?.avatarUrl} />
                                                 <AvatarFallback className="bg-racing-green text-ivory-dark">
-                                                    {u.username.slice(0,2).toUpperCase()}
+                                                    {u.username.slice(0, 2).toUpperCase()}
                                                 </AvatarFallback>
                                             </Avatar>
-
-                                            <Link
-                                                href={`/profile/${u._id}`}
-                                                className="text-racing-green hover:text-burgundy transition"
+                                            <button
+                                                onClick={() => { setShowFollowers(false); router.push(`/profile/${u._id}`); }}
+                                                className="text-racing-green hover:text-burgundy transition text-left"
                                             >
                                                 {u.username}
-                                            </Link>
+                                            </button>
                                         </li>
                                     );
                                 })}
                             </ul>
                         )}
-
-                        <button
-                            className="mt-5 w-full py-2 rounded-md bg-burgundy text-ivory-dark hover:bg-burgundy/80 transition"
-                            onClick={() => setShowFollowers(false)}
-                        >
-                            Close
-                        </button>
                     </div>
                 </div>
             )}
 
-
-
             {showFollowing && (
-                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-80 max-h-[70vh] overflow-y-auto shadow-xl">
-
-                        <h2 className="text-lg font-semibold mb-4 text-racing-green">
-                            Following
-                        </h2>
-
+                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowFollowing(false)}>
+                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-80 max-h-[70vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-semibold text-racing-green">Following</h2>
+                            <button onClick={() => setShowFollowing(false)} className="text-racing-green hover:text-burgundy transition">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
                         {following.length === 0 ? (
                             <p className="text-sm text-racing-green">Not following anyone yet</p>
                         ) : (
                             <ul className="space-y-3">
                                 {following.map((f) => {
                                     const u = f.followingId;
+                                    if (!u) return null;
                                     return (
                                         <li key={u._id} className="flex items-center gap-3">
                                             <Avatar className="h-9 w-9 border border-burgundy/40">
                                                 <AvatarImage src={u.profile?.avatarUrl} />
                                                 <AvatarFallback className="bg-racing-green text-ivory-dark">
-                                                    {u.username.slice(0,2).toUpperCase()}
+                                                    {u.username.slice(0, 2).toUpperCase()}
                                                 </AvatarFallback>
                                             </Avatar>
-
-                                            <Link
-                                                href={`/profile/${u._id}`}
-                                                className="text-racing-green hover:text-burgundy transition"
+                                            <button
+                                                onClick={() => { setShowFollowing(false); router.push(`/profile/${u._id}`); }}
+                                                className="text-racing-green hover:text-burgundy transition text-left"
                                             >
                                                 {u.username}
-                                            </Link>
+                                            </button>
                                         </li>
                                     );
                                 })}
                             </ul>
                         )}
-
-                        <button
-                            className="mt-5 w-full py-2 rounded-md bg-burgundy text-ivory-dark hover:bg-burgundy/80 transition"
-                            onClick={() => setShowFollowing(false)}
-                        >
-                            Close
-                        </button>
                     </div>
                 </div>
             )}

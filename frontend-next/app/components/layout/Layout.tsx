@@ -30,7 +30,7 @@ export default function Layout({ children }: LayoutProps) {
                 onResults={(data) => setSearchResults(data)}
             />
 
-            <main className="flex-1 w-full pt-12 md:pt-16 pb-20 md:pb-0">
+            <main className="flex-1 w-full pt-20 md:pt-32 pb-20 md:pb-0">
                 {children}
             </main>
             <Footer />

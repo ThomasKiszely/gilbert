@@ -9,7 +9,7 @@ export function middleware(request: NextRequest) {
     // 1. Ruter der KRÆVER login
     // Tilføj /order-success herhjemme hvis du vil være MEGET striks,
     // men jeg anbefaler at lade den være "åben" for at undgå redirect-fejl efter betaling.
-    const protectedRoutes = ['/profile', '/favorites', '/checkout', '/my-page'];
+    const protectedRoutes = ['/favorites', '/checkout', '/my-page', '/profile/me'];
 
     const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
 

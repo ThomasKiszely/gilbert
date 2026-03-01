@@ -60,31 +60,30 @@ export const PlaceBid = ({ productId, productPrice, onBidPlaced }: PlaceBidProps
 
     if (success) {
         return (
-            <div className="py-6 px-6 bg-[#16302b] rounded-2xl border border-white/10 text-center animate-in fade-in zoom-in-95">
-                <div className="bg-[#800020] w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
-                    <Gavel className="text-white h-6 w-6" />
+            <div className="py-6 px-6 bg-card rounded-2xl border border-border/30 text-center animate-in fade-in zoom-in-95">
+                <div className="bg-accent w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
+                    <Gavel className="text-foreground h-6 w-6" />
                 </div>
-                <h3 className="text-white text-sm font-bold uppercase tracking-widest">Bid Placed!</h3>
-                <p className="text-white/40 text-[10px] mt-1 font-mono uppercase">Opening chat...</p>
+                <h3 className="text-foreground text-sm font-bold uppercase tracking-widest">Bid Placed!</h3>
+                <p className="text-muted-foreground text-[10px] mt-1 font-mono uppercase">Opening chat...</p>
             </div>
         );
     }
 
     return (
         <div className="w-full space-y-4 text-left">
-            {/* Større og tydeligere label sektion */}
             <div className="flex items-end justify-between px-1">
-                <label className="text-[12px] uppercase tracking-[0.15em] text-zinc-800 font-black">
+                <label className="text-[12px] uppercase tracking-[0.15em] text-foreground font-black">
                     Place a bid
                 </label>
-                <span className="text-[10px] font-bold text-zinc-400 font-mono italic">
-          Min: {minBid} DKK
-        </span>
+                <span className="text-[10px] font-bold text-muted-foreground font-mono italic">
+                    Min: {minBid} DKK
+                </span>
             </div>
 
             <form onSubmit={handleBid} className="relative flex items-center gap-3 group">
                 <div className="relative flex-1">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 group-focus-within:text-[#800020] transition-colors">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-accent transition-colors">
                         <Gavel className="h-5 w-5" />
                     </div>
                     <Input
@@ -92,29 +91,28 @@ export const PlaceBid = ({ productId, productPrice, onBidPlaced }: PlaceBidProps
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         placeholder="Enter amount..."
-                        className="w-full bg-zinc-50 border-zinc-200 text-black h-16 pl-12 pr-16 rounded-2xl focus-visible:ring-2 focus-visible:ring-[#800020] transition-all text-base font-bold shadow-sm outline-none border-2"
+                        className="w-full bg-card border-border/50 text-foreground placeholder:text-muted-foreground h-16 pl-12 pr-16 rounded-2xl focus-visible:ring-2 focus-visible:ring-accent transition-all text-base font-bold shadow-sm outline-none border-2"
                     />
-                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[11px] font-black text-zinc-300 uppercase font-mono">
-            DKK
-          </span>
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[11px] font-black text-muted-foreground uppercase font-mono">
+                        DKK
+                    </span>
                 </div>
 
-                {/* Bordeaux knap med kraftig pil */}
                 <Button
                     type="submit"
                     disabled={loading || !amount}
-                    className="bg-[#800020] hover:bg-[#600018] h-16 w-16 rounded-2xl shrink-0 shadow-lg transition-all active:scale-95 disabled:opacity-20 flex items-center justify-center p-0 border-none text-white"
+                    className="bg-accent hover:bg-accent/80 h-16 w-16 rounded-2xl shrink-0 shadow-lg transition-all active:scale-95 disabled:opacity-30 flex items-center justify-center p-0 border-none text-foreground"
                 >
                     {loading ? (
-                        <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <div className="h-5 w-5 border-2 border-foreground/30 border-t-foreground rounded-full animate-spin" />
                     ) : (
-                        <ArrowUp className="h-7 w-7 text-white stroke-[3px]" />
+                        <ArrowUp className="h-7 w-7 text-foreground stroke-[3px]" />
                     )}
                 </Button>
             </form>
 
             {error && (
-                <div className="flex items-center gap-2 text-red-600 text-[11px] font-bold bg-red-50 p-4 rounded-xl border border-red-100 animate-in slide-in-from-top-1">
+                <div className="flex items-center gap-2 text-red-400 text-[11px] font-bold bg-red-950/40 p-4 rounded-xl border border-red-800/40 animate-in slide-in-from-top-1">
                     <AlertCircle className="h-4 w-4" />
                     {error}
                 </div>

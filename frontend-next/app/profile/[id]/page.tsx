@@ -2,16 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { api } from "@/app/api/api";
+import { X } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/UI/avatar";
 import ProductCard from "@/app/components/product/ProductCard";
-import type { ApiProduct, Product } from "@/app/components/product/types";
+import Link from "next/link";
+import type { ApiProduct } from "@/app/components/product/types";
 
 export default function PublicProfilePage() {
-    const router = useRouter();
     const { id } = useParams();
+    const router = useRouter();
 
     const [user, setUser] = useState<any>(null);
     const [products, setProducts] = useState<ApiProduct[]>([]);
@@ -34,26 +35,65 @@ export default function PublicProfilePage() {
 
     // Lock scroll
     useEffect(() => {
-        document.body.style.overflow = (showFollowers || showFollowing || showReportModal) ? "hidden" : "auto";
+        const locked = showFollowers || showFollowing || showReportModal;
+        document.body.style.overflow = locked ? "hidden" : "";
+        document.documentElement.style.overflow = locked ? "hidden" : "";
+        return () => {
+            document.body.style.overflow = "";
+            document.documentElement.style.overflow = "";
+        };
     }, [showFollowers, showFollowing, showReportModal]);
 
     // Load Data
     useEffect(() => {
         async function loadInitialData() {
+            // Hent nuværende bruger separat — fejler stille hvis gæst (401)
+            let me: any = null;
             try {
-                const [meRes, userRes, prodRes] = await Promise.all([
-                    api("/api/users/me"),
-                    api(`/api/users/public/${id}`),
-                    api(`/api/products/user/${id}`)
-                ]);
-                const meJson = await meRes.json();
-                const userJson = await userRes.json();
-                const prodJson = await prodRes.json();
+                const meRes = await api("/api/users/me");
+                if (meRes.ok) {
+                    const meJson = await meRes.json();
+                    if (meJson.success) {
+                        me = meJson.data;
+                        setCurrentUser(meJson.data);
+                    }
+                }
+            } catch (_) {}
 
-                if (meJson.success) setCurrentUser(meJson.data);
+            // Hent profil og produkter uafhængigt — virker for alle (gæster + logget ind)
+            try {
+                const userRes = await api(`/api/users/public/${id}`);
+                const userJson = await userRes.json();
                 if (userJson.success) setUser(userJson.data);
+            } catch (err) { console.error("Profile load error:", err); }
+
+            try {
+                const prodRes = await api(`/api/products/user/${id}`);
+                const prodJson = await prodRes.json();
                 if (prodJson.success) setProducts(prodJson.data);
-            } catch (err) { console.error("Data load error:", err); }
+            } catch (err) { console.error("Products load error:", err); }
+
+            // Hent followers og following
+            try {
+                const followersRes = await api(`/api/follows/${id}/followers`);
+                const followersJson = await followersRes.json();
+                if (followersJson.success) setFollowers(followersJson.data);
+            } catch (err) { console.error("Followers load error:", err); }
+
+            try {
+                const followingRes = await api(`/api/follows/${id}/following`);
+                const followingJson = await followingRes.json();
+                if (followingJson.success) setFollowing(followingJson.data);
+            } catch (err) { console.error("Following load error:", err); }
+
+            // Tjek om nuværende bruger følger denne profil
+            if (me) {
+                try {
+                    const isFollowingRes = await api(`/api/follows/${id}/is-following`);
+                    const isFollowingJson = await isFollowingRes.json();
+                    if (isFollowingJson.success) setIsFollowing(isFollowingJson.isFollowing);
+                } catch (err) { console.error("isFollowing load error:", err); }
+            }
         }
         loadInitialData();
     }, [id]);
@@ -178,6 +218,88 @@ export default function PublicProfilePage() {
                     }} onToggleFavorite={() => {}} />
                 ))}
             </div>
+
+            {/* Followers Modal */}
+            {showFollowers && (
+                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowFollowers(false)}>
+                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-80 max-h-[70vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-semibold text-racing-green">Followers</h2>
+                            <button onClick={() => setShowFollowers(false)} className="text-racing-green hover:text-burgundy transition">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        {followers.length === 0 ? (
+                            <p className="text-sm text-racing-green">No followers yet</p>
+                        ) : (
+                            <ul className="space-y-3">
+                                {followers.map((f) => {
+                                    const u = f.followerId;
+                                    if (!u) return null;
+                                    return (
+                                        <li key={u._id} className="flex items-center gap-3">
+                                            <Avatar className="h-9 w-9 border border-burgundy/40">
+                                                <AvatarImage src={u.profile?.avatarUrl} />
+                                                <AvatarFallback className="bg-racing-green text-ivory-dark">
+                                                    {u.username.slice(0, 2).toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <Link
+                                                href={`/profile/${u._id}`}
+                                                onClick={() => setShowFollowers(false)}
+                                                className="text-racing-green hover:text-burgundy transition"
+                                            >
+                                                {u.username}
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Following Modal */}
+            {showFollowing && (
+                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowFollowing(false)}>
+                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-80 max-h-[70vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-semibold text-racing-green">Following</h2>
+                            <button onClick={() => setShowFollowing(false)} className="text-racing-green hover:text-burgundy transition">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        {following.length === 0 ? (
+                            <p className="text-sm text-racing-green">Not following anyone yet</p>
+                        ) : (
+                            <ul className="space-y-3">
+                                {following.map((f) => {
+                                    const u = f.followingId;
+                                    if (!u) return null;
+                                    return (
+                                        <li key={u._id} className="flex items-center gap-3">
+                                            <Avatar className="h-9 w-9 border border-burgundy/40">
+                                                <AvatarImage src={u.profile?.avatarUrl} />
+                                                <AvatarFallback className="bg-racing-green text-ivory-dark">
+                                                    {u.username.slice(0, 2).toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <Link
+                                                href={`/profile/${u._id}`}
+                                                onClick={() => setShowFollowing(false)}
+                                                className="text-racing-green hover:text-burgundy transition"
+                                            >
+                                                {u.username}
+                                            </Link>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Report Modal */}
             {showReportModal && (
