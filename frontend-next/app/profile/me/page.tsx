@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/app/api/api";
+import { toggleFavorite } from "@/app/api/favorites";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/UI/avatar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/UI/tabs";
-import { Settings, X, ArrowRight, Package } from "lucide-react";
+import { Settings, X, ArrowRight } from "lucide-react";
 import { Button } from "@/app/components/UI/button";
 
 import {
@@ -19,7 +20,7 @@ import {
 } from "@/app/components/UI/dropdown-menu";
 
 import ProductCard from "@/app/components/product/ProductCard";
-import type { Product, ApiProduct } from "@/app/components/product/types";
+import type { ApiProduct } from "@/app/components/product/types";
 
 interface UserProfile {
     _id: string;
@@ -33,8 +34,8 @@ interface UserProfile {
 const MePage = () => {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [products, setProducts] = useState<ApiProduct[]>([]);
-    const [orders, setOrders] = useState<any[]>([]); // Købte ting
-    const [soldItems, setSoldItems] = useState<any[]>([]); // Solgte ting
+    const [orders, setOrders] = useState<any[]>([]);
+    const [soldItems, setSoldItems] = useState<any[]>([]);
 
     const router = useRouter();
     const [followers, setFollowers] = useState<any[]>([]);
@@ -42,84 +43,77 @@ const MePage = () => {
     const [showFollowers, setShowFollowers] = useState(false);
     const [showFollowing, setShowFollowing] = useState(false);
 
-    // 1. Load Profil
     useEffect(() => {
-        async function loadProfile() {
+        async function loadAll() {
             try {
-                const res = await api("/api/users/me");
-                const json = await res.json();
-                if (!json.success) throw new Error("Could not fetch profile");
-                setUser(json.data);
+                // 1. Hent profil først da vi skal bruge user._id
+                const profileRes = await api("/api/users/me");
+                const profileJson = await profileRes.json();
+                if (!profileJson.success) return;
+                const userData = profileJson.data;
+                setUser(userData);
+
+                // 2. Hent alt andet parallelt
+                const [productsRes, favRes, ordersRes, salesRes, followersRes, followingRes] =
+                    await Promise.allSettled([
+                        api(`/api/products/user/${userData._id}?all=true`),
+                        api("/api/favorites"),
+                        api("/api/orders/my-orders"),
+                        api("/api/orders/my-sales"),
+                        api(`/api/follows/${userData._id}/followers`),
+                        api(`/api/follows/${userData._id}/following`),
+                    ]);
+
+                // Favorites
+                let favoriteIds = new Set<string>();
+                if (favRes.status === "fulfilled") {
+                    try {
+                        const favData = await favRes.value.json();
+                        if (favData.success) {
+                            favoriteIds = new Set(
+                                (favData.favorites || []).map((f: any) => String(f._id))
+                            );
+                        }
+                    } catch {}
+                }
+
+                // Produkter med isFavorite
+                if (productsRes.status === "fulfilled") {
+                    const json = await productsRes.value.json();
+                    if (json.success) {
+                        setProducts((json.data || []).map((p: ApiProduct) => ({
+                            ...p,
+                            isFavorite: favoriteIds.has(String(p._id)),
+                        })));
+                    }
+                }
+
+                if (ordersRes.status === "fulfilled") {
+                    const json = await ordersRes.value.json();
+                    if (json.success) setOrders(json.data);
+                }
+
+                if (salesRes.status === "fulfilled") {
+                    const json = await salesRes.value.json();
+                    if (json.success) setSoldItems(json.data);
+                }
+
+                if (followersRes.status === "fulfilled") {
+                    const json = await followersRes.value.json();
+                    if (json.success) setFollowers(json.data);
+                }
+
+                if (followingRes.status === "fulfilled") {
+                    const json = await followingRes.value.json();
+                    if (json.success) setFollowing(json.data);
+                }
+
             } catch (err) {
                 console.error("Profile load error", err);
             }
         }
-        loadProfile();
+        loadAll();
     }, []);
-
-    // 2. Load Listings (Dine aktive annoncer)
-    useEffect(() => {
-        async function loadMyProducts() {
-            if(!user) return;
-            try {
-                const res = await api(`/api/products/user/${user._id}?all=true`);
-                const json = await res.json();
-                if (json.success) setProducts(json.data);
-            } catch (err) {
-                console.error("Products load error", err);
-            }
-        }
-        loadMyProducts();
-    }, [user]);
-
-    // 3. Load Orders (Ting du har KØBT)
-    useEffect(() => {
-        async function loadMyOrders() {
-            if (!user) return;
-            try {
-                const res = await api("/api/orders/my-orders");
-                const json = await res.json();
-                if (json.success) setOrders(json.data);
-            } catch (err) {
-                console.error("Orders load error", err);
-            }
-        }
-        loadMyOrders();
-    }, [user]);
-
-    // 4. Load Sales (Ting du har SOLGT)
-    useEffect(() => {
-        async function loadMySales() {
-            if (!user) return;
-            try {
-                const res = await api("/api/orders/my-sales");
-                const json = await res.json();
-                if (json.success) setSoldItems(json.data);
-            } catch (err) {
-                console.error("Sales load error", err);
-            }
-        }
-        loadMySales();
-    }, [user]);
-
-    // 5. Load Follow Data
-    useEffect(() => {
-        async function loadFollowData() {
-            if (!user) return;
-            try {
-                const resFollowers = await api(`/api/follows/${user._id}/followers`);
-                const jsonFollowers = await resFollowers.json();
-                if (jsonFollowers.success) setFollowers(jsonFollowers.data);
-
-                const resFollowing = await api(`/api/follows/${user._id}/following`);
-                const jsonFollowing = await resFollowing.json();
-                if (jsonFollowing.success) setFollowing(jsonFollowing.data);
-            } catch (err) {
-                console.error("Follow data error", err);
-            }
-        }
-        loadFollowData();
-    }, [user]);
 
     // Body scroll lock til modals
     useEffect(() => {
@@ -131,6 +125,18 @@ const MePage = () => {
             document.documentElement.style.overflow = "";
         };
     }, [showFollowers, showFollowing]);
+
+    async function handleToggleFavorite(productId: string) {
+        setProducts(prev =>
+            prev.map(p => p._id === productId ? { ...p, isFavorite: !p.isFavorite } : p)
+        );
+        const success = await toggleFavorite(productId);
+        if (!success) {
+            setProducts(prev =>
+                prev.map(p => p._id === productId ? { ...p, isFavorite: !p.isFavorite } : p)
+            );
+        }
+    }
 
     async function handleLogout() {
         try { await api("/api/auth/logout", { method: "POST" }); } catch {}
@@ -220,18 +226,18 @@ const MePage = () => {
                     ) : (
                         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                             {products.map((p) => {
-                                const mappedProduct: Product = {
+                                const mappedProduct = {
                                     id: p._id,
                                     title: p.title,
                                     brand: p.brand?.name || "",
                                     price: p.price,
                                     imageUrl: p.images?.[0] || "/images/ImagePlaceholder.jpg",
                                     tag: p.tags?.[0]?.name,
-                                    isFavorite: p.isFavorite ?? false,
+                                    isFavorite: Boolean(p.isFavorite),
                                 };
                                 return (
                                     <div key={p._id}>
-                                        <ProductCard product={mappedProduct} onToggleFavorite={() => {}} />
+                                        <ProductCard product={mappedProduct} onToggleFavorite={handleToggleFavorite} />
                                         <p className="text-xs mt-1 font-medium text-muted-foreground">Status: {p.status}</p>
                                     </div>
                                 );
@@ -250,7 +256,7 @@ const MePage = () => {
                                 <Link href={`/orders/${item._id}`} key={item._id} className="flex items-center justify-between p-4 bg-white border border-border rounded-2xl hover:bg-muted/30 transition shadow-sm">
                                     <div className="flex items-center gap-4">
                                         <div className="h-12 w-12 bg-muted rounded-lg overflow-hidden shrink-0 border">
-                                            <img src={item.product?.images?.[0] || "/images/ImagePlaceholder.jpg"} className="h-full w-full object-cover" />
+                                            <img src={item.product?.images?.[0] || "/images/ImagePlaceholder.jpg"} alt={item.product?.title || "Product"} className="h-full w-full object-cover" />
                                         </div>
                                         <div>
                                             <p className="text-sm font-bold truncate max-w-[150px]">{item.product?.title || "Deleted Product"}</p>
@@ -277,7 +283,7 @@ const MePage = () => {
                                 <Link href={`/orders/${order._id}`} key={order._id} className="flex items-center justify-between p-4 bg-white border border-border rounded-2xl hover:bg-muted/30 transition shadow-sm">
                                     <div className="flex items-center gap-4">
                                         <div className="h-12 w-12 bg-muted rounded-lg overflow-hidden shrink-0 border">
-                                            <img src={order.product?.images?.[0] || "/images/ImagePlaceholder.jpg"} className="h-full w-full object-cover" />
+                                            <img src={order.product?.images?.[0] || "/images/ImagePlaceholder.jpg"} alt={order.product?.title || "Product"} className="h-full w-full object-cover" />
                                         </div>
                                         <div>
                                             <p className="text-sm font-bold truncate max-w-[150px]">{order.product?.title || "Deleted Product"}</p>

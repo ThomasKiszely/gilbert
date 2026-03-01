@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import BlogPost from "@/app/components/home/BlogPost";
 import FeaturedProducts from "@/app/components/home/FeaturedProducts";
 import CategoryList from "@/app/components/home/CategoryList";
@@ -12,46 +12,62 @@ const Index = () => {
     const [products, setProducts] = useState<Product[]>([]);
     const [frontPost, setFrontPost] = useState<any>(null);
 
-    async function loadData() {
+    // PERFORMANCE: Brug useCallback til loadData for at undgå unødvendige re-creations
+    const loadData = useCallback(async (signal?: AbortSignal) => {
         try {
-            // 1. Hent produkter (Vi bruger rewrites, så ingen 'http://localhost:3000' her)
-            const res = await api("/api/products");
-            const data = await res.json();
-            const mapped = data.map((p: ApiProduct): Product => ({
-                id: p._id,
-                title: p.title,
-                brand: p.brand?.name || "",
-                price: p.price,
-                // Rewrites sørger for at /api/images/... rammer rigtigt
-                imageUrl: p.images?.[0] || "/images/ImagePlaceholder.jpg",
-                tag: p.tags?.[0]?.name,
-                isFavorite: p.isFavorite ?? false,
-            }));
-            setProducts(mapped);
+            const [productsRes, favRes, blogRes] = await Promise.allSettled([
+                api("/api/products", { signal }),
+                api("/api/favorites", { signal }),
+                api("/api/blogs/front", { signal }),
+            ]);
 
-            // 2. HENT DET AKTIVE BLOGINDLÆG
-            const blogRes = await api("/api/blogs/front");
-            const blogData = await blogRes.json();
-
-            if (blogData.success && blogData.data) {
-                const { post, teaser } = blogData.data;
-
-                if (post) {
-                    // Vi fjerner HTML-tags så de ikke ødelægger forsiden, og tager de første 150 tegn
-                    const cleanTeaser = teaser || post.content?.replace(/<[^>]*>/g, '').substring(0, 150);
-
-                    setFrontPost({
-                        ...post,
-                        displayTeaser: cleanTeaser
-                    });
-                }
+            // Byg favoriteIds set
+            let favoriteIds = new Set<string>();
+            if (favRes.status === "fulfilled" && favRes.value.ok) {
+                try {
+                    const favData = await favRes.value.json();
+                    if (favData.success) {
+                        favoriteIds = new Set(
+                            (favData.favorites || []).map((f: any) => String(f._id))
+                        );
+                    }
+                } catch {}
             }
-        } catch (err) {
-            console.error("Fejl ved indlæsning af data:", err);
-        }
-    }
 
-    async function handleToggleFavorite(productId: string) {
+            // Map produkter med isFavorite
+            if (productsRes.status === "fulfilled" && productsRes.value.ok) {
+                const data = await productsRes.value.json();
+                setProducts(data.map((p: ApiProduct): Product => ({
+                    id: p._id,
+                    title: p.title,
+                    brand: p.brand?.name || "",
+                    price: p.price,
+                    imageUrl: p.images?.[0] || "/images/ImagePlaceholder.jpg",
+                    tag: p.tags?.[0]?.name,
+                    isFavorite: favoriteIds.has(String(p._id)),
+                })));
+            }
+
+            // Blog post
+            if (blogRes.status === "fulfilled" && blogRes.value.ok) {
+                try {
+                    const blogData = await blogRes.value.json();
+                    if (blogData.success && blogData.data?.post) {
+                        const { post, teaser } = blogData.data;
+                        const cleanTeaser = teaser || post.content?.replace(/<[^>]*>/g, '').substring(0, 150);
+                        setFrontPost({ ...post, displayTeaser: cleanTeaser });
+                    }
+                } catch {}
+            }
+        } catch (err: any) {
+            if (err.name !== 'AbortError') {
+                console.error("Error loading data:", err);
+            }
+        }
+    }, []);
+
+    // PERFORMANCE: Stabil handler forhindrer unødvendige re-renders af FeaturedProducts
+    const handleToggleFavorite = useCallback(async (productId: string) => {
         // Optimistisk update af UI
         setProducts(prev =>
             prev.map(p =>
@@ -69,19 +85,20 @@ const Index = () => {
                 )
             );
         }
-    }
+    }, []);
 
     useEffect(() => {
-        loadData();
-    }, []);
+        const controller = new AbortController();
+        loadData(controller.signal);
+
+        return () => controller.abort();
+    }, [loadData]);
 
     return (
         <div className="pb-10">
-            {/* HER ER DIN DYNAMISKE BLOG-SEKTION */}
             <BlogPost
                 title={frontPost?.title || "Vintage Office Core"}
                 subtitle={frontPost?.displayTeaser || "Shop vintage tailoring – hand-picked pieces for the modern professional."}
-                // imageUrl bruger nu også rewrites (f.eks. /api/images/blogs/billede.jpg)
                 imageUrl={frontPost?.image || "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&q=80"}
                 slug={frontPost?.slug}
             />

@@ -3,13 +3,13 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { api } from "@/app/api/api";
+import { toggleFavorite } from "@/app/api/favorites";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import ProductCard from "@/app/components/product/ProductCard";
 import FilterSidebar, { type ActiveFilters } from "@/app/components/filter/FilterSidebar";
 import type { ApiProduct, Product } from "@/app/components/product/types";
 
-// 1. Mapper flyttet ud for at undgå unødvendig re-creation
 const mapProduct = (p: ApiProduct): Product => ({
     id: p._id,
     title: p.title,
@@ -17,7 +17,7 @@ const mapProduct = (p: ApiProduct): Product => ({
     price: p.price,
     imageUrl: p.images?.[0] || "/images/ImagePlaceholder.jpg",
     tag: p.tags?.[0]?.name,
-    isFavorite: p.isFavorite ?? false,
+    isFavorite: p.isFavorite === true,
 });
 
 export default function FilterPage() {
@@ -25,14 +25,12 @@ export default function FilterPage() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
 
-    // Lokale states
     const [products, setProducts] = useState<Product[]>([]);
     const [subcategoryName, setSubcategoryName] = useState<string | null>(null);
     const [brandName, setBrandName] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
-    // 2. Afledte værdier direkte fra URL (Ingen ekstra useEffect til synkronisering)
     const gender = searchParams.get("gender");
     const subcategory = searchParams.get("subcategory");
 
@@ -47,13 +45,11 @@ export default function FilterPage() {
         priceMax: searchParams.get("priceMax") ?? "",
     }), [searchParams]);
 
-    // 3. Opdater URL'en når filtre ændres (Sidebar kalder denne)
     const handleFilterChange = useCallback((newFilters: ActiveFilters) => {
         const params = new URLSearchParams();
         if (gender) params.set("gender", gender);
         if (subcategory) params.set("subcategory", subcategory);
 
-        // Tilføj alle aktive filtre til URL
         Object.entries(newFilters).forEach(([key, value]) => {
             if (Array.isArray(value)) {
                 value.forEach(v => params.append(key, v));
@@ -65,31 +61,51 @@ export default function FilterPage() {
         router.push(`${pathname}?${params.toString()}`, { scroll: false });
     }, [gender, subcategory, pathname, router]);
 
-    // 4. Hent data (Produkter + Meta)
     useEffect(() => {
         const controller = new AbortController();
 
         async function fetchData() {
             setLoading(true);
             try {
-                // Vi henter produkter baseret på den aktuelle URL string
-                const productRes = await api(`/api/products/filter?${searchParams.toString()}`, { signal: controller.signal });
-                const productData: ApiProduct[] = await productRes.json();
-                setProducts(productData.map(mapProduct));
+                // PERFORMANCE: Hent ALT parallelt i stedet for sekventielt
+                const [productRes, favRes, subRes, brandRes] = await Promise.allSettled([
+                    api(`/api/products/filter?${searchParams.toString()}`, { signal: controller.signal }),
+                    api("/api/favorites"),
+                    subcategory ? api(`/api/subcategories/${subcategory}`) : Promise.resolve(null),
+                    (!gender && !subcategory && filters.brands.length === 1)
+                        ? api(`/api/brands/${filters.brands[0]}`)
+                        : Promise.resolve(null)
+                ]);
 
-                // Hent subcategory navn hvis nødvendigt
-                if (subcategory) {
-                    const subRes = await api(`/api/subcategories/${subcategory}`);
-                    const subData = await subRes.json();
+                // 1. Håndter Favorites
+                let favoriteIds = new Set<string>();
+                if (favRes.status === "fulfilled" && favRes.value?.ok) {
+                    const favData = await favRes.value.json();
+                    if (favData.success) {
+                        favoriteIds = new Set((favData.favorites || []).map((f: any) => String(f._id)));
+                    }
+                }
+
+                // 2. Håndter Produkter
+                if (productRes.status === "fulfilled" && productRes.value?.ok) {
+                    const productData: ApiProduct[] = await productRes.value.json();
+                    setProducts(productData.map(p => ({
+                        ...mapProduct(p),
+                        isFavorite: favoriteIds.has(String(p._id)),
+                    })));
+                }
+
+                // 3. Håndter Subcategory navn
+                if (subRes.status === "fulfilled" && subRes.value?.ok) {
+                    const subData = await subRes.value.json();
                     setSubcategoryName(subData?.name || null);
                 } else {
                     setSubcategoryName(null);
                 }
 
-                // Hent brand navn hvis det er en ren brand-side (kun 1 brand valgt, ingen gender/sub)
-                if (!gender && !subcategory && filters.brands.length === 1) {
-                    const brandRes = await api(`/api/brands/${filters.brands[0]}`);
-                    const brandData = await brandRes.json();
+                // 4. Håndter Brand navn
+                if (brandRes.status === "fulfilled" && brandRes.value?.ok) {
+                    const brandData = await brandRes.value.json();
                     setBrandName(brandData?.name || null);
                 } else {
                     setBrandName(null);
@@ -106,8 +122,20 @@ export default function FilterPage() {
         }
 
         fetchData();
-        return () => controller.abort(); // Afbryd hvis brugeren navigerer væk eller ændrer filtre hurtigt
+        return () => controller.abort();
     }, [searchParams, gender, subcategory, filters.brands]);
+
+    const handleToggleFavorite = useCallback(async (productId: string) => {
+        setProducts(prev =>
+            prev.map(p => p.id === productId ? { ...p, isFavorite: !p.isFavorite } : p)
+        );
+        const success = await toggleFavorite(productId);
+        if (!success) {
+            setProducts(prev =>
+                prev.map(p => p.id === productId ? { ...p, isFavorite: !p.isFavorite } : p)
+            );
+        }
+    }, []);
 
     const showBrandTitle = !gender && !subcategory && !!brandName;
 
@@ -119,7 +147,6 @@ export default function FilterPage() {
 
     return (
         <div className="max-w-7xl mx-auto px-4 pt-6 pb-10">
-            {/* Breadcrumb */}
             <nav className="flex items-center gap-1.5 text-xs text-muted-foreground py-4 mb-2">
                 <Link href="/" className="hover:text-foreground transition-colors">Home</Link>
                 {showBrandTitle ? (
@@ -152,9 +179,8 @@ export default function FilterPage() {
                 )}
             </nav>
 
-            {/* Header */}
             <div className="flex items-center justify-between mb-8">
-                <h1 className="text-2xl font-semibold capitalize">
+                <h1 className="text-2xl font-semibold capitalize min-h-[32px]">
                     {showBrandTitle ? brandName : (gender || "Products")}
                     {subcategoryName && ` — ${subcategoryName}`}
                 </h1>
@@ -210,11 +236,7 @@ export default function FilterPage() {
                                 <ProductCard
                                     key={product.id}
                                     product={product}
-                                    onToggleFavorite={(id) =>
-                                        setProducts(prev => prev.map(p =>
-                                            p.id === id ? { ...p, isFavorite: !p.isFavorite } : p
-                                        ))
-                                    }
+                                    onToggleFavorite={handleToggleFavorite}
                                 />
                             ))}
                         </div>

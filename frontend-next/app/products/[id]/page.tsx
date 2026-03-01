@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/app/components/UI/button";
+import Image from "next/image";
 import {
-    MessageCircle, ArrowLeft, X, Heart, Share2, Shield, ChevronRight, Truck, RotateCcw
+    MessageCircle, ArrowLeft, X, Heart, Share2,
+    ChevronRight
 } from "lucide-react";
+
+import { Button } from "@/app/components/UI/button";
 import { useAuth } from "@/app/context/AuthContext";
 import ChatView from "@/app/components/chat/ChatView";
 import { PlaceBid } from "@/app/components/Bids/PlaceBid";
@@ -14,321 +17,246 @@ import { toggleFavorite } from "@/app/api/favorites";
 import ProductCard from "@/app/components/product/ProductCard";
 import { cn } from "@/app/lib/utils";
 
+// --- Hjælpefunktioner ---
+const formatPrice = (price: number) => price?.toLocaleString("da-DK") + " kr.";
+
 const ProductDetailsPage = () => {
     const { id } = useParams();
     const router = useRouter();
     const { user } = useAuth();
-    const [product, setProduct] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-    const [isChatOpen, setIsChatOpen] = useState(false);
+
+    // 1. Grupperet State (Undgår 5-6 re-renders ved data fetch)
+    const [state, setState] = useState({
+        product: null as any,
+        similarProducts: [] as any[],
+        loading: true,
+        isFavorite: false,
+    });
+
     const [selectedImage, setSelectedImage] = useState(0);
-    const [isFavorite, setIsFavorite] = useState(false);
-    const [similarProducts, setSimilarProducts] = useState<any[]>([]);
+    const [isChatOpen, setIsChatOpen] = useState(false);
 
-    useEffect(() => {
-        const fetchProduct = async () => {
-            try {
-                const res = await fetch(`/api/products/${id}`, { credentials: "include" });
-                if (res.ok) {
-                    const data = await res.json();
-                    const p = data.product || data;
-                    setProduct(p);
-                    setIsFavorite(p.isFavorite ?? false);
+    // 2. Optimeret Data Fetching
+    const fetchAllData = useCallback(async () => {
+        try {
+            // Hent produkt og favoritter samtidigt (Parallel)
+            const [productRes, favRes] = await Promise.allSettled([
+                fetch(`/api/products/${id}`, { credentials: "include" }),
+                fetch("/api/favorites", { credentials: "include" }),
+            ]);
 
-                    // Fetch similar products by same subcategory/brand
-                    const params = new URLSearchParams();
-                    if (p.brand?._id) params.set("brands", p.brand._id);
-                    if (p.subcategory?._id) params.set("subcategory", p.subcategory._id);
-                    params.set("limit", "4");
-
-                    const simRes = await fetch(`/api/products/filter?${params.toString()}`, { credentials: "include" });
-                    if (simRes.ok) {
-                        const simData = await simRes.json();
-                        const products = (simData.products || simData.data || []).filter((sp: any) => sp._id !== p._id).slice(0, 4);
-                        setSimilarProducts(products);
-                    }
+            let favoriteIds = new Set<string>();
+            if (favRes.status === "fulfilled" && favRes.value.ok) {
+                const favData = await favRes.value.json();
+                if (favData.success) {
+                    favoriteIds = new Set((favData.favorites || []).map((f: any) => String(f._id)));
                 }
-            } catch (err) {
-                console.error("Error fetching product:", err);
-            } finally {
-                setLoading(false);
             }
-        };
-        fetchProduct();
+
+            if (productRes.status === "fulfilled" && productRes.value.ok) {
+                const data = await productRes.value.json();
+                const p = data.product || data;
+
+                // Opdater hovedprodukt med det samme
+                setState(prev => ({
+                    ...prev,
+                    product: p,
+                    isFavorite: favoriteIds.has(String(p._id)),
+                    loading: false
+                }));
+
+                // Hent lignende produkter (uden at blokere for hovedproduktet)
+                fetchSimilar(p, favoriteIds);
+            } else {
+                setState(prev => ({ ...prev, loading: false }));
+            }
+        } catch (err) {
+            console.error("Error:", err);
+            setState(prev => ({ ...prev, loading: false }));
+        }
     }, [id]);
 
-    async function handleToggleFavorite() {
-        if (!user) { router.push("/login"); return; }
-        const ok = await toggleFavorite(String(product._id));
-        if (ok !== undefined) setIsFavorite(prev => !prev);
-    }
+    const fetchSimilar = async (p: any, favoriteIds: Set<string>) => {
+        const params = new URLSearchParams();
+        if (p.brand?._id) params.set("brands", p.brand._id);
+        if (p.subcategory?._id) params.set("subcategory", p.subcategory._id);
+        params.set("limit", "5");
 
-    function handleBuyNow() {
-        if (!user) { router.push("/login"); return; }
-        router.push(`/checkout/${product._id}`);
-    }
+        try {
+            const res = await fetch(`/api/products/filter?${params.toString()}`, { credentials: "include" });
+            if (res.ok) {
+                const simData = await res.json();
+                const products = (simData.products || simData.data || [])
+                    .filter((sp: any) => sp._id !== p._id)
+                    .slice(0, 4)
+                    .map((sp: any) => ({
+                        ...sp,
+                        isFavorite: favoriteIds.has(String(sp._id)),
+                    }));
+                setState(prev => ({ ...prev, similarProducts: products }));
+            }
+        } catch (e) { /* silent fail */ }
+    };
 
-    function handleShare() {
-        if (navigator.share) {
-            navigator.share({ title: product.title, url: window.location.href });
-        } else {
-            navigator.clipboard.writeText(window.location.href);
+    useEffect(() => {
+        fetchAllData();
+    }, [fetchAllData]);
+
+    // 3. Memoized beregninger (Kører kun når produktet ændrer sig)
+    const meta = useMemo(() => {
+        if (!state.product) return null;
+        const p = state.product;
+        return {
+            discount: p.originalPrice ? Math.round((1 - p.price / p.originalPrice) * 100) : null,
+            brandName: p.brand?.name ?? p.brand ?? "",
+            details: [
+                { label: "Size", value: p.size?.label ?? p.size?.name ?? p.size },
+                { label: "Condition", value: p.condition?.name ?? p.condition },
+                { label: "Colour", value: p.color?.name ?? p.color },
+                { label: "Material", value: p.material?.name ?? p.material },
+            ].filter(d => d.value)
+        };
+    }, [state.product]);
+
+    // 4. Handlers
+    const handleToggleFavorite = async () => {
+        if (!user) return router.push("/login");
+        const success = await toggleFavorite(String(state.product._id));
+        if (success !== undefined) {
+            setState(prev => ({ ...prev, isFavorite: !prev.isFavorite }));
         }
-    }
+    };
 
-    if (loading) return (
-        <div className="p-20 text-center text-muted-foreground font-mono uppercase tracking-widest text-xs">
+    if (state.loading) return (
+        <div className="flex items-center justify-center min-h-[60vh] text-xs uppercase tracking-widest animate-pulse">
             Loading product...
         </div>
     );
-    if (!product) return (
-        <div className="p-20 text-center text-muted-foreground">Product not found.</div>
-    );
 
-    const images: string[] = product.images?.length ? product.images : [];
-    const brandName: string = product.brand?.name ?? product.brand ?? "";
-    const discount = product.originalPrice
-        ? Math.round((1 - product.price / product.originalPrice) * 100)
-        : null;
+    if (!state.product) return <div className="p-20 text-center">Product not found.</div>;
 
-    const quickDetails = [
-        { label: "Size", value: product.size?.label ?? product.size?.name ?? (typeof product.size === "string" ? product.size : null) },
-        { label: "Condition", value: product.condition?.name ?? (typeof product.condition === "string" ? product.condition : null) },
-        { label: "Colour", value: product.color?.name ?? (typeof product.color === "string" ? product.color : null) },
-        { label: "Material", value: product.material?.name ?? (typeof product.material === "string" ? product.material : null) },
-    ].filter(d => d.value);
+    const { product, isFavorite, similarProducts } = state;
 
     return (
         <div className="max-w-6xl mx-auto px-4 pb-16 min-h-screen">
             {/* Breadcrumb */}
             <nav className="flex items-center gap-1.5 text-xs text-muted-foreground py-4 mb-2">
-                <button
-                    onClick={() => router.back()}
-                    className="flex items-center gap-1 hover:text-foreground transition-colors"
-                >
+                <button onClick={() => router.back()} className="flex items-center gap-1 hover:text-foreground transition-colors">
                     <ArrowLeft className="h-3 w-3" /> Back
                 </button>
                 <ChevronRight className="h-3 w-3" />
                 {product.subcategory?.name && (
-                    <>
-                        <Link
-                            href={`/products/filter?subcategory=${product.subcategory._id}`}
-                            className="hover:text-foreground transition-colors"
-                        >
-                            {product.subcategory.name}
-                        </Link>
-                        <ChevronRight className="h-3 w-3" />
-                    </>
+                    <Link href={`/products/filter?subcategory=${product.subcategory._id}`} className="hover:text-foreground">
+                        {product.subcategory.name}
+                    </Link>
                 )}
-                <span className="text-foreground truncate max-w-[200px]">{product.title}</span>
             </nav>
 
-            {/* Product Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-                {/* Images */}
-                <div className="space-y-3">
-                    <div className="aspect-[3/4] rounded-xl overflow-hidden bg-card border border-border/30">
-                        {images[selectedImage] ? (
-                            <img
-                                src={images[selectedImage]}
-                                alt={product.title}
-                                className="w-full h-full object-cover"
-                            />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-                                No image available
-                            </div>
-                        )}
+                {/* Image Section - Optimeret med Next/Image */}
+                <div className="space-y-4">
+                    <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-muted border border-border/30">
+                        <Image
+                            src={product.images?.[selectedImage] || "/images/ImagePlaceholder.jpg"}
+                            alt={product.title}
+                            fill
+                            priority // LCP Optimering
+                            className="object-cover"
+                            sizes="(max-w-768px) 100vw, 50vw"
+                        />
                     </div>
-                    {images.length > 1 && (
-                        <div className="flex gap-3 flex-wrap">
-                            {images.map((img: string, i: number) => (
+                    {product.images?.length > 1 && (
+                        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                            {product.images.map((img: string, i: number) => (
                                 <button
                                     key={i}
                                     onClick={() => setSelectedImage(i)}
                                     className={cn(
-                                        "w-20 h-24 rounded-lg overflow-hidden border-2 transition-all",
-                                        selectedImage === i
-                                            ? "border-foreground"
-                                            : "border-border/30 opacity-60 hover:opacity-100"
+                                        "relative w-20 h-24 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all",
+                                        selectedImage === i ? "border-foreground" : "border-transparent opacity-60"
                                     )}
                                 >
-                                    <img src={img} alt="" className="w-full h-full object-cover" />
+                                    <Image src={img} alt={`Image ${i + 1}`} fill className="object-cover" sizes="80px" />
                                 </button>
                             ))}
                         </div>
                     )}
                 </div>
 
-                {/* Product Info */}
-                <div className="lg:sticky lg:top-36 lg:self-start space-y-6">
-                    {/* Brand & Title */}
+                {/* Info Section */}
+                <div className="lg:sticky lg:top-24 lg:self-start space-y-6">
                     <div>
-                        {brandName && (
-                            <Link
-                                href={`/products/filter?brands=${product.brand?._id ?? ""}`}
-                                className="text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                                {brandName}
-                            </Link>
-                        )}
-                        <h1 className="text-3xl md:text-4xl font-serif text-foreground mt-1">
-                            {product.title}
-                        </h1>
+                        <Link href={`/products/filter?brands=${product.brand?._id}`} className="text-xs uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors">
+                            {meta?.brandName}
+                        </Link>
+                        <h1 className="text-3xl font-serif mt-2 leading-tight">{product.title}</h1>
                     </div>
 
-                    {/* Price */}
                     <div className="flex items-baseline gap-3">
-                        <span className="text-2xl font-bold text-foreground">
-                            {product.price?.toLocaleString("en-GB")} kr.
-                        </span>
+                        <span className="text-2xl font-bold">{formatPrice(product.price)}</span>
                         {product.originalPrice && (
-                            <>
-                                <span className="text-base text-muted-foreground line-through">
-                                    {product.originalPrice.toLocaleString("en-GB")} kr.
-                                </span>
-                                <span className="text-sm font-semibold text-accent">
-                                    -{discount}%
-                                </span>
-                            </>
+                            <span className="text-muted-foreground line-through text-sm">{formatPrice(product.originalPrice)}</span>
                         )}
+                        {meta?.discount && <span className="text-accent font-bold text-sm">-{meta.discount}%</span>}
                     </div>
 
-                    {/* Quick Details */}
-                    {quickDetails.length > 0 && (
-                        <div className="grid grid-cols-2 gap-3">
-                            {quickDetails.map((detail) => (
-                                <div
-                                    key={detail.label}
-                                    className="bg-card border border-border/30 rounded-lg px-4 py-3"
-                                >
-                                    <span className="text-xs text-muted-foreground block">{detail.label}</span>
-                                    <span className="text-sm font-medium text-foreground">{detail.value}</span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Actions */}
-                    <div className="space-y-3">
-                        <div className="flex gap-3">
-                            <Button
-                                onClick={handleBuyNow}
-                                className="flex-1 h-12 text-base font-semibold rounded-xl"
-                            >
-                                Buy now — {product.price?.toLocaleString("en-GB")} kr.
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-12 w-12 rounded-xl"
-                                onClick={handleToggleFavorite}
-                                aria-label={isFavorite ? "Remove from favourites" : "Add to favourites"}
-                            >
-                                <Heart className={cn("h-5 w-5 transition-colors", isFavorite && "fill-accent text-accent")} />
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-12 w-12 rounded-xl"
-                                onClick={handleShare}
-                                aria-label="Share product"
-                            >
-                                <Share2 className="h-5 w-5" />
-                            </Button>
-                        </div>
-
-                        {user ? (
-                            <PlaceBid
-                                productId={String(product._id)}
-                                productPrice={product.price}
-                                onBidPlaced={() => setTimeout(() => setIsChatOpen(true), 1500)}
-                            />
-                        ) : (
-                            <Button
-                                variant="secondary"
-                                className="w-full h-12 rounded-xl text-base"
-                                onClick={() => router.push("/login")}
-                            >
-                                <MessageCircle className="h-5 w-5 mr-2" />
-                                Log in to place a bid
-                            </Button>
-                        )}
-
-                        <button
-                            onClick={() => user ? setIsChatOpen(true) : router.push("/login")}
-                            className="flex items-center justify-center gap-2 w-full text-xs text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest font-semibold pt-1"
-                        >
-                            <MessageCircle className="h-4 w-4" />
-                            Questions? Contact the seller
-                        </button>
-                    </div>
-
-                    <div className="h-px bg-border/30" />
-
-                    {/* Trust Signals */}
-                    <div className="space-y-3">
-                        {[
-                            { icon: Shield, text: "Authenticated by Gilbert" },
-                            { icon: Truck, text: "Free shipping over 1,000 kr." },
-                            { icon: RotateCcw, text: "14-day return policy" },
-                        ].map(({ icon: Icon, text }) => (
-                            <div key={text} className="flex items-center gap-3 text-sm text-muted-foreground">
-                                <Icon className="h-4 w-4 text-foreground/50 shrink-0" />
-                                <span>{text}</span>
+                    {/* Specifikationer Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                        {meta?.details.map((d) => (
+                            <div key={d.label} className="bg-muted/30 border border-border/20 rounded-xl p-3">
+                                <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-0.5">{d.label}</span>
+                                <span className="text-sm font-medium">{d.value}</span>
                             </div>
                         ))}
                     </div>
 
-                    <div className="h-px bg-border/30" />
+                    {/* Købsknapper */}
+                    <div className="space-y-3 pt-4">
+                        <div className="flex gap-2">
+                            <Button onClick={() => user ? router.push(`/checkout/${product._id}`) : router.push("/login")} className="flex-1 h-14 rounded-2xl text-base font-bold shadow-lg shadow-foreground/5">
+                                Buy now
+                            </Button>
+                            <Button variant="outline" onClick={handleToggleFavorite} className="h-14 w-14 rounded-2xl">
+                                <Heart className={cn("h-5 w-5 transition-all", isFavorite && "fill-accent text-accent border-accent")} />
+                            </Button>
+                            <Button variant="outline" onClick={() => navigator.share?.({ title: product.title, url: window.location.href })} className="h-14 w-14 rounded-2xl">
+                                <Share2 className="h-5 w-5" />
+                            </Button>
+                        </div>
 
-                    {/* Seller */}
-                    {product.seller && (
+                        <PlaceBid
+                            productId={String(product._id)}
+                            productPrice={product.price}
+                            onBidPlaced={() => setTimeout(() => setIsChatOpen(true), 1500)}
+                        />
+
+                        <button onClick={() => user ? setIsChatOpen(true) : router.push("/login")} className="w-full text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground py-2 transition-colors flex items-center justify-center gap-2">
+                            <MessageCircle className="h-4 h-4" /> Questions for the seller?
+                        </button>
+                    </div>
+
+                    <div className="space-y-4 pt-6 border-t border-border/30">
                         <div className="flex items-center gap-4">
-                            <img
-                                src={product.seller.avatar ?? "/images/ImagePlaceholder.jpg"}
-                                alt={product.seller.username ?? product.seller.name}
-                                className="w-12 h-12 rounded-full object-cover border-2 border-border/30"
-                            />
-                            <div className="flex-1 min-w-0">
-                                <p className="font-medium text-foreground text-sm truncate">
-                                    {product.seller.username ?? product.seller.name}
-                                </p>
-                                {product.seller.rating != null && (
-                                    <p className="text-xs text-muted-foreground">
-                                        ⭐ {product.seller.rating} · {product.seller.sales ?? 0} sales
-                                    </p>
-                                )}
+                            <div className="relative h-12 w-12 rounded-full overflow-hidden border border-border/50">
+                                <Image src={product.seller?.avatar || "/images/ImagePlaceholder.jpg"} alt="" fill className="object-cover" />
                             </div>
-                            <Link href={`/profile/${product.seller._id ?? product.seller.id}`}>
-                                <Button variant="secondary" size="sm" className="rounded-full text-xs shrink-0">
-                                    View profile
-                                </Button>
+                            <div className="flex-1">
+                                <p className="text-sm font-bold">{product.seller?.username || "Anonymous seller"}</p>
+                                <p className="text-xs text-muted-foreground">⭐ {product.seller?.rating ?? 0} · {product.seller?.sales ?? 0} sales</p>
+                            </div>
+                            <Link href={`/profile/${product.seller?._id}`}>
+                                <Button variant="secondary" size="sm" className="rounded-full text-[11px] font-bold px-4">View profile</Button>
                             </Link>
                         </div>
-                    )}
-
-                    <div className="h-px bg-border/30" />
-
-                    {/* Description */}
-                    {product.description && (
-                        <div>
-                            <h3 className="text-lg font-serif text-foreground mb-2">Description</h3>
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                                {product.description}
-                            </p>
-                        </div>
-                    )}
+                    </div>
                 </div>
             </div>
 
             {/* Similar Products */}
             {similarProducts.length > 0 && (
-                <section className="py-12 md:py-16">
-                    <h2 className="text-2xl md:text-3xl font-serif text-foreground mb-8">
-                        Similar products
-                    </h2>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <section className="mt-20 pt-12 border-t border-border/30">
+                    <h2 className="text-2xl font-serif mb-8">Similar items</h2>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                         {similarProducts.map((p) => (
                             <ProductCard
                                 key={p._id}
@@ -339,9 +267,14 @@ const ProductDetailsPage = () => {
                                     price: p.price,
                                     imageUrl: p.images?.[0] ?? "",
                                     isFavorite: p.isFavorite,
-                                    tag: p.tags?.[0]?.name,
                                 }}
-                                onToggleFavorite={(pid) => toggleFavorite(pid)}
+                                onToggleFavorite={async (pid) => {
+                                    const ok = await toggleFavorite(pid);
+                                    if (ok) setState(prev => ({
+                                        ...prev,
+                                        similarProducts: prev.similarProducts.map(sp => sp._id === pid ? { ...sp, isFavorite: !sp.isFavorite } : sp)
+                                    }));
+                                }}
                             />
                         ))}
                     </div>
@@ -350,35 +283,20 @@ const ProductDetailsPage = () => {
 
             {/* Chat Modal */}
             {isChatOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10">
-                    <div
-                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                        onClick={() => setIsChatOpen(false)}
-                    />
-                    <div className="relative bg-card w-full max-w-2xl h-[85vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-border/30">
-                        <div className="p-6 border-b border-border/30 flex justify-between items-center">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsChatOpen(false)} />
+                    <div className="relative bg-background w-full max-w-2xl h-[80vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-border/30">
+                        <div className="p-5 border-b flex justify-between items-center bg-muted/20">
                             <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-xl bg-accent flex items-center justify-center">
-                                    <MessageCircle className="h-5 w-5 text-foreground" />
+                                <div className="h-10 w-10 rounded-xl bg-foreground flex items-center justify-center">
+                                    <MessageCircle className="h-5 w-5 text-background" />
                                 </div>
-                                <div>
-                                    <h3 className="font-semibold text-foreground text-base font-serif leading-none">
-                                        Negotiation
-                                    </h3>
-                                    <span className="text-xs text-muted-foreground mt-0.5 block truncate max-w-[200px]">
-                                        {product.title}
-                                    </span>
-                                </div>
+                                <span className="font-serif font-bold">{product.title}</span>
                             </div>
-                            <button
-                                onClick={() => setIsChatOpen(false)}
-                                className="p-2 hover:bg-muted rounded-full transition-colors"
-                            >
-                                <X className="h-5 w-5 text-muted-foreground hover:text-foreground" />
-                            </button>
+                            <button onClick={() => setIsChatOpen(false)} className="p-2 hover:bg-muted rounded-full transition-colors"><X /></button>
                         </div>
                         <div className="flex-1 overflow-hidden">
-                            <ChatView threadId={String(product._id)} isModal={true} />
+                            <ChatView threadId={String(product._id)} isModal />
                         </div>
                     </div>
                 </div>
@@ -388,3 +306,6 @@ const ProductDetailsPage = () => {
 };
 
 export default ProductDetailsPage;
+
+
+

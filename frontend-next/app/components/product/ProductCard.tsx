@@ -3,21 +3,7 @@
 import type { FC } from "react";
 import Link from "next/link";
 import { Star } from "lucide-react";
-
-// Vi udvider interfacet så det matcher det data vi sender fra profilsiden
-interface Product {
-    id: string;
-    title: string;
-    brand: string;
-    price: number;
-    imageUrl: string;
-    tag?: string;
-    isFavorite: boolean;
-    seller?: {
-        username?: string;
-        rating?: number;
-    };
-}
+import type { Product } from "@/app/components/product/types";
 
 interface ProductCardProps {
     product: Product;

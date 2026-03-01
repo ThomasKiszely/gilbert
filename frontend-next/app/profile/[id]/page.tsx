@@ -1,19 +1,22 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/app/api/api";
+import { toggleFavorite } from "@/app/api/favorites";
 import { X, Star } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/UI/avatar";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/UI/tabs";
+import { Button } from "@/app/components/UI/button";
 import ProductCard from "@/app/components/product/ProductCard";
-import Link from "next/link";
 
 export default function PublicProfilePage() {
     const params = useParams();
-    const id = params?.id as string; // Sikrer at vi har ID'et korrekt
+    const id = params?.id as string;
     const router = useRouter();
 
+    // Core data states
     const [user, setUser] = useState<any>(null);
     const [products, setProducts] = useState<any[]>([]);
     const [reviews, setReviews] = useState<any[]>([]);
@@ -23,7 +26,6 @@ export default function PublicProfilePage() {
     const [following, setFollowing] = useState<any[]>([]);
     const [isFollowing, setIsFollowing] = useState<boolean>(false);
 
-    const [activeTab, setActiveTab] = useState<'listings' | 'reviews'>('listings');
     const [showFollowers, setShowFollowers] = useState(false);
     const [showFollowing, setShowFollowing] = useState(false);
 
@@ -37,62 +39,139 @@ export default function PublicProfilePage() {
 
     useEffect(() => {
         if (!id) return;
+        const controller = new AbortController();
 
         async function loadInitialData() {
             try {
-                const userRes = await api(`/api/users/public/${id}`);
-                const userJson = await userRes.json();
-                if (userJson.success) setUser(userJson.data);
+                // PERFORMANCE: Hent ALT parallelt (inklusive is-following)
+                const [userRes, prodRes, favRes, reviewRes, fRes, fgRes, reportRes, meRes, isFRes] =
+                    await Promise.allSettled([
+                        api(`/api/users/public/${id}`, { signal: controller.signal }),
+                        api(`/api/products/user/${id}`),
+                        api("/api/favorites"),
+                        api(`/api/reviews/user/${id}`),
+                        api(`/api/follows/${id}/followers`),
+                        api(`/api/follows/${id}/following`),
+                        api('/api/reports/reportReasons'),
+                        api("/api/users/me"),
+                        api(`/api/follows/${id}/is-following`)
+                    ]);
 
-                const prodRes = await api(`/api/products/user/${id}`);
-                const prodJson = await prodRes.json();
-                if (prodJson.success) setProducts(prodJson.data);
+                if (userRes.status === "fulfilled") {
+                    const json = await userRes.value.json();
+                    if (json.success) setUser(json.data);
+                }
 
-                const reviewRes = await api(`/api/reviews/user/${id}`);
-                const reviewJson = await reviewRes.json();
-                if (reviewJson.success) setReviews(reviewJson.reviews || []);
+                // Byg favoriteIds
+                let favoriteIds = new Set<string>();
+                if (favRes.status === "fulfilled") {
+                    try {
+                        const favJson = await favRes.value.json();
+                        if (favJson.success) {
+                            favoriteIds = new Set((favJson.favorites || []).map((f: any) => String(f._id)));
+                        }
+                    } catch {}
+                }
 
-                const fRes = await api(`/api/follows/${id}/followers`);
-                const fJson = await fRes.json();
-                if (fJson.success) setFollowers(fJson.data || []);
+                // Produkter med isFavorite
+                if (prodRes.status === "fulfilled") {
+                    const prodJson = await prodRes.value.json();
+                    if (prodJson.success) {
+                        const approved = (prodJson.data || []).filter((p: any) => p.status === "Approved");
+                        setProducts(approved.map((p: any) => ({
+                            id: p._id,
+                            title: p.title,
+                            brand: p.brand?.name || "",
+                            price: p.price,
+                            imageUrl: p.images?.[0] || "/images/ImagePlaceholder.jpg",
+                            tag: p.tags?.[0]?.name,
+                            isFavorite: favoriteIds.has(String(p._id)),
+                        })));
+                    }
+                }
 
-                const fgRes = await api(`/api/follows/${id}/following`);
-                const fgJson = await fgRes.json();
-                if (fgJson.success) setFollowing(fgJson.data || []);
+                if (reviewRes.status === "fulfilled") {
+                    const json = await reviewRes.value.json();
+                    if (json.success) setReviews(json.reviews || []);
+                }
 
-                const reportRes = await api('/api/reports/reportReasons');
-                const reportJson = await reportRes.json();
-                if (reportJson.success) setReasons(reportJson.data);
+                if (fRes.status === "fulfilled") {
+                    const json = await fRes.value.json();
+                    if (json.success) setFollowers(json.data || []);
+                }
 
-                const meRes = await api("/api/users/me");
-                if (meRes.ok) {
-                    const meJson = await meRes.json();
+                if (fgRes.status === "fulfilled") {
+                    const json = await fgRes.value.json();
+                    if (json.success) setFollowing(json.data || []);
+                }
+
+                if (reportRes.status === "fulfilled") {
+                    const json = await reportRes.value.json();
+                    if (json.success) setReasons(json.data);
+                }
+
+                if (meRes.status === "fulfilled" && meRes.value.ok) {
+                    const meJson = await meRes.value.json();
                     setCurrentUser(meJson.data);
+                }
 
-                    const isFRes = await api(`/api/follows/${id}/is-following`);
-                    const isFJson = await isFRes.json();
+                if (isFRes.status === "fulfilled" && isFRes.value.ok) {
+                    const isFJson = await isFRes.value.json();
                     if (isFJson.success) setIsFollowing(isFJson.isFollowing);
                 }
-            } catch (err) {
-                console.error("Fejl ved indlæsning af profil:", err);
+            } catch (err: any) {
+                if (err.name !== 'AbortError') console.error("Error loading profile:", err);
             }
         }
         loadInitialData();
+        return () => controller.abort();
     }, [id]);
 
-    const handleFollowToggle = async () => {
+    // Body scroll lock
+    useEffect(() => {
+        const locked = showFollowers || showFollowing || showReportModal;
+        document.body.style.overflow = locked ? "hidden" : "";
+        document.documentElement.style.overflow = locked ? "hidden" : "";
+        return () => {
+            document.body.style.overflow = "";
+            document.documentElement.style.overflow = "";
+        };
+    }, [showFollowers, showFollowing, showReportModal]);
+
+    const handleFollowToggle = useCallback(async () => {
         if (!currentUser) return router.push('/login');
-        const method = isFollowing ? "DELETE" : "POST";
+        const wasFollowing = isFollowing;
+        setIsFollowing(!wasFollowing); // Optimistic
+
         try {
+            const method = wasFollowing ? "DELETE" : "POST";
             const res = await api(`/api/follows/${id}`, { method });
             if (res.ok) {
-                setIsFollowing(!isFollowing);
                 const refresh = await api(`/api/follows/${id}/followers`);
                 const json = await refresh.json();
                 setFollowers(json.data || []);
+            } else {
+                throw new Error();
             }
-        } catch (err) { console.error(err); }
-    };
+        } catch (err) {
+            setIsFollowing(wasFollowing); // Rollback
+        }
+    }, [currentUser, isFollowing, id, router]);
+
+    const handleToggleFavorite = useCallback(async (productId: string) => {
+        if (!currentUser) return router.push('/login');
+
+        setProducts(prev =>
+            prev.map(p => p.id === productId ? { ...p, isFavorite: !p.isFavorite } : p)
+        );
+
+        const success = await toggleFavorite(productId);
+        if (!success) {
+            setProducts(prev =>
+                prev.map(p => p.id === productId ? { ...p, isFavorite: !p.isFavorite } : p)
+            );
+        }
+    }, [currentUser, router]);
 
     const handleReportSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -104,7 +183,7 @@ export default function PublicProfilePage() {
                 body: JSON.stringify({ reportedUserId: id, reason: reportReason, details: reportDetails })
             });
             if (res.ok) {
-                setReportMessage("Tak for din anmeldelse.");
+                setReportMessage("Thank you for your report.");
                 setTimeout(() => {
                     setShowReportModal(false);
                     setReportMessage("");
@@ -114,148 +193,234 @@ export default function PublicProfilePage() {
         finally { setIsSubmitting(false); }
     };
 
-    if (!user) return <div className="p-20 text-center italic font-serif text-racing-green">Henter profil...</div>;
+    if (!user) return <p className="p-6 text-center text-muted-foreground">Loading…</p>;
+
+    const initials = user?.username?.slice(0, 2).toUpperCase() || "??";
+    const ratingAvg = user?.stats?.ratingAverage || 0;
+    const ratingCount = user?.stats?.ratingCount || 0;
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-10 pt-24 text-racing-green mb-20">
-
-            <div className="flex flex-col md:flex-row items-center md:items-start gap-10 mb-16">
-                <Avatar className="h-32 w-32 md:h-40 md:w-40 border-4 border-ivory-dark shadow-2xl">
-                    <AvatarImage src={user?.profile?.avatarUrl} />
-                    <AvatarFallback className="text-3xl bg-racing-green text-ivory">
-                        {user?.username?.slice(0, 2).toUpperCase() || "??"}
+        <div className="px-4 py-6 max-w-5xl mx-auto">
+            {/* --- PROFILE HEADER --- */}
+            <div className="flex items-start gap-4 mb-4">
+                <Avatar className="h-20 w-20 border-2 border-border/30">
+                    <AvatarImage src={user?.profile?.avatarUrl || ""} alt={user.username} />
+                    <AvatarFallback className="bg-muted text-muted-foreground text-lg font-serif">
+                        {initials}
                     </AvatarFallback>
                 </Avatar>
 
-                <div className="flex-1 text-center md:text-left pt-2">
-                    <h1 className="text-4xl md:text-5xl font-serif font-black italic mb-2 tracking-tight">
-                        {user?.username}
-                    </h1>
-
-                    <div className="flex items-center justify-center md:justify-start gap-2 mb-6">
-                        <div className="flex text-racing-green">
-                            {[1, 2, 3, 4, 5].map((s) => (
-                                <Star
-                                    key={s}
-                                    size={18}
-                                    className={s <= Math.round(user?.stats?.ratingAverage || 0) ? 'fill-racing-green' : 'text-zinc-200'}
-                                />
-                            ))}
+                <div className="flex-1 pt-1">
+                    <div className="flex items-center gap-6 mb-2">
+                        <div className="text-center">
+                            <p className="text-lg font-semibold text-foreground">{products.length}</p>
+                            <p className="text-xs text-muted-foreground">Listings</p>
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest ml-2">
-                            {user?.stats?.ratingAverage?.toFixed(1) || "0.0"} ({user?.stats?.ratingCount || 0} anmeldelser)
+                        <div className="text-center cursor-pointer" onClick={() => setShowFollowers(true)}>
+                            <p className="text-lg font-semibold text-foreground">{followers.length}</p>
+                            <p className="text-xs text-muted-foreground">Followers</p>
+                        </div>
+                        <div className="text-center cursor-pointer" onClick={() => setShowFollowing(true)}>
+                            <p className="text-lg font-semibold text-foreground">{following.length}</p>
+                            <p className="text-xs text-muted-foreground">Following</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 mb-2">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                            <Star
+                                key={s}
+                                size={14}
+                                className={s <= Math.round(ratingAvg)
+                                    ? 'fill-foreground text-foreground'
+                                    : 'text-muted-foreground/30'}
+                            />
+                        ))}
+                        <span className="text-xs text-muted-foreground ml-1">
+                            {ratingAvg > 0 ? ratingAvg.toFixed(1) : "No ratings"}{ratingCount > 0 ? ` (${ratingCount})` : ""}
                         </span>
                     </div>
+                </div>
 
-                    <div className="flex justify-center md:justify-start gap-10 mb-8">
-                        <div>
-                            <p className="text-xl font-black">{products.length}</p>
-                            <p className="text-[9px] uppercase tracking-[0.2em] text-zinc-400 font-bold">Annoncer</p>
-                        </div>
-                        <div className="cursor-pointer group" onClick={() => setShowFollowers(true)}>
-                            <p className="text-xl font-black group-hover:text-burgundy transition-colors">{followers.length}</p>
-                            <p className="text-[9px] uppercase tracking-[0.2em] text-zinc-400 font-bold">Followers</p>
-                        </div>
-                        <div className="cursor-pointer group" onClick={() => setShowFollowing(true)}>
-                            <p className="text-xl font-black group-hover:text-burgundy transition-colors">{following.length}</p>
-                            <p className="text-[9px] uppercase tracking-[0.2em] text-zinc-400 font-bold">Following</p>
-                        </div>
+                {currentUser && currentUser._id !== user._id && (
+                    <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                            variant={isFollowing ? "outline" : "default"}
+                            size="sm"
+                            onClick={handleFollowToggle}
+                            className="rounded-full text-xs px-5"
+                        >
+                            {isFollowing ? "Following" : "Follow"}
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowReportModal(true)}
+                            className="rounded-full text-xs text-muted-foreground hover:text-destructive px-3"
+                        >
+                            Report
+                        </Button>
                     </div>
+                )}
+            </div>
 
-                    <div className="flex items-center justify-center md:justify-start gap-4">
-                        {currentUser?._id !== user?._id && (
-                            <>
-                                <button
-                                    onClick={handleFollowToggle}
-                                    className={`px-10 py-3 rounded-full text-[10px] font-black uppercase tracking-[0.2em] transition-all shadow-lg ${
-                                        isFollowing ? 'bg-ivory-dark text-racing-green/50 border' : 'bg-racing-green text-white'
-                                    }`}
-                                >
-                                    {isFollowing ? "Følger" : "Følg bruger"}
-                                </button>
-                                <button onClick={() => setShowReportModal(true)} className="text-[9px] font-black uppercase tracking-widest text-zinc-400 hover:text-burgundy underline">
-                                    Anmeld profil
-                                </button>
-                            </>
+            <div className="mb-6">
+                <h1 className="text-xl font-serif font-bold text-foreground">{user.username}</h1>
+                <p className="text-sm text-muted-foreground">@{user.username}</p>
+                {user?.profile?.bio && (
+                    <p className="text-sm text-muted-foreground mt-1 italic">{user.profile.bio}</p>
+                )}
+            </div>
+
+            <Tabs defaultValue="listings" className="w-full">
+                <TabsList className="w-full bg-muted/50 rounded-lg h-auto p-1 gap-0">
+                    {[
+                        { label: "Listings", value: "listings" },
+                        { label: `Reviews (${reviews.length})`, value: "reviews" },
+                        { label: "Info", value: "info" },
+                    ].map((tab) => (
+                        <TabsTrigger
+                            key={tab.value}
+                            value={tab.value}
+                            className="flex-1 text-xs py-2 px-1 data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-md"
+                        >
+                            {tab.label}
+                        </TabsTrigger>
+                    ))}
+                </TabsList>
+
+                <TabsContent value="listings" className="mt-4">
+                    {products.length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground text-sm">No listings yet</div>
+                    ) : (
+                        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                            {products.map((p) => (
+                                <ProductCard key={p.id} product={p} onToggleFavorite={handleToggleFavorite} />
+                            ))}
+                        </div>
+                    )}
+                </TabsContent>
+
+                <TabsContent value="reviews" className="mt-4">
+                    {reviews.length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground text-sm italic">No reviews yet</div>
+                    ) : (
+                        <div className="space-y-3">
+                            {reviews.map((r: any) => (
+                                <div key={r._id} className="p-4 bg-white border border-border rounded-2xl shadow-sm">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <Avatar className="h-9 w-9 border border-border/30">
+                                            <AvatarImage src={r.reviewer?.profile?.avatarUrl} />
+                                            <AvatarFallback className="bg-muted text-muted-foreground text-xs">
+                                                {r.reviewer?.username?.[0]?.toUpperCase()}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div>
+                                            <p className="text-sm font-semibold text-foreground">{r.reviewer?.username}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {new Date(r.createdAt).toLocaleDateString('en-GB')}
+                                            </p>
+                                        </div>
+                                        {r.rating && (
+                                            <div className="ml-auto flex items-center gap-0.5">
+                                                {[1, 2, 3, 4, 5].map((s) => (
+                                                    <Star key={s} size={12} className={s <= r.rating ? 'fill-foreground text-foreground' : 'text-muted-foreground/30'} />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <p className="text-sm text-muted-foreground italic">"{r.comment}"</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </TabsContent>
+
+                <TabsContent value="info" className="mt-4">
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                        <p><strong>City:</strong> {user.location?.city || "Not specified"}</p>
+                        <p><strong>Country:</strong> {user.location?.country || "Not specified"}</p>
+                        <p><strong>CVR:</strong> {user.cvr || "N/A"}</p>
+                        <p><strong>Bio:</strong></p>
+                        <p className="italic">{user.profile?.bio || "No bio yet..."}</p>
+                        <p><strong>Language:</strong> {user.profile?.language || "en"}</p>
+                    </div>
+                </TabsContent>
+            </Tabs>
+
+            {/* MODALS BEHOLDES MED DINE FARVER OG KLASSER (ivory-dark, burgundy, osv.) */}
+            {showFollowers && (
+                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowFollowers(false)}>
+                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-80 max-h-[70vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-semibold text-racing-green">Followers</h2>
+                            <button onClick={() => setShowFollowers(false)} className="text-racing-green hover:text-burgundy transition"><X className="h-5 w-5" /></button>
+                        </div>
+                        {followers.length === 0 ? <p className="text-sm text-racing-green">No followers yet</p> : (
+                            <ul className="space-y-3">
+                                {followers.map((f, i) => {
+                                    const u = f.followerId;
+                                    if (!u) return null;
+                                    return (
+                                        <li key={u._id || i} className="flex items-center gap-3">
+                                            <Avatar className="h-9 w-9 border border-burgundy/40">
+                                                <AvatarImage src={u.profile?.avatarUrl} />
+                                                <AvatarFallback className="bg-racing-green text-ivory-dark">{u.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                            </Avatar>
+                                            <button onClick={() => { setShowFollowers(false); router.push(`/profile/${u._id}`); }} className="text-racing-green hover:text-burgundy transition text-left text-sm font-medium">{u.username}</button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
                         )}
                     </div>
                 </div>
-            </div>
-
-            <div className="flex gap-12 border-b border-ivory-dark mb-10">
-                <button onClick={() => setActiveTab('listings')} className={`pb-4 text-[11px] font-black uppercase tracking-[0.25em] ${activeTab === 'listings' ? 'border-b-2 border-racing-green' : 'text-zinc-300'}`}>Annoncer</button>
-                <button onClick={() => setActiveTab('reviews')} className={`pb-4 text-[11px] font-black uppercase tracking-[0.25em] ${activeTab === 'reviews' ? 'border-b-2 border-racing-green' : 'text-zinc-300'}`}>Anmeldelser ({reviews.length})</button>
-            </div>
-
-            {activeTab === 'listings' ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
-                    {products.map((p) => (
-                        <ProductCard
-                            key={p._id}
-                            product={{
-                                id: p._id, title: p.title, brand: p.brand?.name || "Gilbert",
-                                price: p.price, imageUrl: p.images?.[0], tag: p.tags?.[0]?.name,
-                                isFavorite: false, seller: { username: user.username, rating: user.stats?.ratingAverage }
-                            }}
-                            onToggleFavorite={() => {}}
-                        />
-                    ))}
-                </div>
-            ) : (
-                <div className="space-y-6">
-                    {reviews.map((r: any) => (
-                        <div key={r._id} className="bg-white border border-ivory-dark p-8 rounded-[2.5rem] relative shadow-sm">
-                            <div className="flex items-center gap-4 mb-4">
-                                <Avatar className="h-10 w-10"><AvatarImage src={r.reviewer?.profile?.avatarUrl} /><AvatarFallback>{r.reviewer?.username?.[0]}</AvatarFallback></Avatar>
-                                <div>
-                                    <p className="text-[10px] font-black uppercase tracking-widest">{r.reviewer?.username}</p>
-                                    <p className="text-[9px] text-zinc-400">{new Date(r.createdAt).toLocaleDateString('da-DK')}</p>
-                                </div>
-                            </div>
-                            <p className="italic font-serif text-lg leading-relaxed italic">"{r.comment}"</p>
-                        </div>
-                    ))}
-                </div>
             )}
 
-            {/* MODALS */}
-            {(showFollowers || showFollowing) && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4" onClick={() => {setShowFollowers(false); setShowFollowing(false)}}>
-                    <div className="bg-white rounded-[3rem] w-full max-w-md p-10 shadow-2xl relative" onClick={e => e.stopPropagation()}>
-                        <button onClick={() => {setShowFollowers(false); setShowFollowing(false)}} className="absolute top-8 right-8 text-zinc-300 hover:text-racing-green"><X size={24} /></button>
-                        <h2 className="text-2xl font-serif font-black italic mb-8">{showFollowers ? 'Followers' : 'Following'}</h2>
-                        <div className="space-y-4 max-h-[50vh] overflow-y-auto">
-                            {(showFollowers ? followers : following).map((item: any) => {
-                                const profile = showFollowers ? item.followerId : item.followingId;
-                                if (!profile) return null;
-                                return (
-                                    <Link key={profile._id} href={`/profile/${profile._id}`} className="flex items-center gap-4 p-3 hover:bg-ivory rounded-2xl" onClick={() => {setShowFollowers(false); setShowFollowing(false)}}>
-                                        <Avatar className="h-10 w-10"><AvatarImage src={profile.profile?.avatarUrl} /><AvatarFallback>{profile.username?.[0]}</AvatarFallback></Avatar>
-                                        <p className="text-sm font-black uppercase tracking-widest">{profile.username}</p>
-                                    </Link>
-                                );
-                            })}
+            {showFollowing && (
+                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowFollowing(false)}>
+                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-80 max-h-[70vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-semibold text-racing-green">Following</h2>
+                            <button onClick={() => setShowFollowing(false)} className="text-racing-green hover:text-burgundy transition"><X className="h-5 w-5" /></button>
                         </div>
+                        {following.length === 0 ? <p className="text-sm text-racing-green">Not following anyone yet</p> : (
+                            <ul className="space-y-3">
+                                {following.map((f, i) => {
+                                    const u = f.followingId;
+                                    if (!u) return null;
+                                    return (
+                                        <li key={u._id || i} className="flex items-center gap-3">
+                                            <Avatar className="h-9 w-9 border border-burgundy/40">
+                                                <AvatarImage src={u.profile?.avatarUrl} />
+                                                <AvatarFallback className="bg-racing-green text-ivory-dark">{u.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                                            </Avatar>
+                                            <button onClick={() => { setShowFollowing(false); router.push(`/profile/${u._id}`); }} className="text-racing-green hover:text-burgundy transition text-left text-sm font-medium">{u.username}</button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
                     </div>
                 </div>
             )}
 
-            {/* REPORT MODAL */}
             {showReportModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[110] flex items-center justify-center p-4" onClick={() => setShowReportModal(false)}>
-                    <div className="bg-white rounded-[3rem] w-full max-w-md p-10 shadow-2xl relative text-racing-green" onClick={e => e.stopPropagation()}>
-                        <h2 className="text-2xl font-serif font-black italic mb-6">Anmeld profil</h2>
-                        {reportMessage ? (
-                            <p className="py-10 text-center font-bold text-racing-green">{reportMessage}</p>
-                        ) : (
-                            <form onSubmit={handleReportSubmit} className="space-y-4">
-                                <select className="w-full bg-ivory p-4 rounded-2xl border-none text-sm outline-none" value={reportReason} onChange={(e) => setReportReason(e.target.value)} required>
-                                    <option value="">Vælg grund...</option>
-                                    {reasons.map(r => <option key={r} value={r}>{r}</option>)}
+                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-[60]" onClick={() => setShowReportModal(false)}>
+                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-80 shadow-xl text-racing-green" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-lg font-semibold">Report profile</h2>
+                            <button onClick={() => setShowReportModal(false)} className="text-racing-green hover:text-burgundy transition"><X className="h-5 w-5" /></button>
+                        </div>
+                        {reportMessage ? <p className="py-6 text-center text-sm font-medium">{reportMessage}</p> : (
+                            <form onSubmit={handleReportSubmit} className="space-y-3">
+                                <select className="w-full bg-white border border-border/40 p-3 rounded-xl text-sm outline-none" value={reportReason} onChange={(e) => setReportReason(e.target.value)} required>
+                                    <option value="">Select reason...</option>
+                                    {reasons.map((r, i) => <option key={i} value={r}>{r}</option>)}
                                 </select>
-                                <textarea className="w-full bg-ivory p-4 rounded-2xl border-none text-sm h-32 outline-none" placeholder="Uddyb gerne..." value={reportDetails} onChange={(e) => setReportDetails(e.target.value)} />
-                                <button type="submit" disabled={isSubmitting || !reportReason} className="w-full bg-racing-green text-white py-4 rounded-full font-black uppercase text-[10px] tracking-widest disabled:opacity-50">
-                                    {isSubmitting ? "Sender..." : "Send anmeldelse"}
+                                <textarea className="w-full bg-white border border-border/40 p-3 rounded-xl text-sm h-28 outline-none resize-none" placeholder="Add details (optional)..." value={reportDetails} onChange={(e) => setReportDetails(e.target.value)} />
+                                <button type="submit" disabled={isSubmitting || !reportReason} className="w-full bg-racing-green text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition hover:bg-racing-green/90">
+                                    {isSubmitting ? "Sending..." : "Send report"}
                                 </button>
                             </form>
                         )}

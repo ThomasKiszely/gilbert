@@ -1,11 +1,15 @@
 export interface Product {
-    id: string,
-    title: string,
-    brand: string,
-    price: number,
-    imageUrl: string,
-    tag?: string,
-    isFavorite?: boolean,
+    id: string;
+    title: string;
+    brand: string;
+    price: number;
+    imageUrl: string;
+    tag?: string;
+    isFavorite: boolean;
+    seller?: {
+        username?: string;
+        rating?: number;
+    };
 }
 
 export interface ApiProduct {
@@ -19,8 +23,3 @@ export interface ApiProduct {
     isFavorite?: boolean;
     status: string;
 }
-
-
-
-
-
