@@ -174,7 +174,13 @@ async function getAllOrders(filters) {
     }
 
     if (status) {
-        query.status = status;
+        // Hvis status indeholder et komma (f.eks. "disputed,awaiting_return")
+        if (status.includes(',')) {
+            const statusArray = status.split(',');
+            query.status = { $in: statusArray }; // Finder alle ordrer der matcher en af disse
+        } else {
+            query.status = status; // Finder kun den ene specifikke status
+        }
     }
 
     // Her taler servicen med repoet
