@@ -15,7 +15,8 @@ import {
     Truck,
     CreditCard,
     Fingerprint,
-    Info
+    Info,
+    Download
 } from "lucide-react";
 
 export default function AdminOrderDetailsPage() {
@@ -45,27 +46,53 @@ export default function AdminOrderDetailsPage() {
         }
     }
 
-    // --- NEW: AUTHENTICATION LOGIC ---
-    async function handleVerify(status: 'verified' | 'failed') {
-        const notes = prompt(status === 'verified' ? "Add verification notes (optional):" : "Why did it fail? (This will be sent to user):");
-        if (status === 'failed' && !notes) return alert("A reason is required for rejection.");
+    // --- AUTHENTICATION FLOW: APPROVE ---
+    async function handleApproveAuthentication() {
+        if (!confirm("Approve authentication and generate shipping label to the buyer?")) return;
 
         setIsActionLoading(true);
         try {
-            const res = await api(`/api/authentication/verify/${id}`, {
-                method: 'POST',
-                body: JSON.stringify({ status, notes })
+            const res = await api(`/api/authentication/${id}/approve`, {
+                method: 'POST'
             });
+
+            const data = await res.json();
+
             if (res.ok) {
-                alert(status === 'verified' ? "Item verified successfully!" : "Item rejected. Order cancelled.");
+                alert("Authentication approved. Shipping label created.");
                 await loadOrder();
+            } else {
+                alert(data.error || "Something went wrong.");
             }
         } finally {
             setIsActionLoading(false);
         }
     }
 
-    // --- NEW: MARK DELIVERED LOGIC ---
+    // --- AUTHENTICATION FLOW: FAIL ---
+    async function handleFailAuthentication() {
+        const notes = prompt("Why did it fail? This will be sent to buyer and seller:");
+        if (!notes) return;
+
+        setIsActionLoading(true);
+        try {
+            const res = await api(`/api/authentication/${id}/fail`, {
+                method: 'POST',
+                body: JSON.stringify({ notes })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert("Authentication failed. Buyer refunded, seller notified.");
+                await loadOrder();
+            } else {
+                alert(data.error || "Something went wrong.");
+            }
+        } finally {
+            setIsActionLoading(false);
+        }
+    }
+
+    // --- MARK DELIVERED LOGIC ---
     async function handleMarkAsDelivered() {
         if (!confirm("Confirm that the item has been delivered to the buyer? This starts the 72-hour review timer.")) return;
 
@@ -144,7 +171,7 @@ export default function AdminOrderDetailsPage() {
                             </div>
                             <div className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest ${
                                 currentStatus === 'disputed' ? 'bg-burgundy text-white' :
-                                    currentStatus === 'auth_passed' ? 'bg-racing-green text-white' : 'bg-zinc-800 text-white'
+                                    currentStatus === 'auth_passed' || currentStatus === 'shipped_to_buyer' ? 'bg-racing-green text-white' : 'bg-zinc-800 text-white'
                             }`}>
                                 {currentStatus.replace(/_/g, ' ')}
                             </div>
@@ -179,6 +206,28 @@ export default function AdminOrderDetailsPage() {
                                 <p className="text-xs font-medium text-zinc-600 truncate">{order.shippingTrackingNumber || 'No label generated'}</p>
                             </div>
                         </div>
+
+                        {/* VIS LABEL OG TRACKING EFTER GODKENDELSE */}
+                        {currentStatus === 'shipped_to_buyer' && (
+                            <div className="mt-8 pt-8 border-t border-ivory-dark/50 space-y-4">
+                                <div className="flex flex-wrap gap-4 items-center justify-between">
+                                    <div>
+                                        <h4 className="text-[9px] font-bold uppercase text-zinc-400 mb-1 tracking-widest italic">Tracking Number (Buyer)</h4>
+                                        <p className="text-sm font-black font-mono">{order.shippingTrackingNumber}</p>
+                                    </div>
+                                    {order.shippingLabelUrl && (
+                                        <a
+                                            href={order.shippingLabelUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 px-6 py-3 bg-racing-green text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-racing-green-dark transition-all"
+                                        >
+                                            <Download size={14} /> Download Label
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </section>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -199,25 +248,27 @@ export default function AdminOrderDetailsPage() {
                     </div>
                 </div>
 
-                {/* RIGHT COLUMN: ADMIN DESK (THIS IS "ADMIN OPERATIONS") */}
+                {/* RIGHT COLUMN: ADMIN DESK */}
                 <div className="space-y-6">
                     <div className="bg-racing-green text-ivory p-8 rounded-[3rem] shadow-xl sticky top-10">
                         <h3 className="font-bold mb-8 uppercase text-[10px] tracking-[0.2em] border-b border-white/10 pb-4 italic text-center text-white/60">Admin Desk</h3>
 
                         <div className="space-y-4">
 
-                            {/* 1. AUTHENTICATION ACTIONS */}
-                            {currentStatus === 'received_by_admin' && (
+                            {/* AUTHENTICATION ACTIONS */}
+                            {currentStatus === 'received_by_admin' && order.authenticationStatus === 'pending' && (
                                 <div className="space-y-3 pb-4 border-b border-white/10">
                                     <p className="text-[9px] text-white/40 uppercase tracking-[0.2em] font-black text-center mb-1">Verify Product</p>
                                     <button
-                                        onClick={() => handleVerify('verified')}
+                                        onClick={handleApproveAuthentication}
+                                        disabled={isActionLoading}
                                         className="w-full py-4 bg-white text-racing-green rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-ivory transition-all shadow-lg"
                                     >
-                                        Approve & Verify
+                                        Approve Authentication
                                     </button>
                                     <button
-                                        onClick={() => handleVerify('failed')}
+                                        onClick={handleFailAuthentication}
+                                        disabled={isActionLoading}
                                         className="w-full py-3 bg-transparent border border-burgundy text-burgundy rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-burgundy/10 transition-all"
                                     >
                                         Reject (Counterfeit)
@@ -225,7 +276,7 @@ export default function AdminOrderDetailsPage() {
                                 </div>
                             )}
 
-                            {/* 2. SHIPPING ACTIONS */}
+                            {/* SHIPPING ACTIONS */}
                             {currentStatus === 'auth_passed' && (
                                 <div className="space-y-3 pb-4">
                                     <p className="text-[9px] text-white/40 uppercase tracking-[0.2em] font-black text-center mb-1">Logistics</p>
@@ -239,7 +290,7 @@ export default function AdminOrderDetailsPage() {
                                 </div>
                             )}
 
-                            {/* 3. DISPUTE ACTIONS */}
+                            {/* DISPUTE ACTIONS */}
                             {showDisputeButtons && (
                                 <div className="space-y-3 pt-2">
                                     <p className="text-[9px] text-white/40 uppercase tracking-[0.2em] font-black text-center mb-1">Dispute Management</p>
@@ -253,7 +304,7 @@ export default function AdminOrderDetailsPage() {
                                 </div>
                             )}
 
-                            {/* 4. ERROR HANDLING */}
+                            {/* ERROR HANDLING */}
                             {showShippingRetry && (
                                 <button
                                     onClick={handleRetryShipping}

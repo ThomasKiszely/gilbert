@@ -217,6 +217,7 @@ async function markOrderDeliveredToBuyer(req, res, next) {
 
 
 
+
 module.exports = {
     approveProduct,
     rejectProduct,
@@ -233,5 +234,5 @@ module.exports = {
     getOrderDetails,
     resolveDispute,
     requestReturn,
-    markOrderDeliveredToBuyer
+    markOrderDeliveredToBuyer,
 }

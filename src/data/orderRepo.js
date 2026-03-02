@@ -189,6 +189,14 @@ async function setPayoutEligibleAt(orderId, payoutEligibleAt) {
     );
 }
 
+async function findByExternalShippingId(id) {
+    return Order.findOne({ externalShippingId: id })
+        .populate('buyer')
+        .populate('seller')
+        .populate('product');
+}
+
+
 
 module.exports = {
     createOrder,
@@ -210,4 +218,5 @@ module.exports = {
     approveDelivery,
     setDeliveredAt,
     setPayoutEligibleAt,
+    findByExternalShippingId,
 };

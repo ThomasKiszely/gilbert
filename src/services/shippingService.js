@@ -117,9 +117,9 @@ async function createShipmondoLabel(orderId) {
         await orderRepo.updateOrderShipping(orderId, {
             trackingNumber: response.data.tracking_number,
             labelUrl: response.data.base64,
-            externalId: response.data.id,
-            shippingError: null,
-            orderId: response.data.order_id,
+            externalShippingId: response.data.id,     // <--- Shipmondo shipment ID
+            shipmondoOrderId: response.data.order_id, // <--- Shipmondo order_id
+            shippingError: null
         });
 
         // ⭐ Opdater status til 'shipped'
@@ -139,4 +139,69 @@ async function createShipmondoLabel(orderId) {
     }
 }
 
-module.exports = { createShipmondoLabel };
+async function createForwardLabel(orderId) {
+    const order = await orderRepo.findOrderById(orderId);
+    if (!order) throw new Error("Order not found");
+
+    if (!order.requiresAuthentication || order.authenticationStatus !== "passed") {
+        throw new Error("Order is not ready for forwarding to buyer.");
+    }
+
+    const receiver = order.shippingAddress; // køberens adresse
+    const sender = GILBERT_SHIPPING_ADDRESS; // Gilbert som afsender
+
+    validateAddress(receiver, "Receiver");
+    validateAddress(sender, "Sender");
+
+    const shipmentData = {
+        test_mode: process.env.NODE_ENV !== 'production',
+        own_agreement: false,
+        carrier_code: DEFAULT_CARRIER_CODE,
+        product_code: DEFAULT_PRODUCT_CODE,
+        service_id: DEFAULT_SERVICE_ID,
+        sender: {
+            name: sender.name,
+            address1: sender.street,
+            zipcode: sender.zip,
+            city: sender.city,
+            country_code: toCountryCode(sender.country),
+            email: process.env.ADMIN_EMAIL
+        },
+        receiver: {
+            name: receiver.name,
+            address1: receiver.street,
+            zipcode: receiver.zip,
+            city: receiver.city,
+            country_code: toCountryCode(receiver.country),
+            email: order.buyer.email
+        },
+        parcels: [
+            { weight: order.product?.weight || 1000 }
+        ]
+    };
+
+    const response = await axios.post(SHIPMONDO_ENDPOINT, shipmentData, {
+        auth: {
+            username: SHIPMONDO_API_USER,
+            password: SHIPMONDO_API_KEY
+        }
+    });
+
+    await orderRepo.updateOrderShipping(orderId, {
+        trackingNumber: response.data.tracking_number,
+        labelUrl: response.data.base64,
+        externalShippingId: response.data.id,
+        shipmondoOrderId: response.data.order_id,
+        shippingError: null
+    });
+
+    await orderRepo.updateOrderStatus(orderId, "shipped_to_buyer");
+
+    return response.data;
+}
+
+
+module.exports = {
+    createShipmondoLabel,
+    createForwardLabel
+};
