@@ -322,44 +322,61 @@ async function getUserSales(userId) {
     });
 }
 async function handleShipmondoWebhook(payload) {
-    const data = payload.data;
-    if (!data) throw new Error("Invalid Shipmondo payload");
+    const shipment = payload?.shipment;
+    if (!shipment) throw new Error("Invalid Shipmondo webhook payload");
 
-    const shipmondoOrderId = data.order_id;
-    const status = data.order_status?.trim().toLowerCase();
+    const shipmentId = shipment.id;
+    const status = shipment.status?.trim().toLowerCase();
+
+    if (!shipmentId || !status) {
+        throw new Error("Missing shipment ID or status");
+    }
+
+    // Find ordre baseret på Shipmondo shipment ID
+    const order = await orderRepo.findByExternalShippingId(shipmentId);
+    if (!order) {
+        throw new Error("Order not found for this Shipmondo shipment ID");
+    }
 
     // Vi reagerer kun på leveret
     if (status !== "delivered") return;
 
-    const order = await orderRepo.findByShipmondoOrderId(shipmondoOrderId);
-    if (!order) throw new Error("Order not found for Shipmondo order_id");
+    // Hvis ordren allerede er leveret, gør ingenting
+    if (order.status === "delivered") return;
 
-    order.status = "delivered";
-    order.deliveredAt = new Date();
-    order.payoutEligibleAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
-
-    await order.save();
-}
-async function approveDelivery(orderId, userId) {
-    const order = await orderRepo.findOrderById(orderId);
-    if (!order) throw new Error("Order not found.");
-
-    // Kun køberen må godkende levering
-    if (order.buyer._id.toString() !== userId.toString()) {
-        throw new Error("You are not allowed to approve this delivery.");
+    // ⭐ NORMAL HANDEL (ingen authentication)
+    if (!order.requiresAuthentication) {
+        order.status = "delivered";
+        order.deliveredAt = new Date();
+        order.payoutEligibleAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
+        await order.save();
+        return;
     }
 
-    // Kun hvis ordren er leveret
-    if (order.status !== 'delivered') {
-        throw new Error("You can only approve a delivered order.");
+    // ⭐ AUTHENTICATION FLOW
+    if (order.requiresAuthentication) {
+
+        // 1) Sælger → Gilbert
+        if (order.authenticationStatus === "pending") {
+            order.status = "delivered";
+            order.deliveredAt = new Date();
+            await order.save();
+            return;
+        }
+
+        // 2) Gilbert → Køber (hvis I bruger Shipmondo til videresendelse)
+        if (order.authenticationStatus === "passed") {
+            order.status = "delivered";
+            order.deliveredAt = new Date();
+            order.payoutEligibleAt = new Date(Date.now() + 72 * 60 * 60 * 1000);
+            await order.save();
+            return;
+        }
     }
-
-    // Stripe capture
-    const capture = await stripe.paymentIntents.capture(order.stripePaymentIntentId);
-
-    // Opdater ordre
-    return await orderRepo.approveDelivery(orderId, capture.id);
 }
+
+
+
 
 
 
@@ -372,5 +389,4 @@ module.exports = {
     getOrderById,
     getUserSales,
     handleShipmondoWebhook,
-    approveDelivery
 };

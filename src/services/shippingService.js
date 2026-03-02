@@ -11,6 +11,21 @@ const DEFAULT_CARRIER_CODE = process.env.SHIPMONDO_CARRIER_CODE || 'dao';
 const DEFAULT_PRODUCT_CODE = process.env.SHIPMONDO_PRODUCT_CODE || 'dao_home';
 const DEFAULT_SERVICE_ID = parseInt(process.env.SHIPMONDO_SERVICE_ID || '1', 10);
 
+// ⭐ Helper: konverter "Denmark" → "DK"
+function toCountryCode(country) {
+    if (!country) return "DK";
+
+    const map = {
+        "Denmark": "DK",
+        "Danmark": "DK",
+        "Sweden": "SE",
+        "Norway": "NO",
+        "Germany": "DE"
+    };
+
+    return map[country] || "DK";
+}
+
 // ⭐ Helper: valider adressefelter
 function validateAddress(address, type) {
     if (!address) throw new Error(`${type} address mangler`);
@@ -23,19 +38,12 @@ function validateAddress(address, type) {
     }
 }
 
-// ⭐ Helper: fallback hvis sælger mangler adresse
+// ⭐ Helper: byg sender-adresse fra sælger
 function getSenderAddress(seller) {
     const addr = seller.profile?.address;
 
     if (!addr || !addr.street || !addr.zip || !addr.city) {
-        return {
-            name: seller.username || "Sælger",
-            street: "Adresse mangler",
-            zip: "0000",
-            city: "By mangler",
-            country_code: "DK",
-            email: seller.email
-        };
+        throw new Error("Sælger mangler adresseoplysninger – kan ikke oprette label.");
     }
 
     return {
@@ -43,7 +51,7 @@ function getSenderAddress(seller) {
         street: addr.street,
         zip: addr.zip,
         city: addr.city,
-        country_code: "DK",
+        country_code: toCountryCode(addr.country),
         email: seller.email
     };
 }
@@ -52,10 +60,19 @@ async function createShipmondoLabel(orderId) {
     const order = await orderRepo.findOrderById(orderId);
     if (!order) throw new Error("Order not found");
 
-    if (order.requiresAuthentication && order.authenticationStatus === 'passed') {
-        throw new Error("Cannot create shipping label after authentication. Gilbert handles forwarding manually.");
+    if (!order.seller) {
+        throw new Error("Seller not found on order");
     }
 
+    // ⭐ Blokér hvis authentication stadig er pending – varen skal til Gilbert først
+    if (order.requiresAuthentication && order.authenticationStatus === 'pending') {
+        throw new Error("Authentication is still pending. Seller must ship to Gilbert first.");
+    }
+
+    // ⭐ Blokér hvis label allerede er oprettet
+    if (order.shippingTrackingNumber) {
+        throw new Error("Shipping label already exists for this order.");
+    }
 
     const seller = order.seller;
 
@@ -64,10 +81,7 @@ async function createShipmondoLabel(orderId) {
         ? GILBERT_SHIPPING_ADDRESS
         : order.shippingAddress;
 
-    // ⭐ Valider modtageradresse (kun hvis ikke authentication)
-    if (!order.requiresAuthentication) {
-        validateAddress(receiverAddress, "Receiver");
-    }
+    validateAddress(receiverAddress, "Receiver");
 
     // ⭐ Dynamisk vægt
     const finalWeight = order.product?.weight || 1000;
@@ -84,7 +98,7 @@ async function createShipmondoLabel(orderId) {
             address1: receiverAddress.street,
             zipcode: receiverAddress.zip,
             city: receiverAddress.city,
-            country_code: receiverAddress.country_code || 'DK',
+            country_code: toCountryCode(receiverAddress.country),
             email: order.buyer?.email
         },
         parcels: [
@@ -103,22 +117,91 @@ async function createShipmondoLabel(orderId) {
         await orderRepo.updateOrderShipping(orderId, {
             trackingNumber: response.data.tracking_number,
             labelUrl: response.data.base64,
-            externalId: response.data.id,
-            shippingError: null,
-            orderId: response.data.order_id,
+            externalShippingId: response.data.id,     // <--- Shipmondo shipment ID
+            shipmondoOrderId: response.data.order_id, // <--- Shipmondo order_id
+            shippingError: null
         });
+
+        // ⭐ Opdater status til 'shipped'
+        await orderRepo.updateOrderStatus(orderId, 'shipped');
 
         return response.data;
 
     } catch (err) {
-        console.error("❌ Shipmondo fejl:", err.response?.data || err.message);
+        const errorDetail = err.response?.data || err.message;
+        console.error("❌ Shipmondo fejl:", errorDetail);
 
         await orderRepo.updateOrderShipping(orderId, {
-            shippingError: err.response?.data || err.message
+            shippingError: typeof errorDetail === 'string' ? errorDetail : JSON.stringify(errorDetail)
         });
 
         return null;
     }
 }
 
-module.exports = { createShipmondoLabel };
+async function createForwardLabel(orderId) {
+    const order = await orderRepo.findOrderById(orderId);
+    if (!order) throw new Error("Order not found");
+
+    if (!order.requiresAuthentication || order.authenticationStatus !== "passed") {
+        throw new Error("Order is not ready for forwarding to buyer.");
+    }
+
+    const receiver = order.shippingAddress; // køberens adresse
+    const sender = GILBERT_SHIPPING_ADDRESS; // Gilbert som afsender
+
+    validateAddress(receiver, "Receiver");
+    validateAddress(sender, "Sender");
+
+    const shipmentData = {
+        test_mode: process.env.NODE_ENV !== 'production',
+        own_agreement: false,
+        carrier_code: DEFAULT_CARRIER_CODE,
+        product_code: DEFAULT_PRODUCT_CODE,
+        service_id: DEFAULT_SERVICE_ID,
+        sender: {
+            name: sender.name,
+            address1: sender.street,
+            zipcode: sender.zip,
+            city: sender.city,
+            country_code: toCountryCode(sender.country),
+            email: process.env.ADMIN_EMAIL
+        },
+        receiver: {
+            name: receiver.name,
+            address1: receiver.street,
+            zipcode: receiver.zip,
+            city: receiver.city,
+            country_code: toCountryCode(receiver.country),
+            email: order.buyer.email
+        },
+        parcels: [
+            { weight: order.product?.weight || 1000 }
+        ]
+    };
+
+    const response = await axios.post(SHIPMONDO_ENDPOINT, shipmentData, {
+        auth: {
+            username: SHIPMONDO_API_USER,
+            password: SHIPMONDO_API_KEY
+        }
+    });
+
+    await orderRepo.updateOrderShipping(orderId, {
+        trackingNumber: response.data.tracking_number,
+        labelUrl: response.data.base64,
+        externalShippingId: response.data.id,
+        shipmondoOrderId: response.data.order_id,
+        shippingError: null
+    });
+
+    await orderRepo.updateOrderStatus(orderId, "shipped_to_buyer");
+
+    return response.data;
+}
+
+
+module.exports = {
+    createShipmondoLabel,
+    createForwardLabel
+};

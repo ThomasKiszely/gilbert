@@ -71,7 +71,7 @@ export default function SearchPage() {
                     const favData = await favRes.value.json();
                     if (favData.success) {
                         favoriteIds = new Set(
-                            (favData.favorites || []).map((f: any) => String(f._id))
+                            (favData.favorites || []).map((f: { _id: string }) => String(f._id))
                         );
                     }
                 }
@@ -94,8 +94,8 @@ export default function SearchPage() {
                         products: mappedProducts,
                     });
                 }
-            } catch (err: any) {
-                if (err.name !== 'AbortError') {
+            } catch (err: unknown) {
+                if (err instanceof Error && err.name !== 'AbortError') {
                     console.error("Search error:", err);
                 }
             } finally {
@@ -112,7 +112,7 @@ export default function SearchPage() {
 
     return (
         <div className="p-4">
-            <h1 className="text-xl font-semibold mb-4">Search results for "{q}"</h1>
+            <h1 className="text-xl font-semibold mb-4">Search results for &ldquo;{q}&rdquo;</h1>
 
             {loading && <p className="text-muted-foreground animate-pulse">Loading…</p>}
 

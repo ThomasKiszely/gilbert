@@ -1,111 +1,81 @@
-// services/authenticationService.js
 const orderRepo = require('../data/orderRepo');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const mailer = require('../utils/mailer');
+const shippingService = require('../services/shippingService');
 
-async function verifyAuthentication(orderId, status, notes = "") {
-    // 1. Find ordren
+// ✅ APPROVE: auth passed + label til køber
+async function handleAuthenticationPassed(orderId) {
     const order = await orderRepo.findOrderById(orderId);
-    if (!order) {
-        throw new Error("Order not found");
+    if (!order) throw new Error("Order not found");
+
+    if (!order.requiresAuthentication) {
+        throw new Error("This order does not require authentication.");
     }
 
-    // 2. Map ekstern status → intern status
-    let mappedStatus;
-    if (status === 'verified') mappedStatus = 'passed';
-    if (status === 'failed') mappedStatus = 'failed';
+    await orderRepo.updateAuthenticationStatus(orderId, {
+        authenticationStatus: "passed"
+    });
 
-    if (!mappedStatus) {
-        throw new Error("Invalid authentication status");
-    }
+    const label = await shippingService.createForwardLabel(orderId);
 
-    // 3. Opdater authentication-felter på ordren
-    const updatedOrder = await orderRepo.updateAuthenticationStatus(orderId, {
-        authenticationStatus: mappedStatus,
+    return {
+        message: "Authentication approved and label created.",
+        labelUrl: label.base64,
+        trackingNumber: label.tracking_number
+    };
+}
+
+// ✅ FAIL: auth failed + refund + cancel + mails
+async function handleAuthenticationFailed(orderId, notes = "") {
+    const order = await orderRepo.findOrderById(orderId);
+    if (!order) throw new Error("Order not found");
+
+    await orderRepo.updateAuthenticationStatus(orderId, {
+        authenticationStatus: "failed",
         authenticationNotes: notes
     });
 
-    // ---------------------------------------------------------
-    // 4. AUTHENTICATION FAILED → REFUND + CANCEL ORDER
-    // ---------------------------------------------------------
-    if (mappedStatus === "failed") {
-        // PaymentIntent er stadig "uncaptured" → cancel = refund / release
+    // Stripe: frigiv pengene (PaymentIntent er uncaptured)
+    if (order.stripePaymentIntentId) {
         await stripe.paymentIntents.cancel(order.stripePaymentIntentId);
-
-        // Ordren lukkes
-        await orderRepo.updateOrderStatus(orderId, "cancelled");
-
-        // Mail til køber
-        try {
-            await mailer.send({
-                to: order.buyer.email,
-                subject: "Authentication failed – you have been refunded",
-                html: `
-                    <p>The item for order <strong>${orderId}</strong> failed authentication.</p>
-                    <p>You will be refunded / your reserved funds will be released.</p>
-                    <p>Notes: ${notes}</p>
-                `
-            });
-        } catch (err) {
-            console.error("Failed to notify buyer about auth failure:", err.message);
-        }
-
-        // Mail til sælger
-        try {
-            await mailer.send({
-                to: order.seller.email,
-                subject: "Authentication failed – item will be returned",
-                html: `
-                    <p>The item for order <strong>${orderId}</strong> failed authentication.</p>
-                    <p>The item will be returned to you.</p>
-                    <p>Notes: ${notes}</p>
-                `
-            });
-        } catch (err) {
-            console.error("Failed to notify seller about auth failure:", err.message);
-        }
-
-        return updatedOrder;
     }
 
-    // ---------------------------------------------------------
-    // 5. AUTHENTICATION PASSED → SEND VIDERE TIL KØBER
-    // ---------------------------------------------------------
-    if (mappedStatus === "passed") {
+    await orderRepo.updateOrderStatus(orderId, "cancelled");
 
-        // ⭐ VIGTIGT: Sæt status så systemet ved at auth er færdig
-        await orderRepo.updateOrderStatus(orderId, "auth_passed");
-
-        // Mail til shipping-teamet
-        try {
-            await mailer.send({
-                to: process.env.AUTH_SHIPPING_EMAIL || process.env.ADMIN_EMAIL,
-                subject: `Item authenticated – ship to buyer (Order ${orderId})`,
-                html: `
-                    <p>The item for order <strong>${orderId}</strong> has passed authentication.</p>
-                    <p>Please ship it to the buyer:</p>
-                    <p>
-                        ${order.shippingAddress.name}<br/>
-                        ${order.shippingAddress.street} ${order.shippingAddress.houseNumber}<br/>
-                        ${order.shippingAddress.zip} ${order.shippingAddress.city}<br/>
-                        ${order.shippingAddress.country}
-                    </p>
-                    <p>Notes: ${notes}</p>
-                `
-            });
-        } catch (err) {
-            console.error("Failed to notify shipping team about auth success:", err.message);
-        }
-
-        // Payout styres af:
-        // - levering (Shipmondo webhook / approveDelivery)
-        // - 72 timers cron
-        return updatedOrder;
+    // Mail til køber
+    try {
+        await mailer.send({
+            to: order.buyer.email,
+            subject: "Authentication failed – you have been refunded",
+            html: `
+                <p>The item for order <strong>${orderId}</strong> failed authentication.</p>
+                <p>Your reserved funds have been released / you will be refunded.</p>
+                <p>Notes: ${notes}</p>
+            `
+        });
+    } catch (err) {
+        console.error("Failed to notify buyer about auth failure:", err.message);
     }
 
-    return updatedOrder;
+    // Mail til sælger
+    try {
+        await mailer.send({
+            to: order.seller.email,
+            subject: "Authentication failed – item will be returned",
+            html: `
+                <p>The item for order <strong>${orderId}</strong> failed authentication.</p>
+                <p>The item will be returned to you.</p>
+                <p>Notes: ${notes}</p>
+            `
+        });
+    } catch (err) {
+        console.error("Failed to notify seller about auth failure:", err.message);
+    }
+
+    return { success: true };
 }
 
 module.exports = {
-    verifyAuthentication
+    handleAuthenticationPassed,
+    handleAuthenticationFailed
 };
