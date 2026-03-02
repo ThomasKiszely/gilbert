@@ -141,7 +141,7 @@ export default function SearchPage() {
             {results.products.length > 0 && (
                 <section>
                     <h2 className="text-lg font-semibold mb-2">Products</h2>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-4">
                         {results.products.map((product) => (
                             <ProductCard
                                 key={product.id}

@@ -161,6 +161,28 @@ async function getProductsBySeller(req, res, next) {
     }
 }
 
+async function getTrendingProducts(req, res, next) {
+    try {
+        const limit = parseInt(req.query.limit) || 8;
+        const userId = req.user?.id;
+        const products = await productService.getTrendingProducts(limit, userId);
+        return res.status(200).json(products);
+    } catch (error) {
+        next(error);
+    }
+}
+
+async function getEditorsPicks(req, res, next) {
+    try {
+        const limit = parseInt(req.query.limit) || 3;
+        const userId = req.user?.id;
+        const products = await productService.getEditorsPicks(limit, userId);
+        return res.status(200).json(products);
+    } catch (error) {
+        next(error);
+    }
+}
+
 
 module.exports = {
     createProduct,
@@ -170,4 +192,6 @@ module.exports = {
     updateProduct,
     deleteProduct,
     getProductsBySeller,
+    getTrendingProducts,
+    getEditorsPicks,
 }

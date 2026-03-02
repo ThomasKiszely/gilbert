@@ -10,6 +10,8 @@ const productController = require('../controllers/productController');
 router.get('/', productController.readAllProducts);
 router.post('/', requireAuth,  canSell, upload.array("images", 4) , validateProduct ,productController.createProduct);
 router.get('/filter', productController.filterProducts);
+router.get('/trending', productController.getTrendingProducts);
+router.get('/editors-picks', productController.getEditorsPicks);
 
 router.get('/user/:id', productController.getProductsBySeller);
 

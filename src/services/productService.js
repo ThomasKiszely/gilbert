@@ -114,6 +114,16 @@ async function findProductsBySeller(sellerId, includeAll){
     return await productRepo.findProductsBySeller(sellerId, includeAll);
 }
 
+async function getTrendingProducts(limit, userId) {
+    const products = await productRepo.getTrendingProducts(limit);
+    return attachFavoriteStatus(products, userId);
+}
+
+async function getEditorsPicks(limit, userId) {
+    const products = await productRepo.getEditorsPicks(limit);
+    return attachFavoriteStatus(products, userId);
+}
+
 module.exports = {
     createProduct,
     readAllProducts,
@@ -123,4 +133,6 @@ module.exports = {
     deleteProduct,
     searchProducts,
     findProductsBySeller,
+    getTrendingProducts,
+    getEditorsPicks,
 }

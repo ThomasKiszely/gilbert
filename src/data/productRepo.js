@@ -189,6 +189,76 @@ async function updateManyProductsStatus(sellerId, newStatus) {
     );
 }
 
+// Trending = products with the most favorites
+async function getTrendingProducts(limit = 8) {
+    const Favorite = require('../models/Favorite');
+
+    const trending = await Favorite.aggregate([
+        // Group by product and count favorites
+        { $group: { _id: "$product", favoriteCount: { $sum: 1 } } },
+        { $sort: { favoriteCount: -1 } },
+        { $limit: limit * 2 }, // get extra in case some aren't approved
+    ]);
+
+    const productIds = trending.map(t => t._id);
+
+    const products = await Product.find({
+        _id: { $in: productIds },
+        status: 'Approved'
+    })
+        .populate(POPULATE_FIELDS)
+        .lean();
+
+    // Re-sort by favorite count
+    const countMap = new Map(trending.map(t => [t._id.toString(), t.favoriteCount]));
+    products.sort((a, b) => (countMap.get(b._id.toString()) || 0) - (countMap.get(a._id.toString()) || 0));
+
+    return products.slice(0, limit);
+}
+
+// Editor's Picks = random selection of approved products (refreshes each request)
+async function getEditorsPicks(limit = 3) {
+    return await Product.aggregate([
+        { $match: { status: 'Approved' } },
+        { $sample: { size: limit } },
+        {
+            $lookup: { from: 'brands', localField: 'brand', foreignField: '_id', as: 'brand' }
+        },
+        { $unwind: { path: '$brand', preserveNullAndEmptyArrays: true } },
+        {
+            $lookup: { from: 'categories', localField: 'category', foreignField: '_id', as: 'category' }
+        },
+        { $unwind: { path: '$category', preserveNullAndEmptyArrays: true } },
+        {
+            $lookup: { from: 'subcategories', localField: 'subcategory', foreignField: '_id', as: 'subcategory' }
+        },
+        { $unwind: { path: '$subcategory', preserveNullAndEmptyArrays: true } },
+        {
+            $lookup: { from: 'sizes', localField: 'size', foreignField: '_id', as: 'size' }
+        },
+        { $unwind: { path: '$size', preserveNullAndEmptyArrays: true } },
+        {
+            $lookup: { from: 'conditions', localField: 'condition', foreignField: '_id', as: 'condition' }
+        },
+        { $unwind: { path: '$condition', preserveNullAndEmptyArrays: true } },
+        {
+            $lookup: { from: 'colors', localField: 'color', foreignField: '_id', as: 'color' }
+        },
+        { $unwind: { path: '$color', preserveNullAndEmptyArrays: true } },
+        {
+            $lookup: { from: 'materials', localField: 'material', foreignField: '_id', as: 'material' }
+        },
+        { $unwind: { path: '$material', preserveNullAndEmptyArrays: true } },
+        {
+            $lookup: { from: 'tags', localField: 'tags', foreignField: '_id', as: 'tags' }
+        },
+        {
+            $lookup: { from: 'users', localField: 'seller', foreignField: '_id', as: 'seller' }
+        },
+        { $unwind: { path: '$seller', preserveNullAndEmptyArrays: true } },
+    ]);
+}
+
 
 module.exports = {
     createProduct,
@@ -202,5 +272,7 @@ module.exports = {
     deleteProduct,
     searchProducts,
     findProductsBySeller,
-    updateManyProductsStatus
+    updateManyProductsStatus,
+    getTrendingProducts,
+    getEditorsPicks,
 }
