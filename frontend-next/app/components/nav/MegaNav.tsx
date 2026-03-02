@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { navLinks } from "./navLinks";
 import { api } from "@/app/api/api";
@@ -29,6 +29,21 @@ export default function MegaNav() {
     const [tree, setTree] = useState<CategoryTree | null>(null);
     const [treeError, setTreeError] = useState(false);
     const [brands, setBrands] = useState<Brand[]>([]);
+    const closeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const handleEnter = (label: string) => {
+        if (closeTimeout.current) {
+            clearTimeout(closeTimeout.current);
+            closeTimeout.current = null;
+        }
+        setHovered(label);
+    };
+
+    const handleLeave = () => {
+        closeTimeout.current = setTimeout(() => {
+            setHovered(null);
+        }, 100);
+    };
 
     useEffect(() => {
         const fetchTree = async () => {
@@ -58,127 +73,129 @@ export default function MegaNav() {
     }, []);
 
     return (
-        <nav className="bg-background border-b border-border/50">
-            <div className="flex items-center justify-center gap-1 px-4 py-2 min-w-max mx-auto">
+        <nav className="bg-background border-b border-border/50 w-full relative">
+            <div className="flex flex-wrap items-center justify-center gap-x-1 md:gap-x-4 px-2 py-2 mx-auto max-w-7xl">
                 {navLinks.map((link) => {
                     const isGender = link.label in GENDER_MAP;
                     const isBrands = link.label === "Brands";
+                    const hasDropdown = isGender || isBrands;
 
                     return (
                         <div
                             key={link.label}
-                            className="relative group"
-                            onMouseEnter={() => setHovered(link.label)}
-                            onMouseLeave={() => setHovered(null)}
+                            onMouseEnter={() => hasDropdown ? handleEnter(link.label) : setHovered(null)}
+                            onMouseLeave={hasDropdown ? handleLeave : undefined}
                         >
                             <Link
                                 href={link.href}
-                                className={`text-xs md:text-sm whitespace-nowrap px-3 py-1 transition-colors inline-block ${
+                                className={`text-[11px] sm:text-xs md:text-sm whitespace-nowrap px-2 md:px-3 py-1 transition-colors inline-block ${
                                     link.highlight
                                         ? "text-accent font-semibold hover:text-burgundy-light"
-                                        : "text-foreground/70 hover:text-foreground"
+                                        : hovered === link.label
+                                            ? "text-foreground"
+                                            : "text-foreground/70 hover:text-foreground"
                                 }`}
                             >
                                 {link.label}
                             </Link>
-
-                            {/* ── Gender megamenu ── */}
-                            {isGender && hovered === link.label && (
-                                <>
-                                    <div className="absolute left-1/2 -translate-x-1/2 top-full w-full h-2" />
-                                    <div className="absolute left-1/2 -translate-x-1/2 top-[calc(100%+0.5rem)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 ease-out z-50">
-                                        <div className="w-3 h-3 bg-popover border-l border-t border-border/50 rotate-45 mx-auto -mb-1.5 relative z-10" />
-                                        <div className="bg-popover border border-border/50 rounded-lg shadow-xl p-6 min-w-[28rem]">
-                                            {tree === null ? (
-                                                <p className="text-sm text-muted-foreground">Loading categories…</p>
-                                            ) : treeError || Object.keys(tree).length === 0 ? (
-                                                <p className="text-sm text-muted-foreground">No categories foud.</p>
-                                            ) : (
-                                                <div className="flex gap-8">
-                                                    {Object.entries(tree).map(([category, subs]) => (
-                                                        <div key={`cat-${category}`} className="min-w-[8rem]">
-                                                            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 font-sans">
-                                                                {category}
-                                                            </h4>
-                                                            <ul className="space-y-2">
-                                                                {Array.isArray(subs) && subs.length === 0 ? (
-                                                                    <li className="text-xs text-muted-foreground/60 italic">No subcategories</li>
-                                                                ) : (
-                                                                    subs.map((sub) => (
-                                                                        <li key={sub.id}>
-                                                                            <Link
-                                                                                href={`/products/filter?gender=${GENDER_MAP[link.label]}&subcategory=${sub.id}`}
-                                                                                className="text-sm text-foreground/70 hover:text-foreground flex items-center gap-1 group/item transition-colors"
-                                                                            >
-                                                                                <span>{sub.name}</span>
-                                                                                <svg className="h-3 w-3 opacity-0 -translate-x-1 group-hover/item:opacity-100 group-hover/item:translate-x-0 transition-all duration-150" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                                                                                    <path d="M9 5l7 7-7 7" />
-                                                                                </svg>
-                                                                            </Link>
-                                                                        </li>
-                                                                    ))
-                                                                )}
-                                                            </ul>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                            <div className="mt-5 pt-4 border-t border-border/30">
-                                                <Link
-                                                    href={`/products/filter?gender=${GENDER_MAP[link.label]}`}
-                                                    className="text-xs font-medium text-foreground/60 hover:text-foreground transition-colors uppercase tracking-wider"
-                                                >
-                                                    See everything in {link.label} →
-                                                </Link>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-
-                            {/* ── Brands megamenu ── */}
-                            {isBrands && hovered === link.label && (
-                                <>
-                                    <div className="absolute left-1/2 -translate-x-1/2 top-full w-full h-2" />
-                                    <div className="absolute left-1/2 -translate-x-1/2 top-[calc(100%+0.5rem)] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 ease-out z-50">
-                                        <div className="w-3 h-3 bg-popover border-l border-t border-border/50 rotate-45 mx-auto -mb-1.5 relative z-10" />
-                                        <div className="bg-popover border border-border/50 rounded-lg shadow-xl p-6 w-[36rem]">
-                                            <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-                                                Popular brands
-                                            </h4>
-
-                                            {brands.length === 0 ? (
-                                                <p className="text-sm text-muted-foreground">Loading brands…</p>
-                                            ) : (
-                                                <div className="grid grid-cols-3 gap-x-6 gap-y-2">
-                                                    {brands.slice(0, BRANDS_PREVIEW).map((brand) => (
-                                                        <Link
-                                                            key={brand._id}
-                                                            href={`/products/filter?brands=${brand._id}`}
-                                                            className="text-sm text-foreground/70 hover:text-foreground truncate transition-colors py-0.5"
-                                                        >
-                                                            {brand.name}
-                                                        </Link>
-                                                    ))}
-                                                </div>
-                                            )}
-
-                                            <div className="mt-5 pt-4 border-t border-border/30">
-                                                <Link
-                                                    href="/brands"
-                                                    className="text-xs font-medium text-foreground/60 hover:text-foreground transition-colors uppercase tracking-wider"
-                                                >
-                                                    See all brands ({brands.length}) →
-                                                </Link>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
                         </div>
                     );
                 })}
             </div>
+
+            {/* ── Gender megamenu ── */}
+            {hovered && hovered in GENDER_MAP && (
+                <div
+                    className="absolute top-full left-0 right-0 z-50 flex justify-center px-2 md:px-4"
+                    onMouseEnter={() => handleEnter(hovered)}
+                    onMouseLeave={handleLeave}
+                >
+                    <div className="bg-popover border border-border/50 rounded-lg shadow-xl p-4 md:p-6 max-w-[95vw] w-[90vw] md:w-[540px] mt-1">
+                        {tree === null ? (
+                            <p className="text-sm text-muted-foreground">Loading categories…</p>
+                        ) : treeError || Object.keys(tree).length === 0 ? (
+                            <p className="text-sm text-muted-foreground">No categories found.</p>
+                        ) : (
+                            <div className="flex flex-col sm:flex-row gap-6 md:gap-8 min-w-[250px] md:min-w-[500px]">
+                                {Object.entries(tree).map(([category, subs]) => (
+                                    <div key={`cat-${category}`} className="min-w-[8rem]">
+                                        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 font-sans">
+                                            {category}
+                                        </h4>
+                                        <ul className="space-y-2">
+                                            {Array.isArray(subs) && subs.length === 0 ? (
+                                                <li className="text-xs text-muted-foreground/60 italic">No subcategories</li>
+                                            ) : (
+                                                subs.map((sub) => (
+                                                    <li key={sub.id}>
+                                                        <Link
+                                                            href={`/products/filter?gender=${GENDER_MAP[hovered]}&subcategory=${sub.id}`}
+                                                            className="text-sm text-foreground/70 hover:text-foreground flex items-center gap-1 group/item transition-colors"
+                                                        >
+                                                            <span>{sub.name}</span>
+                                                            <svg className="h-3 w-3 opacity-0 -translate-x-1 group-hover/item:opacity-100 group-hover/item:translate-x-0 transition-all duration-150" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                                <path d="M9 5l7 7-7 7" />
+                                                            </svg>
+                                                        </Link>
+                                                    </li>
+                                                ))
+                                            )}
+                                        </ul>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <div className="mt-5 pt-4 border-t border-border/30">
+                            <Link
+                                href={`/products/filter?gender=${GENDER_MAP[hovered]}`}
+                                className="text-xs font-medium text-foreground/60 hover:text-foreground transition-colors uppercase tracking-wider"
+                            >
+                                See everything in {hovered} →
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Brands megamenu ── */}
+            {hovered === "Brands" && (
+                <div
+                    className="absolute top-full left-0 right-0 z-50 flex justify-center px-2 md:px-4"
+                    onMouseEnter={() => handleEnter("Brands")}
+                    onMouseLeave={handleLeave}
+                >
+                    <div className="bg-popover border border-border/50 rounded-lg shadow-xl p-4 md:p-6 max-w-[95vw] w-[90vw] md:w-[540px] mt-1">
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+                            Popular brands
+                        </h4>
+
+                        {brands.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">Loading brands…</p>
+                        ) : (
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 min-w-[250px] md:min-w-[500px]">
+                                {brands.slice(0, BRANDS_PREVIEW).map((brand) => (
+                                    <Link
+                                        key={brand._id}
+                                        href={`/products/filter?brands=${brand._id}`}
+                                        className="text-sm text-foreground/70 hover:text-foreground truncate transition-colors py-0.5"
+                                    >
+                                        {brand.name}
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="mt-5 pt-4 border-t border-border/30">
+                            <Link
+                                href="/brands"
+                                className="text-xs font-medium text-foreground/60 hover:text-foreground transition-colors uppercase tracking-wider"
+                            >
+                                See all brands ({brands.length}) →
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )}
         </nav>
     );
 }
