@@ -8,7 +8,7 @@ import { toggleFavorite } from "@/app/api/favorites";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/UI/avatar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/UI/tabs";
-import { Settings, X, ArrowRight } from "lucide-react";
+import { Settings, X, ArrowRight, CreditCard, ShieldCheck, AlertCircle } from "lucide-react";
 import { Button } from "@/app/components/UI/button";
 
 import {
@@ -49,6 +49,7 @@ interface UserProfile {
     location?: { city?: string; country?: string };
     profile?: { bio?: string; language?: string; avatarUrl?: string };
     role: string;
+    stripeAccountId?: string; // Tilføjet så vi kan tjekke status
 }
 
 const MePage = () => {
@@ -194,6 +195,21 @@ const MePage = () => {
                             <p className="text-xs text-muted-foreground">Following</p>
                         </div>
                     </div>
+
+                    {/* STRIPE STATUS BADGE */}
+                    <div className="flex items-center gap-2">
+                        {user.stripeAccountId ? (
+                            <div className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-200 shadow-sm">
+                                <ShieldCheck size={10} />
+                                Verified Seller
+                            </div>
+                        ) : (
+                            <Link href="/settings/payouts" className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-burgundy bg-burgundy/5 px-2.5 py-1 rounded-full border border-burgundy/20 hover:bg-burgundy/10 transition-colors shadow-sm">
+                                <AlertCircle size={10} />
+                                Enable Payouts
+                            </Link>
+                        )}
+                    </div>
                 </div>
 
                 <DropdownMenu>
@@ -202,8 +218,17 @@ const MePage = () => {
                             <Settings className="h-5 w-5 text-muted-foreground" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuItem asChild><Link href="/profile/edit">Edit profile</Link></DropdownMenuItem>
+
+                        {/* PAYOUT SETTINGS LINK */}
+                        <DropdownMenuItem asChild>
+                            <Link href="/settings/payouts" className="flex items-center gap-2">
+                                <CreditCard size={14} className="text-muted-foreground" />
+                                <span>Payout Settings</span>
+                            </Link>
+                        </DropdownMenuItem>
+
                         <DropdownMenuItem asChild><Link href="/profile/change-email">Change email</Link></DropdownMenuItem>
                         <DropdownMenuItem asChild><Link href="/profile/change-password">Change password</Link></DropdownMenuItem>
                         <DropdownMenuSeparator />

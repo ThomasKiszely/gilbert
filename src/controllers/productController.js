@@ -25,6 +25,14 @@ async function createProduct(req, res, next) {
         }
         return res.status(201).json(product);
     } catch (error) {
+        if (error.requiresStripe) {
+            return res.status(403).json({
+                success: false,
+                requiresStripe: true,
+                error: error.message
+            });
+        }
+
         next(error);
     }
 }

@@ -39,6 +39,11 @@ async function createProduct(productData) {
         throw new Error("You must complete your address before listing a product for sale.");
     }
 
+    if (!user.stripeAccountId) {
+        const err = new Error("You must connect your Stripe account before listing a product for sale.");
+        err.status = 403; err.requiresStripe = true; // bruger vi senere i controller/frontend
+         throw err;
+    }
 
     return await productRepo.createProduct(productData);
 }

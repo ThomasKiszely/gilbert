@@ -54,6 +54,7 @@ export default function CreateProduct() {
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setLoading(true);
+
         const form = e.currentTarget;
         const formData = new FormData(form);
         images.forEach((img) => formData.append("images", img));
@@ -64,17 +65,32 @@ export default function CreateProduct() {
                 body: formData,
             });
 
+            const data = await res.json();
+
+            // ⭐ Stripe-tvang
+            if (data.requiresStripe) {
+                // Hent onboarding-link
+                const stripeRes = await api("/api/stripe/connect", { method: "POST" });
+                const stripeData = await stripeRes.json();
+
+                // Redirect til Stripe onboarding
+                window.location.href = stripeData.url;
+                return;
+            }
+
+            // Normal fejl
             if (!res.ok) {
-                const err = await res.json();
-                alert("Error: " + (err.message || "Kunne ikke oprette produkt"));
+                alert("Error: " + (data.error || "Kunne ikke oprette produkt"));
                 setLoading(false);
                 return;
             }
 
+            // Produkt oprettet
             alert("Product created!");
             form.reset();
             setImages([]);
             setPreview([]);
+
         } catch (error) {
             console.error(error);
             alert("Something went wrong.");
@@ -82,6 +98,7 @@ export default function CreateProduct() {
             setLoading(false);
         }
     }
+
 
     return (
         /* Her bruger vi bg-ivory-dark som du bad om */

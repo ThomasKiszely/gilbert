@@ -2,6 +2,10 @@
 const axios = require('axios');
 const orderRepo = require('../data/orderRepo');
 const { GILBERT_SHIPPING_ADDRESS } = require('../utils/platformSettings');
+const countries = require("i18n-iso-countries");
+countries.registerLocale(require("i18n-iso-countries/langs/en.json"));
+countries.registerLocale(require("i18n-iso-countries/langs/da.json"));
+
 
 const SHIPMONDO_API_USER = process.env.SHIPMONDO_API_USER;
 const SHIPMONDO_API_KEY = process.env.SHIPMONDO_API_KEY;
@@ -15,16 +19,13 @@ const DEFAULT_SERVICE_ID = parseInt(process.env.SHIPMONDO_SERVICE_ID || '1', 10)
 function toCountryCode(country) {
     if (!country) return "DK";
 
-    const map = {
-        "Denmark": "DK",
-        "Danmark": "DK",
-        "Sweden": "SE",
-        "Norway": "NO",
-        "Germany": "DE"
-    };
+    const code =
+        countries.getAlpha2Code(country, "en") ||
+        countries.getAlpha2Code(country, "da");
 
-    return map[country] || "DK";
+    return code || "DK";
 }
+
 
 // ⭐ Helper: valider adressefelter
 function validateAddress(address, type) {

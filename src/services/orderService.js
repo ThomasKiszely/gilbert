@@ -56,6 +56,12 @@ async function initiateOrder(productId, buyerId, address, bidId = null, wantAuth
         throw new Error("The seller has not completed their address. This product cannot be purchased at the moment.");
     }
 
+    if (!seller.stripeAccountId) {
+        const err = new Error("The seller cannot receive payments at the moment. Stripe account missing.");
+        err.status = 403;
+        err.requiresStripe = true;
+        throw err;
+    }
 
     let finalPrice = product.price;
 
@@ -105,21 +111,42 @@ async function initiateOrder(productId, buyerId, address, bidId = null, wantAuth
     const order = await orderRepo.createOrder(orderData);
 
     // 7. Opret Stripe PaymentIntent
-    const paymentIntent = await stripe.paymentIntents.create({
-        amount: totalAmount * 100,
-        currency: 'dkk',
-        capture_method: 'manual',
-        application_fee_amount: platformFee * 100,
-        transfer_data: {
-            destination: product.seller.stripeAccountId
-        },
-        metadata: {
-            orderId: order._id.toString(),
-            productId: productId.toString(),
-            buyerId: buyerId.toString(),
-            sellerId: product.seller._id.toString()
+    let paymentIntent;
+
+    try {
+        paymentIntent = await stripe.paymentIntents.create({
+            amount: totalAmount * 100,
+            currency: 'dkk',
+            capture_method: 'manual',
+            application_fee_amount: platformFee * 100,
+            transfer_data: {
+                destination: product.seller.stripeAccountId
+            },
+            metadata: {
+                orderId: order._id.toString(),
+                productId: productId.toString(),
+                buyerId: buyerId.toString(),
+                sellerId: product.seller._id.toString()
+            }
+        });
+    } catch (err) {
+
+        // ⭐ Stripe siger at sælgers konto er inaktiv / slettet
+        if (
+            err.code === "account_invalid" ||
+            err.code === "destination_account_inactive" ||
+            err.code === "account_closed"
+        ) {
+            const e = new Error(
+                "The seller’s Stripe account is inactive. They must reconnect their Stripe account before this item can be purchased."
+            );
+            e.status = 400;
+            e.requiresSellerStripeReconnect = true;
+            throw e;
         }
-    });
+        throw err;
+    }
+
 
     // 8. Gem PaymentIntent ID
     await orderRepo.updateOrderPaymentIntentId(order._id, paymentIntent.id);

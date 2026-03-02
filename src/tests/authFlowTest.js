@@ -1,10 +1,8 @@
+// src/tests/authFlowTest.js
 require('dotenv').config({ path: '../../.env' });
 const mongoose = require('mongoose');
 
-// Kør testen med:
-// node src/tests/authFlowTest.js
-
-// --- MOCK STRIPE ---
+// --- MOCK STRIPE (skal ske før services importeres) ---
 require.cache[require.resolve('stripe')] = {
     exports: () => ({
         paymentIntents: {
@@ -24,18 +22,13 @@ require.cache[require.resolve('stripe')] = {
     })
 };
 
-// --- LOAD MODELS ---
-require('../models/User');
-require('../models/Product');
-require('../models/Order');
-
-// --- IMPORT SERVICES ---
+// --- IMPORT SERVICES EFTER MOCKS ---
 const orderService = require('../services/orderService');
 const authenticationService = require('../services/authenticationService');
 const orderRepo = require('../data/orderRepo');
-const shippingService = require('../services/shippingService');
+const shippingService = require('../services/shippingService'); // <-- VIGTIGT
 
-// --- MOCK SHIPMONDO ---
+// --- MOCK SHIPMONDO LABEL (seller → Gilbert) ---
 shippingService.createShipmondoLabel = async (orderId) => {
     console.log("MOCK: Shipmondo label created for order", orderId);
 
@@ -57,6 +50,7 @@ shippingService.createShipmondoLabel = async (orderId) => {
     return mockResponse;
 };
 
+// --- MOCK FORWARD LABEL (Gilbert → buyer) ---
 shippingService.createForwardLabel = async (orderId) => {
     console.log("MOCK: Forward label created for order", orderId);
 
@@ -83,8 +77,8 @@ shippingService.createForwardLabel = async (orderId) => {
 
     console.log("=== AUTHENTICATION FLOW TEST START ===");
 
-    const productId = "PUT_REAL_PRODUCT_ID_HERE";
-    const buyerId = "PUT_REAL_BUYER_ID_HERE";
+    const productId = "69a2f7469edfc9cfcbab209f";
+    const buyerId = "696a395b0abc159dc8fe8c35";
 
     const address = {
         name: "Test Buyer",
