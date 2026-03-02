@@ -2,10 +2,44 @@
 const axios = require('axios');
 const orderRepo = require('../data/orderRepo');
 const { GILBERT_SHIPPING_ADDRESS } = require('../utils/platformSettings');
+
 const countries = require("i18n-iso-countries");
 countries.registerLocale(require("i18n-iso-countries/langs/en.json"));
 countries.registerLocale(require("i18n-iso-countries/langs/da.json"));
 
+// ⭐ Startup-check: valider hele GILBERT_SHIPPING_ADDRESS
+(function validateGilbertAddress() {
+    const addr = GILBERT_SHIPPING_ADDRESS;
+
+    if (!addr) {
+        console.error("❌ GILBERT_SHIPPING_ADDRESS mangler helt!");
+        return;
+    }
+
+    const required = ["name", "street", "zip", "city", "country"];
+    for (const field of required) {
+        if (!addr[field] || typeof addr[field] !== "string" || addr[field].trim().length === 0) {
+            console.error(`❌ GILBERT_SHIPPING_ADDRESS mangler feltet '${field}'.`);
+            return;
+        }
+    }
+
+    if (!/^\d{4}$/.test(addr.zip)) {
+        console.error(`❌ GILBERT_SHIPPING_ADDRESS.zip er ugyldigt: "${addr.zip}". Skal være 4 cifre.`);
+        return;
+    }
+
+    const countryCode =
+        countries.getAlpha2Code(addr.country, "en") ||
+        countries.getAlpha2Code(addr.country, "da");
+
+    if (!countryCode) {
+        console.error(`❌ GILBERT_SHIPPING_ADDRESS.country er ugyldigt: "${addr.country}".`);
+        return;
+    }
+
+    console.log(`✅ Gilbert-adresse valideret: ${addr.street}, ${addr.zip} ${addr.city}, ${addr.country} → ${countryCode}`);
+})();
 
 const SHIPMONDO_API_USER = process.env.SHIPMONDO_API_USER;
 const SHIPMONDO_API_KEY = process.env.SHIPMONDO_API_KEY;
@@ -25,7 +59,6 @@ function toCountryCode(country) {
 
     return code || "DK";
 }
-
 
 // ⭐ Helper: valider adressefelter
 function validateAddress(address, type) {
@@ -65,26 +98,22 @@ async function createShipmondoLabel(orderId) {
         throw new Error("Seller not found on order");
     }
 
-    // ⭐ Blokér hvis authentication stadig er pending – varen skal til Gilbert først
     if (order.requiresAuthentication && order.authenticationStatus === 'pending') {
         throw new Error("Authentication is still pending. Seller must ship to Gilbert first.");
     }
 
-    // ⭐ Blokér hvis label allerede er oprettet
     if (order.shippingTrackingNumber) {
         throw new Error("Shipping label already exists for this order.");
     }
 
     const seller = order.seller;
 
-    // ⭐ Vælg korrekt modtageradresse
     const receiverAddress = order.requiresAuthentication
         ? GILBERT_SHIPPING_ADDRESS
         : order.shippingAddress;
 
     validateAddress(receiverAddress, "Receiver");
 
-    // ⭐ Dynamisk vægt
     const finalWeight = order.product?.weight || 1000;
 
     const shipmentData = {
@@ -118,12 +147,11 @@ async function createShipmondoLabel(orderId) {
         await orderRepo.updateOrderShipping(orderId, {
             trackingNumber: response.data.tracking_number,
             labelUrl: response.data.base64,
-            externalShippingId: response.data.id,     // <--- Shipmondo shipment ID
-            shipmondoOrderId: response.data.order_id, // <--- Shipmondo order_id
+            externalShippingId: response.data.id,
+            shipmondoOrderId: response.data.order_id,
             shippingError: null
         });
 
-        // ⭐ Opdater status til 'shipped'
         await orderRepo.updateOrderStatus(orderId, 'shipped');
 
         return response.data;
@@ -148,8 +176,8 @@ async function createForwardLabel(orderId) {
         throw new Error("Order is not ready for forwarding to buyer.");
     }
 
-    const receiver = order.shippingAddress; // køberens adresse
-    const sender = GILBERT_SHIPPING_ADDRESS; // Gilbert som afsender
+    const receiver = order.shippingAddress;
+    const sender = GILBERT_SHIPPING_ADDRESS;
 
     validateAddress(receiver, "Receiver");
     validateAddress(sender, "Sender");
@@ -200,7 +228,6 @@ async function createForwardLabel(orderId) {
 
     return response.data;
 }
-
 
 module.exports = {
     createShipmondoLabel,

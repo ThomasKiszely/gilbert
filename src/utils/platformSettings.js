@@ -6,9 +6,10 @@ module.exports = {
     GILBERT_SHIPPING_ADDRESS: {
         name: "Gilbert Authentication ApS",
         street: "Hovedgaden 1",
+        houseNumber: "1",        // valgfrit, men godt at have
         zip: "1000",
         city: "København K",
-        country_code: "DK",
+        country: "Denmark",      // eller "Danmark"
         email: "auth@gilbert.dk"
     }
 };
