@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/app/api/api";
 import { toggleFavorite } from "@/app/api/favorites";
@@ -10,6 +10,39 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/UI/avatar"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/UI/tabs";
 import { Button } from "@/app/components/UI/button";
 import ProductCard from "@/app/components/product/ProductCard";
+import type { Product, ApiProduct } from "@/app/components/product/types";
+
+interface PublicUser {
+    _id: string;
+    username: string;
+    cvr?: string;
+    location?: { city?: string; country?: string };
+    profile?: { bio?: string; language?: string; avatarUrl?: string };
+    stats?: { ratingAverage?: number; ratingCount?: number };
+}
+
+interface Review {
+    _id: string;
+    reviewer?: { username?: string; profile?: { avatarUrl?: string } };
+    rating?: number;
+    comment?: string;
+    createdAt: string;
+}
+
+interface CurrentUser {
+    _id: string;
+}
+
+interface FollowUser {
+    _id: string;
+    username: string;
+    profile?: { avatarUrl?: string };
+}
+
+interface FollowEntry {
+    followerId?: FollowUser;
+    followingId?: FollowUser;
+}
 
 export default function PublicProfilePage() {
     const params = useParams();
@@ -17,13 +50,13 @@ export default function PublicProfilePage() {
     const router = useRouter();
 
     // Core data states
-    const [user, setUser] = useState<any>(null);
-    const [products, setProducts] = useState<any[]>([]);
-    const [reviews, setReviews] = useState<any[]>([]);
-    const [currentUser, setCurrentUser] = useState<any>(null);
+    const [user, setUser] = useState<PublicUser | null>(null);
+    const [products, setProducts] = useState<Product[]>([]);
+    const [reviews, setReviews] = useState<Review[]>([]);
+    const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
 
-    const [followers, setFollowers] = useState<any[]>([]);
-    const [following, setFollowing] = useState<any[]>([]);
+    const [followers, setFollowers] = useState<FollowEntry[]>([]);
+    const [following, setFollowing] = useState<FollowEntry[]>([]);
     const [isFollowing, setIsFollowing] = useState<boolean>(false);
 
     const [showFollowers, setShowFollowers] = useState(false);
@@ -68,7 +101,7 @@ export default function PublicProfilePage() {
                     try {
                         const favJson = await favRes.value.json();
                         if (favJson.success) {
-                            favoriteIds = new Set((favJson.favorites || []).map((f: any) => String(f._id)));
+                            favoriteIds = new Set((favJson.favorites || []).map((f: { _id: string }) => String(f._id)));
                         }
                     } catch {}
                 }
@@ -77,8 +110,8 @@ export default function PublicProfilePage() {
                 if (prodRes.status === "fulfilled") {
                     const prodJson = await prodRes.value.json();
                     if (prodJson.success) {
-                        const approved = (prodJson.data || []).filter((p: any) => p.status === "Approved");
-                        setProducts(approved.map((p: any) => ({
+                        const approved = (prodJson.data || []).filter((p: ApiProduct) => p.status === "Approved");
+                        setProducts(approved.map((p: ApiProduct) => ({
                             id: p._id,
                             title: p.title,
                             brand: p.brand?.name || "",
@@ -119,8 +152,8 @@ export default function PublicProfilePage() {
                     const isFJson = await isFRes.value.json();
                     if (isFJson.success) setIsFollowing(isFJson.isFollowing);
                 }
-            } catch (err: any) {
-                if (err.name !== 'AbortError') console.error("Error loading profile:", err);
+            } catch (err: unknown) {
+                if (err instanceof Error && err.name !== 'AbortError') console.error("Error loading profile:", err);
             }
         }
         loadInitialData();
@@ -151,9 +184,9 @@ export default function PublicProfilePage() {
                 const json = await refresh.json();
                 setFollowers(json.data || []);
             } else {
-                throw new Error();
+                setIsFollowing(wasFollowing); // Rollback on non-ok response
             }
-        } catch (err) {
+        } catch {
             setIsFollowing(wasFollowing); // Rollback
         }
     }, [currentUser, isFollowing, id, router]);
@@ -306,7 +339,7 @@ export default function PublicProfilePage() {
                         <div className="text-center py-12 text-muted-foreground text-sm italic">No reviews yet</div>
                     ) : (
                         <div className="space-y-3">
-                            {reviews.map((r: any) => (
+                            {reviews.map((r: Review) => (
                                 <div key={r._id} className="p-4 bg-white border border-border rounded-2xl shadow-sm">
                                     <div className="flex items-center gap-3 mb-3">
                                         <Avatar className="h-9 w-9 border border-border/30">
@@ -324,12 +357,12 @@ export default function PublicProfilePage() {
                                         {r.rating && (
                                             <div className="ml-auto flex items-center gap-0.5">
                                                 {[1, 2, 3, 4, 5].map((s) => (
-                                                    <Star key={s} size={12} className={s <= r.rating ? 'fill-foreground text-foreground' : 'text-muted-foreground/30'} />
+                                                    <Star key={s} size={12} className={s <= r.rating! ? 'fill-foreground text-foreground' : 'text-muted-foreground/30'} />
                                                 ))}
                                             </div>
                                         )}
                                     </div>
-                                    <p className="text-sm text-muted-foreground italic">"{r.comment}"</p>
+                                    <p className="text-sm text-muted-foreground italic">&ldquo;{r.comment}&rdquo;</p>
                                 </div>
                             ))}
                         </div>

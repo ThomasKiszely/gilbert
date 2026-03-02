@@ -8,63 +8,17 @@ import type { ApiProduct, Product } from "@/app/components/product/types";
 import { api } from "@/app/api/api";
 import { toggleFavorite } from "@/app/api/favorites";
 
+interface FrontPost {
+    title?: string;
+    slug?: string;
+    image?: string;
+    content?: string;
+    displayTeaser?: string;
+}
+
 const Index = () => {
     const [products, setProducts] = useState<Product[]>([]);
-    const [frontPost, setFrontPost] = useState<any>(null);
-
-    // PERFORMANCE: Brug useCallback til loadData for at undgå unødvendige re-creations
-    const loadData = useCallback(async (signal?: AbortSignal) => {
-        try {
-            const [productsRes, favRes, blogRes] = await Promise.allSettled([
-                api("/api/products", { signal }),
-                api("/api/favorites", { signal }),
-                api("/api/blogs/front", { signal }),
-            ]);
-
-            // Byg favoriteIds set
-            let favoriteIds = new Set<string>();
-            if (favRes.status === "fulfilled" && favRes.value.ok) {
-                try {
-                    const favData = await favRes.value.json();
-                    if (favData.success) {
-                        favoriteIds = new Set(
-                            (favData.favorites || []).map((f: any) => String(f._id))
-                        );
-                    }
-                } catch {}
-            }
-
-            // Map produkter med isFavorite
-            if (productsRes.status === "fulfilled" && productsRes.value.ok) {
-                const data = await productsRes.value.json();
-                setProducts(data.map((p: ApiProduct): Product => ({
-                    id: p._id,
-                    title: p.title,
-                    brand: p.brand?.name || "",
-                    price: p.price,
-                    imageUrl: p.images?.[0] || "/images/ImagePlaceholder.jpg",
-                    tag: p.tags?.[0]?.name,
-                    isFavorite: favoriteIds.has(String(p._id)),
-                })));
-            }
-
-            // Blog post
-            if (blogRes.status === "fulfilled" && blogRes.value.ok) {
-                try {
-                    const blogData = await blogRes.value.json();
-                    if (blogData.success && blogData.data?.post) {
-                        const { post, teaser } = blogData.data;
-                        const cleanTeaser = teaser || post.content?.replace(/<[^>]*>/g, '').substring(0, 150);
-                        setFrontPost({ ...post, displayTeaser: cleanTeaser });
-                    }
-                } catch {}
-            }
-        } catch (err: any) {
-            if (err.name !== 'AbortError') {
-                console.error("Error loading data:", err);
-            }
-        }
-    }, []);
+    const [frontPost, setFrontPost] = useState<FrontPost | null>(null);
 
     // PERFORMANCE: Stabil handler forhindrer unødvendige re-renders af FeaturedProducts
     const handleToggleFavorite = useCallback(async (productId: string) => {
@@ -89,10 +43,64 @@ const Index = () => {
 
     useEffect(() => {
         const controller = new AbortController();
+
+        async function loadData(signal: AbortSignal) {
+            try {
+                const [productsRes, favRes, blogRes] = await Promise.allSettled([
+                    api("/api/products", { signal }),
+                    api("/api/favorites", { signal }),
+                    api("/api/blogs/front", { signal }),
+                ]);
+
+                // Byg favoriteIds set
+                let favoriteIds = new Set<string>();
+                if (favRes.status === "fulfilled" && favRes.value.ok) {
+                    try {
+                        const favData = await favRes.value.json();
+                        if (favData.success) {
+                            favoriteIds = new Set(
+                                (favData.favorites || []).map((f: { _id: string }) => String(f._id))
+                            );
+                        }
+                    } catch {}
+                }
+
+                // Map produkter med isFavorite
+                if (productsRes.status === "fulfilled" && productsRes.value.ok) {
+                    const data = await productsRes.value.json();
+                    setProducts(data.map((p: ApiProduct): Product => ({
+                        id: p._id,
+                        title: p.title,
+                        brand: p.brand?.name || "",
+                        price: p.price,
+                        imageUrl: p.images?.[0] || "/images/ImagePlaceholder.jpg",
+                        tag: p.tags?.[0]?.name,
+                        isFavorite: favoriteIds.has(String(p._id)),
+                    })));
+                }
+
+                // Blog post
+                if (blogRes.status === "fulfilled" && blogRes.value.ok) {
+                    try {
+                        const blogData = await blogRes.value.json();
+                        if (blogData.success && blogData.data?.post) {
+                            const { post, teaser } = blogData.data;
+                            const cleanTeaser = teaser || post.content?.replace(/<[^>]*>/g, '').substring(0, 150);
+                            setFrontPost({ ...post, displayTeaser: cleanTeaser });
+                        }
+                    } catch {}
+                }
+            } catch (err: unknown) {
+                if (err instanceof Error && err.name !== 'AbortError') {
+                    console.error("Error loading data:", err);
+                }
+            }
+        }
+
         loadData(controller.signal);
 
         return () => controller.abort();
-    }, [loadData]);
+    }, []);
 
     return (
         <div className="pb-10">

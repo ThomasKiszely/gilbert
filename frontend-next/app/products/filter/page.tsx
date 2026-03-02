@@ -82,7 +82,7 @@ export default function FilterPage() {
                 if (favRes.status === "fulfilled" && favRes.value?.ok) {
                     const favData = await favRes.value.json();
                     if (favData.success) {
-                        favoriteIds = new Set((favData.favorites || []).map((f: any) => String(f._id)));
+                        favoriteIds = new Set((favData.favorites || []).map((f: { _id: string }) => String(f._id)));
                     }
                 }
 
@@ -111,8 +111,8 @@ export default function FilterPage() {
                     setBrandName(null);
                 }
 
-            } catch (err: any) {
-                if (err.name !== 'AbortError') {
+            } catch (err: unknown) {
+                if (err instanceof Error && err.name !== 'AbortError') {
                     console.error("Fetch error:", err);
                     setProducts([]);
                 }

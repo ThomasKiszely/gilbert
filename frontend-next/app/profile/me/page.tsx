@@ -21,6 +21,26 @@ import {
 
 import ProductCard from "@/app/components/product/ProductCard";
 import type { ApiProduct } from "@/app/components/product/types";
+import Image from "next/image";
+
+interface OrderItem {
+    _id: string;
+    product?: { title?: string; images?: string[] };
+    totalAmount?: number;
+    sellerPayout?: number;
+    status?: string;
+}
+
+interface FollowUser {
+    _id: string;
+    username: string;
+    profile?: { avatarUrl?: string };
+}
+
+interface FollowEntry {
+    followerId?: FollowUser;
+    followingId?: FollowUser;
+}
 
 interface UserProfile {
     _id: string;
@@ -34,12 +54,12 @@ interface UserProfile {
 const MePage = () => {
     const [user, setUser] = useState<UserProfile | null>(null);
     const [products, setProducts] = useState<ApiProduct[]>([]);
-    const [orders, setOrders] = useState<any[]>([]);
-    const [soldItems, setSoldItems] = useState<any[]>([]);
+    const [orders, setOrders] = useState<OrderItem[]>([]);
+    const [soldItems, setSoldItems] = useState<OrderItem[]>([]);
 
     const router = useRouter();
-    const [followers, setFollowers] = useState<any[]>([]);
-    const [following, setFollowing] = useState<any[]>([]);
+    const [followers, setFollowers] = useState<FollowEntry[]>([]);
+    const [following, setFollowing] = useState<FollowEntry[]>([]);
     const [showFollowers, setShowFollowers] = useState(false);
     const [showFollowing, setShowFollowing] = useState(false);
 
@@ -71,7 +91,7 @@ const MePage = () => {
                         const favData = await favRes.value.json();
                         if (favData.success) {
                             favoriteIds = new Set(
-                                (favData.favorites || []).map((f: any) => String(f._id))
+                                (favData.favorites || []).map((f: { _id: string }) => String(f._id))
                             );
                         }
                     } catch {}
@@ -255,8 +275,8 @@ const MePage = () => {
                             {soldItems.map(item => (
                                 <Link href={`/orders/${item._id}`} key={item._id} className="flex items-center justify-between p-4 bg-white border border-border rounded-2xl hover:bg-muted/30 transition shadow-sm">
                                     <div className="flex items-center gap-4">
-                                        <div className="h-12 w-12 bg-muted rounded-lg overflow-hidden shrink-0 border">
-                                            <img src={item.product?.images?.[0] || "/images/ImagePlaceholder.jpg"} alt={item.product?.title || "Product"} className="h-full w-full object-cover" />
+                                        <div className="h-12 w-12 bg-muted rounded-lg overflow-hidden shrink-0 border relative">
+                                            <Image src={item.product?.images?.[0] || "/images/ImagePlaceholder.jpg"} alt={item.product?.title || "Product"} className="object-cover" fill sizes="48px" />
                                         </div>
                                         <div>
                                             <p className="text-sm font-bold truncate max-w-[150px]">{item.product?.title || "Deleted Product"}</p>
@@ -282,8 +302,8 @@ const MePage = () => {
                             {orders.map(order => (
                                 <Link href={`/orders/${order._id}`} key={order._id} className="flex items-center justify-between p-4 bg-white border border-border rounded-2xl hover:bg-muted/30 transition shadow-sm">
                                     <div className="flex items-center gap-4">
-                                        <div className="h-12 w-12 bg-muted rounded-lg overflow-hidden shrink-0 border">
-                                            <img src={order.product?.images?.[0] || "/images/ImagePlaceholder.jpg"} alt={order.product?.title || "Product"} className="h-full w-full object-cover" />
+                                        <div className="h-12 w-12 bg-muted rounded-lg overflow-hidden shrink-0 border relative">
+                                            <Image src={order.product?.images?.[0] || "/images/ImagePlaceholder.jpg"} alt={order.product?.title || "Product"} className="object-cover" fill sizes="48px" />
                                         </div>
                                         <div>
                                             <p className="text-sm font-bold truncate max-w-[150px]">{order.product?.title || "Deleted Product"}</p>

@@ -23,19 +23,12 @@ function validateAddress(address, type) {
     }
 }
 
-// ⭐ Helper: fallback hvis sælger mangler adresse
+// ⭐ Helper: byg sender-adresse fra sælger
 function getSenderAddress(seller) {
     const addr = seller.profile?.address;
 
     if (!addr || !addr.street || !addr.zip || !addr.city) {
-        return {
-            name: seller.username || "Sælger",
-            street: "Adresse mangler",
-            zip: "0000",
-            city: "By mangler",
-            country_code: "DK",
-            email: seller.email
-        };
+        throw new Error("Sælger mangler adresseoplysninger – kan ikke oprette label.");
     }
 
     return {
@@ -52,22 +45,31 @@ async function createShipmondoLabel(orderId) {
     const order = await orderRepo.findOrderById(orderId);
     if (!order) throw new Error("Order not found");
 
-    if (order.requiresAuthentication && order.authenticationStatus === 'passed') {
-        throw new Error("Cannot create shipping label after authentication. Gilbert handles forwarding manually.");
+    if (!order.seller) {
+        throw new Error("Seller not found on order");
     }
 
+    // ⭐ Blokér hvis authentication stadig er pending – varen skal til Gilbert først
+    if (order.requiresAuthentication && order.authenticationStatus === 'pending') {
+        throw new Error("Authentication is still pending. Seller must ship to Gilbert first.");
+    }
+
+    // ⭐ Blokér hvis label allerede er oprettet
+    if (order.shippingTrackingNumber) {
+        throw new Error("Shipping label already exists for this order.");
+    }
 
     const seller = order.seller;
 
     // ⭐ Vælg korrekt modtageradresse
+    //  - Hvis auth kræves (og er passed) → Gilbert vidresender manuelt, så dette bruges ikke
+    //  - Hvis auth kræves (og er pending) → blokeret ovenfor
+    //  - Normal ordre → send direkte til køber
     const receiverAddress = order.requiresAuthentication
         ? GILBERT_SHIPPING_ADDRESS
         : order.shippingAddress;
 
-    // ⭐ Valider modtageradresse (kun hvis ikke authentication)
-    if (!order.requiresAuthentication) {
-        validateAddress(receiverAddress, "Receiver");
-    }
+    validateAddress(receiverAddress, "Receiver");
 
     // ⭐ Dynamisk vægt
     const finalWeight = order.product?.weight || 1000;
@@ -84,7 +86,7 @@ async function createShipmondoLabel(orderId) {
             address1: receiverAddress.street,
             zipcode: receiverAddress.zip,
             city: receiverAddress.city,
-            country_code: receiverAddress.country_code || 'DK',
+            country_code: receiverAddress.country_code || receiverAddress.country || 'DK',
             email: order.buyer?.email
         },
         parcels: [
@@ -108,13 +110,17 @@ async function createShipmondoLabel(orderId) {
             orderId: response.data.order_id,
         });
 
+        // ⭐ Opdater status til 'shipped'
+        await orderRepo.updateOrderStatus(orderId, 'shipped');
+
         return response.data;
 
     } catch (err) {
-        console.error("❌ Shipmondo fejl:", err.response?.data || err.message);
+        const errorDetail = err.response?.data || err.message;
+        console.error("❌ Shipmondo fejl:", errorDetail);
 
         await orderRepo.updateOrderShipping(orderId, {
-            shippingError: err.response?.data || err.message
+            shippingError: typeof errorDetail === 'string' ? errorDetail : JSON.stringify(errorDetail)
         });
 
         return null;
