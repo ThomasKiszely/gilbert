@@ -1,4 +1,7 @@
 // src/middleware/validateUserUpdate.js
+const countries = require("i18n-iso-countries");
+countries.registerLocale(require("i18n-iso-countries/langs/en.json"));
+countries.registerLocale(require("i18n-iso-countries/langs/da.json"));
 
 const { sanitizeString } = require("../utils/sanitize");
 
@@ -42,7 +45,16 @@ function validateUserUpdate(req, res, next) {
         }
         if (!address.country || address.country.length < 2) {
             errors.push("Country is required.");
+        } else {
+            const countryCode =
+                countries.getAlpha2Code(address.country, "en") ||
+                countries.getAlpha2Code(address.country, "da");
+
+            if (!countryCode) {
+                errors.push("Country is not recognized. Please enter a valid country name.");
+            }
         }
+
     }
 
     // ⭐ Valider fullname hvis sendt
