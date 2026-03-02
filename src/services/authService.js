@@ -56,9 +56,8 @@ async function register({ username, email, password, location, termsAccepted, cv
 
 async function login(email, password) {
     const user = await userRepo.findUserByEmail(email.toLowerCase());
-    if (!user) {
-        throw new Error("Wrong email or password");
-    }
+    if (!user) throw new Error("Wrong email or password");
+
     if (user.termsVersion !== process.env.TERMS_VERSION) {
         const err = new Error("New terms must be accepted");
         err.code = "TERMS_OUTDATED";
@@ -66,17 +65,14 @@ async function login(email, password) {
     }
 
     const match = await bcrypt.compare(password, user.passwordHash);
-    if (!match) {
-        throw new Error("Wrong email or password");
-    }
+    if (!match) throw new Error("Wrong email or password");
 
     if (user.isSuspended) {
         const msg = user.suspensionReason
             ? `Your account is suspended: ${user.suspensionReason}`
             : "Your account has been suspended. Please contact support.";
-
         const err = new Error(msg);
-        err.status = 403; // Forbidden
+        err.status = 403;
         throw err;
     }
 
@@ -86,11 +82,25 @@ async function login(email, password) {
         throw err;
     }
 
-    const token = createToken(user);
+    // Access token
+    const accessToken = jwt.sign(
+        { id: user._id, email: user.email, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: "1h" }
+    );
+
+    // Refresh token
+    const refreshToken = jwt.sign(
+        { id: user._id },
+        process.env.REFRESH_TOKEN_SECRET,
+        { expiresIn: "30d" }
+    );
+
     const safeUser = sanitizeUser(user);
 
-    return { token, user: safeUser };
+    return { token: accessToken, refreshToken, user: safeUser };
 }
+
 
 function generateEmailVerificationToken(userId) {
     return jwt.sign(

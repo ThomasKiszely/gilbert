@@ -13,6 +13,8 @@ router.post("/logout", authController.logout);
 router.get("/verify-email", authController.verifyEmail);
 router.post("/resend-verification", emailVerificationLimiter, authController.resendVerificationEmail);
 router.post("/accept-terms", authController.acceptTerms);
+router.post("/refresh", require("../controllers/authRefreshController").refresh);
+
 
 
 module.exports = router;

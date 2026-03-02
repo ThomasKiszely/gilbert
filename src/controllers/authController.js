@@ -42,13 +42,22 @@ async function register(req, res, next) {
 async function login(req, res, next) {
     try {
         const { email, password } = req.body;
-        const { token, user } = await authService.login(email, password);
+        const { token: accessToken, refreshToken, user } = await authService.login(email, password);
 
-        res.cookie("authToken", token, {
+        // Access token (kort levetid)
+        res.cookie("authToken", accessToken, {
             httpOnly: true,
             secure: isProduction(),
             sameSite: "lax",
-            maxAge: 60 * 60 * 1000,
+            maxAge: 60 * 60 * 1000 // 1 time
+        });
+
+        // Refresh token (lang levetid)
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: isProduction(),
+            sameSite: "strict",
+            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 dage
         });
 
         return res.status(200).json({
@@ -60,7 +69,6 @@ async function login(req, res, next) {
     }
 }
 
-
 async function logout(req, res, next) {
     try {
         res.clearCookie("authToken", {
@@ -68,6 +76,13 @@ async function logout(req, res, next) {
             secure: isProduction(),
             sameSite: "lax",
         });
+
+        res.clearCookie("refreshToken", {
+            httpOnly: true,
+            secure: isProduction(),
+            sameSite: "strict",
+        });
+
         return res.status(200).json({
             success: true,
             message: "You have been logged out"
