@@ -11,6 +11,21 @@ const DEFAULT_CARRIER_CODE = process.env.SHIPMONDO_CARRIER_CODE || 'dao';
 const DEFAULT_PRODUCT_CODE = process.env.SHIPMONDO_PRODUCT_CODE || 'dao_home';
 const DEFAULT_SERVICE_ID = parseInt(process.env.SHIPMONDO_SERVICE_ID || '1', 10);
 
+// ⭐ Helper: konverter "Denmark" → "DK"
+function toCountryCode(country) {
+    if (!country) return "DK";
+
+    const map = {
+        "Denmark": "DK",
+        "Danmark": "DK",
+        "Sweden": "SE",
+        "Norway": "NO",
+        "Germany": "DE"
+    };
+
+    return map[country] || "DK";
+}
+
 // ⭐ Helper: valider adressefelter
 function validateAddress(address, type) {
     if (!address) throw new Error(`${type} address mangler`);
@@ -36,7 +51,7 @@ function getSenderAddress(seller) {
         street: addr.street,
         zip: addr.zip,
         city: addr.city,
-        country_code: "DK",
+        country_code: toCountryCode(addr.country),
         email: seller.email
     };
 }
@@ -62,9 +77,6 @@ async function createShipmondoLabel(orderId) {
     const seller = order.seller;
 
     // ⭐ Vælg korrekt modtageradresse
-    //  - Hvis auth kræves (og er passed) → Gilbert vidresender manuelt, så dette bruges ikke
-    //  - Hvis auth kræves (og er pending) → blokeret ovenfor
-    //  - Normal ordre → send direkte til køber
     const receiverAddress = order.requiresAuthentication
         ? GILBERT_SHIPPING_ADDRESS
         : order.shippingAddress;
@@ -86,7 +98,7 @@ async function createShipmondoLabel(orderId) {
             address1: receiverAddress.street,
             zipcode: receiverAddress.zip,
             city: receiverAddress.city,
-            country_code: receiverAddress.country_code || receiverAddress.country || 'DK',
+            country_code: toCountryCode(receiverAddress.country),
             email: order.buyer?.email
         },
         parcels: [
