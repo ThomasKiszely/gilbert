@@ -7,8 +7,16 @@ import CategoryList from "@/app/components/home/CategoryList";
 import type { ApiProduct, Product } from "@/app/components/product/types";
 import { api } from "@/app/api/api";
 import { toggleFavorite } from "@/app/api/favorites";
-import {Button} from "@/app/components/UI/button";
+import { Button } from "@/app/components/UI/button";
 import Link from "next/link";
+
+interface FrontPost {
+    title?: string;
+    slug?: string;
+    image?: string;
+    content?: string;
+    displayTeaser?: string;
+}
 
 function mapProducts(items: ApiProduct[], favoriteIds: Set<string>): Product[] {
     return items.map((p) => ({
@@ -26,70 +34,10 @@ const Index = () => {
     const [newArrivals, setNewArrivals] = useState<Product[]>([]);
     const [trending, setTrending] = useState<Product[]>([]);
     const [editorsPicks, setEditorsPicks] = useState<Product[]>([]);
-    const [frontPost, setFrontPost] = useState<any>(null);
-
-    const loadData = useCallback(async (signal?: AbortSignal) => {
-        try {
-            const [productsRes, trendingRes, editorsRes, favRes, blogRes] = await Promise.allSettled([
-                api("/api/products?limit=15", { signal }),
-                api("/api/products/trending?limit=15", { signal }),
-                api("/api/products/editors-picks?limit=15", { signal }),
-                api("/api/favorites", { signal }),
-                api("/api/blogs/front", { signal }),
-            ]);
-
-            // Build favoriteIds set
-            let favoriteIds = new Set<string>();
-            if (favRes.status === "fulfilled" && favRes.value.ok) {
-                try {
-                    const favData = await favRes.value.json();
-                    if (favData.success) {
-                        favoriteIds = new Set(
-                            (favData.favorites || []).map((f: any) => String(f._id))
-                        );
-                    }
-                } catch {}
-            }
-
-            // New Arrivals (sorted by newest from backend)
-            if (productsRes.status === "fulfilled" && productsRes.value.ok) {
-                const data = await productsRes.value.json();
-                setNewArrivals(mapProducts(data, favoriteIds));
-            }
-
-            // Trending (sorted by most favorited from backend)
-            if (trendingRes.status === "fulfilled" && trendingRes.value.ok) {
-                const data = await trendingRes.value.json();
-                if (Array.isArray(data)) setTrending(mapProducts(data, favoriteIds));
-            }
-
-            // Editor's Picks (random selection from backend)
-            if (editorsRes.status === "fulfilled" && editorsRes.value.ok) {
-                const data = await editorsRes.value.json();
-                if (Array.isArray(data)) setEditorsPicks(mapProducts(data, favoriteIds));
-            }
-
-            // Blog post
-            if (blogRes.status === "fulfilled" && blogRes.value.ok) {
-                try {
-                    const blogData = await blogRes.value.json();
-                    if (blogData.success && blogData.data?.post) {
-                        const { post, teaser } = blogData.data;
-                        const cleanTeaser = teaser || post.content?.replace(/<[^>]*>/g, '').substring(0, 150);
-                        setFrontPost({ ...post, displayTeaser: cleanTeaser });
-                    }
-                } catch {}
-            }
-        } catch (err: any) {
-            if (err.name !== 'AbortError') {
-                console.error("Error loading data:", err);
-            }
-        }
-    }, []);
+    const [frontPost, setFrontPost] = useState<FrontPost | null>(null);
 
     // A single handler that updates all sections (since a product can appear in multiple)
     const handleToggleFavorite = useCallback(async (productId: string) => {
-        // Optimistic update across all sections
         const toggle = (prev: Product[]) =>
             prev.map(p => p.id === productId ? { ...p, isFavorite: !p.isFavorite } : p);
 
@@ -108,9 +56,70 @@ const Index = () => {
 
     useEffect(() => {
         const controller = new AbortController();
+
+        async function loadData(signal: AbortSignal) {
+            try {
+                const [productsRes, trendingRes, editorsRes, favRes, blogRes] = await Promise.allSettled([
+                    api("/api/products?limit=15", { signal }),
+                    api("/api/products/trending?limit=15", { signal }),
+                    api("/api/products/editors-picks?limit=15", { signal }),
+                    api("/api/favorites", { signal }),
+                    api("/api/blogs/front", { signal }),
+                ]);
+
+                // Build favoriteIds set
+                let favoriteIds = new Set<string>();
+                if (favRes.status === "fulfilled" && favRes.value.ok) {
+                    try {
+                        const favData = await favRes.value.json();
+                        if (favData.success) {
+                            favoriteIds = new Set(
+                                (favData.favorites || []).map((f: { _id: string }) => String(f._id))
+                            );
+                        }
+                    } catch {}
+                }
+
+                // New Arrivals (sorted by newest from backend)
+                if (productsRes.status === "fulfilled" && productsRes.value.ok) {
+                    const data = await productsRes.value.json();
+                    setNewArrivals(mapProducts(data, favoriteIds));
+                }
+
+                // Trending (sorted by most favorited from backend)
+                if (trendingRes.status === "fulfilled" && trendingRes.value.ok) {
+                    const data = await trendingRes.value.json();
+                    if (Array.isArray(data)) setTrending(mapProducts(data, favoriteIds));
+                }
+
+                // Editor's Picks (random selection from backend)
+                if (editorsRes.status === "fulfilled" && editorsRes.value.ok) {
+                    const data = await editorsRes.value.json();
+                    if (Array.isArray(data)) setEditorsPicks(mapProducts(data, favoriteIds));
+                }
+
+                // Blog post
+                if (blogRes.status === "fulfilled" && blogRes.value.ok) {
+                    try {
+                        const blogData = await blogRes.value.json();
+                        if (blogData.success && blogData.data?.post) {
+                            const { post, teaser } = blogData.data;
+                            const cleanTeaser = teaser || post.content?.replace(/<[^>]*>/g, '').substring(0, 150);
+                            setFrontPost({ ...post, displayTeaser: cleanTeaser });
+                        }
+                    } catch {}
+                }
+            } catch (err: unknown) {
+                if (err instanceof Error && err.name !== 'AbortError') {
+                    console.error("Error loading data:", err);
+                }
+            }
+        }
+
         loadData(controller.signal);
+
         return () => controller.abort();
-    }, [loadData]);
+    }, []);
 
     // Fallback: if trending/editors-picks endpoints returned nothing, derive from newArrivals
     const displayEditorsPicks = editorsPicks.length > 0 ? editorsPicks : newArrivals.slice(0, 5);
@@ -118,7 +127,7 @@ const Index = () => {
 
     return (
         <div className="pb-16">
-            {/* Hero blog banner – full width */}
+            {/* Hero blog banner */}
             <BlogPost
                 title={frontPost?.title || "Vintage Office Core"}
                 subtitle={frontPost?.displayTeaser || "Shop vintage tailoring – hand-picked pieces for the modern professional."}
@@ -139,7 +148,7 @@ const Index = () => {
                 />
             </div>
 
-            {/* Editor's Picks – card-green background (same as header/footer) */}
+            {/* Editor's Picks */}
             <section className="bg-card">
                 <div className="max-w-7xl mx-auto">
                     <FeaturedProducts
@@ -150,7 +159,7 @@ const Index = () => {
                 </div>
             </section>
 
-            {/* New Arrivals – standard background */}
+            {/* New Arrivals */}
             <div className="max-w-7xl mx-auto">
                 <FeaturedProducts
                     title="New Arrivals"
@@ -159,7 +168,7 @@ const Index = () => {
                 />
             </div>
 
-            {/* Sell CTA – ivory-dark box */}
+            {/* Sell CTA */}
             <div className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 py-10 md:py-14">
                 <div className="max-w-2xl mx-auto bg-ivory-dark rounded-2xl px-6 py-6 md:px-8 md:py-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
@@ -176,7 +185,7 @@ const Index = () => {
                 </div>
             </div>
 
-            {/* Trending Now – card-green background (same as header/footer) */}
+            {/* Trending Now */}
             <section className="bg-card">
                 <div className="max-w-7xl mx-auto">
                     <FeaturedProducts
