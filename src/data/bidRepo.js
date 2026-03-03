@@ -59,9 +59,13 @@ async function findCurrentBidWorkflow(productId, buyerId) {
     }).sort({ createdAt: -1 }); // Tag altid det seneste
 }
 
-async function rejectAllActiveBids(productId){
+async function rejectAllActiveBids(productId, excludeBidId) {
     return await Bid.updateMany(
-        { productId, status: bidStatusses.active },
+        {
+            productId,
+            _id: { $ne: excludeBidId },
+            status: { $in: [bidStatusses.active, bidStatusses.countered] }
+        },
         {
             status: bidStatusses.rejected,
             $push: {
@@ -69,12 +73,13 @@ async function rejectAllActiveBids(productId){
                     action: bidStatusses.rejected,
                     timestamp: new Date(),
                     actorId: null,
-                    details: "Bid auto-rejected because product was purchased"
+                    details: "Bid auto-rejected because another bid was accepted"
                 }
             }
         }
     );
 }
+
 async function getBidsByUser(userId) {
     return await Bid.find({
         $or: [
@@ -88,15 +93,36 @@ async function getBidsByUser(userId) {
         .sort({ updatedAt: -1 }); // Nyeste øverst
 }
 
+async function findExpiredBids(now) {
+    return await Bid.find({
+        status: { $in: [bidStatusses.active, bidStatusses.countered] },
+        expiresAt: { $lt: now }
+    });
+}
 
+async function findActiveBidsByProduct(productId, excludeBidId) {
+    return await Bid.find({
+        productId,
+        _id: { $ne: excludeBidId },
+        status: { $in: [bidStatusses.active, bidStatusses.countered] }
+    });
+}
+async function deleteOldBids(cutoffDate) {
+    return await Bid.deleteMany({
+        createdAt: { $lt: cutoffDate }
+    });
+}
 
 module.exports = {
     createBid,
     updateBidStatus,
     findActiveBidsByProductAndBuyer,
     rejectAllActiveBids,
+    findActiveBidsByProduct,
     getBidById,
     updateBidWithCounter,
     findCurrentBidWorkflow,
     getBidsByUser,
+    findExpiredBids,
+    deleteOldBids,
 }

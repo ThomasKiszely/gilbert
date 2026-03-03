@@ -67,11 +67,33 @@ async function acceptBid(bidId, sellerId){
 
     const updated = await bidRepo.updateBidStatus(bidId, bidStatusses.accepted, sellerId, "Seller accepted bid");
 
+    // Auto-reject all other bids
+    await bidRepo.rejectAllActiveBids(bid.productId, bidId);
+
+    // Notify other buyers
+    const otherBids = await bidRepo.findActiveBidsByProduct(bid.productId, bidId);
+
+    for (const other of otherBids) {
+        try {
+            await notificationService.notifyUser(other.buyerId, {
+                type: notificationTypes.bid_rejected,
+                bidId: other._id,
+                productId: other.productId
+            });
+
+            await chatService.sendMessage(
+                other.productId,
+                other.buyerId,
+                `SYSTEM_BID: Your bid was automatically rejected because another bid was accepted.`
+            );
+        } catch (e) {
+            console.error("Auto-reject notif/chat error:", e);
+        }
+    }
+
+    // Notify accepted buyer
     try {
         await chatService.sendMessage(bid.productId, bid.buyerId, `SYSTEM_BID: Bid accepted!`);
-    } catch (e) { console.error("Chat error:", e); }
-
-    try {
         await notificationService.notifyUser(bid.buyerId, {
             type: notificationTypes.bid_accepted,
             bidId: bid._id,
@@ -81,6 +103,7 @@ async function acceptBid(bidId, sellerId){
 
     return updated;
 }
+
 
 async function rejectBid(bidId, sellerId){
     const bid = await bidRepo.getBidById(bidId);
@@ -109,11 +132,33 @@ async function acceptCounterBid(bidId, buyerId){
 
     const updated = await bidRepo.updateBidStatus(bidId, bidStatusses.accepted, buyerId, "Buyer accepted counterbid");
 
+    // Auto-reject all other bids on the same product
+    await bidRepo.rejectAllActiveBids(bid.productId, bidId);
+
+    // Notify other buyers
+    const otherBids = await bidRepo.findActiveBidsByProduct(bid.productId, bidId);
+
+    for (const other of otherBids) {
+        try {
+            await notificationService.notifyUser(other.buyerId, {
+                type: notificationTypes.bid_rejected,
+                bidId: other._id,
+                productId: other.productId
+            });
+
+            await chatService.sendMessage(
+                other.productId,
+                other.buyerId,
+                `SYSTEM_BID: Your bid was automatically rejected because another bid was accepted.`
+            );
+        } catch (e) {
+            console.error("Auto-reject notif/chat error:", e);
+        }
+    }
+
+    // Notify seller
     try {
         await chatService.sendMessage(bid.productId, buyerId, `SYSTEM_BID: Counter offer accepted!`);
-    } catch (e) { console.error("Chat error:", e); }
-
-    try {
         await notificationService.notifyUser(bid.sellerId, {
             type: notificationTypes.bid_accepted,
             bidId: bid._id,
@@ -123,6 +168,7 @@ async function acceptCounterBid(bidId, buyerId){
 
     return updated;
 }
+
 
 async function rejectCounterBid(bidId, buyerId){
     const bid = await bidRepo.getBidById(bidId);
@@ -151,6 +197,56 @@ async function findCurrentBidWorkflow(productId, buyerId){
 async function getBidsByUser(userId){
     return await bidRepo.getBidsByUser(userId);
 }
+async function expireOldBids() {
+    const now = new Date();
+    const expiredBids = await bidRepo.findExpiredBids(now);
+
+    for (const bid of expiredBids) {
+
+        // Opdater status
+        await bidRepo.updateBidStatus(
+            bid._id,
+            bidStatusses.expired,
+            null,
+            "Bid expired automatically after 24 hours"
+        );
+
+        // Notifikationer
+        try {
+            await notificationService.notifyUser(bid.buyerId, {
+                type: notificationTypes.bid_expired,
+                bidId: bid._id,
+                productId: bid.productId
+            });
+
+            await notificationService.notifyUser(bid.sellerId, {
+                type: notificationTypes.bid_expired,
+                bidId: bid._id,
+                productId: bid.productId
+            });
+        } catch (e) {
+            console.error("Notif error:", e);
+        }
+
+        // Chat besked (valgfrit)
+        try {
+            await chatService.sendMessage(
+                bid.productId,
+                bid.buyerId,
+                `SYSTEM_BID: This bid expired after 24 hours.`
+            );
+        } catch (e) {
+            console.error("Chat error:", e);
+        }
+    }
+}
+
+async function deleteOldBids() {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const result = await bidRepo.deleteOldBids(cutoff);
+    console.log(`🗑️ Auto-delete: ${result.deletedCount} bids older than 30 days removed.`);
+}
+
 
 module.exports = {
     placeBid,
@@ -161,4 +257,6 @@ module.exports = {
     counterBid,
     findCurrentBidWorkflow,
     getBidsByUser,
+    expireOldBids,
+    deleteOldBids
 }
