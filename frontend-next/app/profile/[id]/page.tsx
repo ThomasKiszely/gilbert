@@ -233,33 +233,33 @@ export default function PublicProfilePage() {
     const ratingCount = user?.stats?.ratingCount || 0;
 
     return (
-        <div className="px-4 py-6 max-w-5xl mx-auto">
+        <div className="px-4 pt-8 pb-6 sm:py-6 max-w-5xl mx-auto overflow-x-hidden">
             {/* --- PROFILE HEADER --- */}
-            <div className="flex items-start gap-4 mb-4">
-                <Avatar className="h-20 w-20 border-2 border-border/30">
+            <div className="flex flex-wrap items-start gap-4 mb-4">
+                <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-2 border-border/30">
                     <AvatarImage src={user?.profile?.avatarUrl || ""} alt={user.username} />
                     <AvatarFallback className="bg-muted text-muted-foreground text-lg font-serif">
                         {initials}
                     </AvatarFallback>
                 </Avatar>
 
-                <div className="flex-1 pt-1">
-                    <div className="flex items-center gap-6 mb-2">
+                <div className="flex-1 min-w-0 pt-1">
+                    <div className="flex items-center gap-4 sm:gap-6 mb-2">
                         <div className="text-center">
-                            <p className="text-lg font-semibold text-foreground">{products.length}</p>
-                            <p className="text-xs text-muted-foreground">Listings</p>
+                            <p className="text-base sm:text-lg font-semibold text-foreground">{products.length}</p>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground">Listings</p>
                         </div>
                         <div className="text-center cursor-pointer" onClick={() => setShowFollowers(true)}>
-                            <p className="text-lg font-semibold text-foreground">{followers.length}</p>
-                            <p className="text-xs text-muted-foreground">Followers</p>
+                            <p className="text-base sm:text-lg font-semibold text-foreground">{followers.length}</p>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground">Followers</p>
                         </div>
                         <div className="text-center cursor-pointer" onClick={() => setShowFollowing(true)}>
-                            <p className="text-lg font-semibold text-foreground">{following.length}</p>
-                            <p className="text-xs text-muted-foreground">Following</p>
+                            <p className="text-base sm:text-lg font-semibold text-foreground">{following.length}</p>
+                            <p className="text-[10px] sm:text-xs text-muted-foreground">Following</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 mb-2">
+                    <div className="flex items-center gap-1.5 mb-2 flex-wrap">
                         {[1, 2, 3, 4, 5].map((s) => (
                             <Star
                                 key={s}
@@ -276,12 +276,12 @@ export default function PublicProfilePage() {
                 </div>
 
                 {currentUser && currentUser._id !== user._id && (
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
                         <Button
                             variant={isFollowing ? "outline" : "default"}
                             size="sm"
                             onClick={handleFollowToggle}
-                            className="rounded-full text-xs px-5"
+                            className="rounded-full text-xs px-5 flex-1 sm:flex-none"
                         >
                             {isFollowing ? "Following" : "Follow"}
                         </Button>
@@ -370,7 +370,7 @@ export default function PublicProfilePage() {
                 </TabsContent>
 
                 <TabsContent value="info" className="mt-4">
-                    <div className="space-y-2 text-sm text-muted-foreground">
+                    <div className="space-y-2 text-sm text-muted-foreground break-words">
                         <p><strong>City:</strong> {user.location?.city || "Not specified"}</p>
                         <p><strong>Country:</strong> {user.location?.country || "Not specified"}</p>
                         <p><strong>CVR:</strong> {user.cvr || "N/A"}</p>
@@ -383,8 +383,8 @@ export default function PublicProfilePage() {
 
             {/* MODALS BEHOLDES MED DINE FARVER OG KLASSER (ivory-dark, burgundy, osv.) */}
             {showFollowers && (
-                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowFollowers(false)}>
-                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-80 max-h-[70vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowFollowers(false)}>
+                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-full max-w-80 max-h-[70vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold text-racing-green">Followers</h2>
                             <button onClick={() => setShowFollowers(false)} className="text-racing-green hover:text-burgundy transition"><X className="h-5 w-5" /></button>
@@ -411,8 +411,8 @@ export default function PublicProfilePage() {
             )}
 
             {showFollowing && (
-                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowFollowing(false)}>
-                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-80 max-h-[70vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
+                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowFollowing(false)}>
+                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-full max-w-80 max-h-[70vh] overflow-y-auto shadow-xl" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold text-racing-green">Following</h2>
                             <button onClick={() => setShowFollowing(false)} className="text-racing-green hover:text-burgundy transition"><X className="h-5 w-5" /></button>
@@ -439,8 +439,8 @@ export default function PublicProfilePage() {
             )}
 
             {showReportModal && (
-                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-[60]" onClick={() => setShowReportModal(false)}>
-                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-80 shadow-xl text-racing-green" onClick={(e) => e.stopPropagation()}>
+                <div className="fixed inset-0 bg-ivory-dark/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4" onClick={() => setShowReportModal(false)}>
+                    <div className="bg-ivory-dark border border-burgundy/40 p-5 rounded-xl w-full max-w-80 shadow-xl text-racing-green" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-lg font-semibold">Report profile</h2>
                             <button onClick={() => setShowReportModal(false)} className="text-racing-green hover:text-burgundy transition"><X className="h-5 w-5" /></button>

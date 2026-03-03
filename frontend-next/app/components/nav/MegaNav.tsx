@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { navLinks } from "./navLinks";
 import { api } from "@/app/api/api";
 
@@ -30,8 +31,47 @@ export default function MegaNav() {
     const [treeError, setTreeError] = useState(false);
     const [brands, setBrands] = useState<Brand[]>([]);
     const closeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const navRef = useRef<HTMLElement>(null);
+    const pathname = usePathname();
+    const prevPathname = useRef(pathname);
+    const isTouching = useRef(false);
+
+    // Luk dropdown ved route-skifte
+    useEffect(() => {
+        if (prevPathname.current !== pathname) {
+            prevPathname.current = pathname;
+            queueMicrotask(() => setHovered(null));
+        }
+    }, [pathname]);
+
+    // Luk dropdown ved klik udenfor
+    useEffect(() => {
+        function handleClickOutside(e: MouseEvent) {
+            if (navRef.current && !navRef.current.contains(e.target as Node)) {
+                setHovered(null);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // Registrer touch-events for at undgå at hover-handlers fyrer på touch
+    useEffect(() => {
+        function onTouchStart() { isTouching.current = true; }
+        function onTouchEnd() {
+            // Reset efter kort delay så mouseenter der følger efter touch ignoreres
+            setTimeout(() => { isTouching.current = false; }, 300);
+        }
+        document.addEventListener("touchstart", onTouchStart, { passive: true });
+        document.addEventListener("touchend", onTouchEnd, { passive: true });
+        return () => {
+            document.removeEventListener("touchstart", onTouchStart);
+            document.removeEventListener("touchend", onTouchEnd);
+        };
+    }, []);
 
     const handleEnter = (label: string) => {
+        if (isTouching.current) return;
         if (closeTimeout.current) {
             clearTimeout(closeTimeout.current);
             closeTimeout.current = null;
@@ -40,6 +80,7 @@ export default function MegaNav() {
     };
 
     const handleLeave = () => {
+        if (isTouching.current) return;
         closeTimeout.current = setTimeout(() => {
             setHovered(null);
         }, 100);
@@ -73,12 +114,20 @@ export default function MegaNav() {
     }, []);
 
     return (
-        <nav className="bg-background border-b border-border/50 w-full relative">
+        <nav ref={navRef} className="bg-background border-b border-border/50 w-full relative">
             <div className="flex flex-wrap items-center justify-center gap-x-1 md:gap-x-4 px-2 py-2 mx-auto max-w-7xl">
                 {navLinks.map((link) => {
                     const isGender = link.label in GENDER_MAP;
                     const isBrands = link.label === "Brands";
                     const hasDropdown = isGender || isBrands;
+
+                    const sharedClassName = `text-[11px] sm:text-xs md:text-sm whitespace-nowrap px-2 md:px-3 py-1 transition-colors inline-block cursor-pointer ${
+                        link.highlight
+                            ? "text-accent font-semibold hover:text-burgundy-light"
+                            : hovered === link.label
+                                ? "text-foreground"
+                                : "text-foreground/70 hover:text-foreground"
+                    }`;
 
                     return (
                         <div
@@ -86,18 +135,22 @@ export default function MegaNav() {
                             onMouseEnter={() => hasDropdown ? handleEnter(link.label) : setHovered(null)}
                             onMouseLeave={hasDropdown ? handleLeave : undefined}
                         >
-                            <Link
-                                href={link.href}
-                                className={`text-[11px] sm:text-xs md:text-sm whitespace-nowrap px-2 md:px-3 py-1 transition-colors inline-block ${
-                                    link.highlight
-                                        ? "text-accent font-semibold hover:text-burgundy-light"
-                                        : hovered === link.label
-                                            ? "text-foreground"
-                                            : "text-foreground/70 hover:text-foreground"
-                                }`}
-                            >
-                                {link.label}
-                            </Link>
+                            {hasDropdown ? (
+                                <button
+                                    type="button"
+                                    className={sharedClassName}
+                                    onClick={() => setHovered(prev => prev === link.label ? null : link.label)}
+                                >
+                                    {link.label}
+                                </button>
+                            ) : (
+                                <Link
+                                    href={link.href}
+                                    className={sharedClassName}
+                                >
+                                    {link.label}
+                                </Link>
+                            )}
                         </div>
                     );
                 })}
@@ -106,7 +159,7 @@ export default function MegaNav() {
             {/* ── Gender megamenu ── */}
             {hovered && hovered in GENDER_MAP && (
                 <div
-                    className="absolute top-full left-0 right-0 z-50 flex justify-center px-2 md:px-4"
+                    className="absolute top-full left-0 right-0 z-[999] flex justify-center px-2 md:px-4"
                     onMouseEnter={() => handleEnter(hovered)}
                     onMouseLeave={handleLeave}
                 >
@@ -160,7 +213,7 @@ export default function MegaNav() {
             {/* ── Brands megamenu ── */}
             {hovered === "Brands" && (
                 <div
-                    className="absolute top-full left-0 right-0 z-50 flex justify-center px-2 md:px-4"
+                    className="absolute top-full left-0 right-0 z-[999] flex justify-center px-2 md:px-4"
                     onMouseEnter={() => handleEnter("Brands")}
                     onMouseLeave={handleLeave}
                 >

@@ -6,8 +6,21 @@ import { Button } from "@/app/components/UI/button";
 import { Input } from "@/app/components/UI/input";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import MegaNav from "@/app/components/nav/MegaNav";
+
+interface Notification {
+    _id: string;
+    type: string;
+    read: boolean;
+    createdAt: string;
+    data?: {
+        threadId?: string;
+        productId?: string;
+        text?: string;
+        message?: string;
+    };
+}
 
 const formatNotificationType = (type: string) => {
     const labels: Record<string, string> = {
@@ -25,13 +38,11 @@ const TopBar = () => {
     const {user, loading, logout} = useAuth();
     const router = useRouter();
     const [searchQuery, setSearchQuery] = useState("");
-    const [notifications, setNotifications] = useState<any[]>([]);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
     const [showNotis, setShowNotis] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const [hovered, setHovered] = useState<string | null>(null);
-
-    const fetchNotifications = async () => {
+    const fetchNotifications = useCallback(async () => {
         if (!user) return;
         try {
             const res = await fetch('/api/notifications');
@@ -44,13 +55,13 @@ const TopBar = () => {
         } catch (err) {
             console.error("Fejl ved hentning af notifikationer:", err);
         }
-    };
+    }, [user]);
 
     useEffect(() => {
         if (user) {
-            fetchNotifications();
-            // Opdateret til 10 sekunder (10000ms) for hurtigere respons
-            const interval = setInterval(fetchNotifications, 10000);
+            const load = () => { fetchNotifications(); };
+            load();
+            const interval = setInterval(load, 10000);
 
             const handleClickOutside = (event: MouseEvent) => {
                 if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -64,13 +75,13 @@ const TopBar = () => {
                 document.removeEventListener("mousedown", handleClickOutside);
             };
         }
-    }, [user]);
+    }, [user, fetchNotifications]);
 
     // Beregn ulæste (bruges både til Bell-badge og filter)
-    const unreadNotifications = notifications.filter((n: any) => !n.read);
+    const unreadNotifications = notifications.filter((n: Notification) => !n.read);
     const unreadCount = unreadNotifications.length;
 
-    const handleNotificationClick = async (notif: any) => {
+    const handleNotificationClick = async (notif: Notification) => {
         console.log("KLIKKET NOTIF DATA:", notif.data);
 
         if (!notif.read) {
@@ -100,7 +111,7 @@ const TopBar = () => {
     };
 
     return (
-        <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border/30">
+        <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border/30">
             <div className="relative flex items-center px-4 py-1 md:py-3 h-[44px] md:h-auto">
 
                 <div className="hidden md:flex items-center gap-2 bg-muted/50 rounded-xl px-3 py-2 w-[260px]">
@@ -186,7 +197,7 @@ const TopBar = () => {
                                             <p className="text-xs text-muted-foreground">Ingen nye beskeder</p>
                                         </div>
                                     ) : (
-                                        unreadNotifications.map((n: any) => (
+                                        unreadNotifications.map((n: Notification) => (
                                             <div
                                                 key={n._id}
                                                 onClick={() => handleNotificationClick(n)}
