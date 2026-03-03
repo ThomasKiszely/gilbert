@@ -5,6 +5,8 @@ const shippingService = require("../services/shippingService");
 const { sanitizeUser } = require('../utils/sanitizeUser');
 const mailer = require('../utils/mailer');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const notificationService = require('../services/notificationService');
+const notificationTypes = require('../utils/notificationTypes');
 
 
 async function updateStatusProduct(productId, status) {
@@ -31,6 +33,17 @@ async function getUserById(id) {
 
 async function updateProfessionalStatus(id, professionalStatus) {
     const user = await userRepo.updateProfessionalStatus(id, professionalStatus);
+    if (professionalStatus === "approved") {
+        await notificationService.notifyUser(id, {
+            type: notificationTypes.professional_approved
+        });
+    }
+
+    if (professionalStatus === "rejected") {
+        await notificationService.notifyUser(id, {
+            type: notificationTypes.professional_rejected
+        });
+    }
     const sanitizedUser = sanitizeUser(user);
     return sanitizedUser;
 }

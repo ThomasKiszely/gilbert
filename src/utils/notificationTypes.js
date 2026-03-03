@@ -6,4 +6,6 @@ module.exports = {
     bid_expired: "bid_expired",
     counter_bid: "counter_bid",
     report: "report",
+    professional_approved: "professional_approved",
+    professional_rejected: "professional_rejected",
 }

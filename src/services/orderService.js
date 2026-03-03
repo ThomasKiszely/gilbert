@@ -7,6 +7,9 @@ const mailer = require('../utils/mailer');
 const shippingService = require('./shippingService');
 const bidStatusses = require('../utils/bidStatusses');
 const userRepo = require('../data/userRepo');
+const notificationService = require('../services/notificationService');
+const notificationTypes = require('../utils/notificationTypes');
+const chatService = require('../services/chatService');
 
 
 const {
@@ -109,6 +112,10 @@ async function initiateOrder(productId, buyerId, address, bidId = null, wantAuth
 
     // 6. Opret ordren
     const order = await orderRepo.createOrder(orderData);
+
+    // Auto-reject alle bud på produktet, da det nu er reserveret til køberen
+    await autoRejectBidsForPurchasedProduct(productId);
+
 
     // 7. Opret Stripe PaymentIntent
     let paymentIntent;
@@ -402,10 +409,34 @@ async function handleShipmondoWebhook(payload) {
     }
 }
 
+async function autoRejectBidsForPurchasedProduct(productId) {
+    // Find alle aktive/countered bud
+    const bids = await bidRepo.findActiveBidsByProduct(productId, null);
 
+    if (!bids.length) return;
 
+    // Afvis dem i databasen
+    await bidRepo.rejectAllActiveBids(productId, null);
 
+    // Send notifikationer og chat
+    for (const bid of bids) {
+        try {
+            await notificationService.notifyUser(bid.buyerId, {
+                type: notificationTypes.bid_rejected,
+                bidId: bid._id,
+                productId: bid.productId,
+            });
 
+            await chatService.sendMessage(
+                bid.productId,
+                bid.buyerId,
+                `SYSTEM_BID: Your bid was automatically rejected because the product was purchased.`
+            );
+        } catch (e) {
+            console.error("Auto-reject on purchase error:", e);
+        }
+    }
+}
 
 module.exports = {
     initiateOrder,
