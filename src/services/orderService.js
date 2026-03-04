@@ -17,7 +17,8 @@ require('dotenv').config();
 const {
     PLATFORM_FEE_PERCENT,
     AUTHENTICATION_FEE,
-    AUTH_THRESHOLD
+    AUTH_THRESHOLD,
+    DEFAULT_PACKAGE_DIMENSIONS
 } = require('../utils/platformSettings');
 
 
@@ -53,6 +54,19 @@ async function initiateOrder(
     if (!product || product.status !== 'Approved') {
         throw new Error("This product is not available for purchase.");
     }
+
+// ⭐ Vægt-failsafe (korrekt version til service-lag)
+    if (
+        !product.weight ||
+        typeof product.weight !== "number" ||
+        product.weight < 100 ||
+        product.weight > 20000
+    ) {
+        const err = new Error("Product weight is invalid. The seller must correct the product weight before this item can be purchased.");
+        err.status = 400;
+        throw err;
+    }
+
 
     const seller = product.seller;
 
@@ -94,7 +108,7 @@ async function initiateOrder(
             fromAddress: seller.profile.address,
             toAddress: address,
             weight: product.weight,
-            dimensions: product.dimensions,
+            dimensions: product.dimensions || DEFAULT_PACKAGE_DIMENSIONS,
             shippingMethod,
         });
         shippingPrice = rate.price;

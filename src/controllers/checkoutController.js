@@ -1,7 +1,7 @@
 const productRepo = require("../data/productRepo");
 const shippingService = require("../services/shippingService");
 const discountCodeService = require("../services/discountCodeService");
-const { AUTH_THRESHOLD, AUTHENTICATION_FEE } = require("../utils/platformSettings");
+const { AUTH_THRESHOLD, AUTHENTICATION_FEE, DEFAULT_PACKAGE_DIMENSIONS } = require("../utils/platformSettings");
 require('dotenv').config();
 
 async function calculateCheckout(req, res, next) {
@@ -12,6 +12,12 @@ async function calculateCheckout(req, res, next) {
         const product = await productRepo.getProductById(productId);
         if (!product || product.status !== "Approved") {
             return res.status(400).json({ success: false, message: "Product not available" });
+        }
+        if ( !product.weight || typeof product.weight !== "number" || product.weight < 100 || product.weight > 20000 ) {
+            return res.status(400).json({
+                success: false,
+                message: "Product weight is invalid. The seller must correct the product weight before checkout."
+            });
         }
 
         const basePrice = product.price;
@@ -24,7 +30,7 @@ async function calculateCheckout(req, res, next) {
                 fromAddress: product.seller.profile.address,
                 toAddress: address,
                 weight: product.weight,
-                dimensions: product.dimensions,
+                dimensions: product.dimensions || DEFAULT_PACKAGE_DIMENSIONS,
                 shippingMethod,
             });
 
