@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { api } from "@/app/api/api";
+import CustomDropdown from "@/app/components/UI/CustomDropdown";
 
 type DropdownItem = { _id: string; name?: string; label?: string; value?: string };
 
@@ -17,11 +18,19 @@ export default function CreateProduct() {
 
     const [selectedGender, setSelectedGender] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("");
+    const [selectedSize, setSelectedSize] = useState("");
+    const [selectedCondition, setSelectedCondition] = useState("");
+    const [selectedColor, setSelectedColor] = useState("");
+    const [selectedMaterial, setSelectedMaterial] = useState("");
 
     const [images, setImages] = useState<File[]>([]);
     const [preview, setPreview] = useState<string[]>([]);
     const [loadingForm, setLoading] = useState(false);
     const [isGenderDisabled, setIsGenderDisabled] = useState(false);
+
+    const [showBrandDropdown, setShowBrandDropdown] = useState(false);
+    const brandInputRef = useRef<HTMLInputElement>(null);
+    const [selectedBrand, setSelectedBrand] = useState("");
 
     // Load static dropdowns once
     useEffect(() => {
@@ -118,7 +127,11 @@ export default function CreateProduct() {
         images.forEach((img) => formData.append("images", img));
 
         // Remove size if empty (optional field)
-        if (!formData.get("size")) formData.delete("size");
+        if (!selectedSize) formData.delete("size");
+        else formData.set("size", selectedSize);
+        formData.set("condition", selectedCondition);
+        formData.set("color", selectedColor);
+        formData.set("material", selectedMaterial);
 
         try {
             const res = await api("/api/products", {
@@ -155,8 +168,26 @@ export default function CreateProduct() {
 
     const displayName = (item: DropdownItem) => item.name || item.label || item.value || "";
 
+    // Helper to map dropdown data to CustomDropdown format
+    const mapOptions = (arr: DropdownItem[]) => arr.map(o => ({ _id: o._id, label: displayName(o) }));
+
+    // Luk dropdown hvis klik udenfor
+    useEffect(() => {
+        function handleClick(e: MouseEvent) {
+            if (brandInputRef.current && !brandInputRef.current.contains(e.target as Node)) {
+                setShowBrandDropdown(false);
+            }
+        }
+        if (showBrandDropdown) {
+            document.addEventListener("mousedown", handleClick);
+        } else {
+            document.removeEventListener("mousedown", handleClick);
+        }
+        return () => document.removeEventListener("mousedown", handleClick);
+    }, [showBrandDropdown]);
+
     return (
-        <div className="max-w-3xl mx-auto p-8 bg-ivory-dark shadow-2xl mt-10 rounded-2xl text-racing-green">
+        <div className="max-w-3xl mx-auto p-8 bg-ivory-dark shadow-2xl mt-10 mb-32 rounded-2xl text-racing-green">
             <h1 className="text-3xl font-serif font-bold mb-8 border-b border-racing-green/20 pb-4">Create Product</h1>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -170,117 +201,113 @@ export default function CreateProduct() {
                     {/* Gender — drives subcategory filtering */}
                     <div>
                         <label className="block font-semibold mb-1 uppercase text-xs tracking-wider">Gender</label>
-                        <select
+                        <CustomDropdown
+                            options={mapOptions(genders)}
+                            value={selectedGender}
+                            onChange={setSelectedGender}
+                            placeholder="Select gender"
                             name="gender"
                             required={!isGenderDisabled}
-                            value={selectedGender}
-                            onChange={(e) => setSelectedGender(e.target.value)}
-                            className="w-full p-3 bg-ivory border border-racing-green/20 rounded-lg focus:ring-2 focus:ring-racing-green focus:outline-none text-black"
                             disabled={isGenderDisabled}
-                        >
-                            <option value="">Select gender</option>
-                            {genders.map(g => (
-                                <option key={g._id} value={g._id}>{displayName(g)}</option>
-                            ))}
-                        </select>
+                        />
                     </div>
 
                     {/* Category — drives size filtering */}
                     <div>
                         <label className="block font-semibold mb-1 uppercase text-xs tracking-wider">Category</label>
-                        <select
+                        <CustomDropdown
+                            options={mapOptions(categories)}
+                            value={selectedCategory}
+                            onChange={setSelectedCategory}
+                            placeholder="Select category"
                             name="category"
                             required
-                            value={selectedCategory}
-                            onChange={(e) => setSelectedCategory(e.target.value)}
-                            className="w-full p-3 bg-ivory border border-racing-green/20 rounded-lg focus:ring-2 focus:ring-racing-green focus:outline-none text-black"
-                        >
-                            <option value="">Select category</option>
-                            {categories.map(c => (
-                                <option key={c._id} value={c._id}>{displayName(c)}</option>
-                            ))}
-                        </select>
+                        />
                     </div>
 
                     {/* Subcategory — filtered by selected gender + category */}
                     <div>
                         <label className="block font-semibold mb-1 uppercase text-xs tracking-wider">Subcategory</label>
-                        <select
+                        <CustomDropdown
+                            options={mapOptions(subcategories)}
+                            value={""}
+                            onChange={() => {}}
+                            placeholder={!selectedCategory
+                                ? "Select category first"
+                                : subcategories.length === 0
+                                    ? "No subcategories available"
+                                    : "Select subcategory"}
                             name="subcategory"
                             required
-                            disabled={!selectedCategory}
-                            className="w-full p-3 bg-ivory border border-racing-green/20 rounded-lg focus:ring-2 focus:ring-racing-green focus:outline-none text-black disabled:opacity-50"
-                        >
-                            <option value="">
-                                {!selectedCategory
-                                    ? "Select category first"
-                                    : subcategories.length === 0
-                                        ? "No subcategories available"
-                                        : "Select subcategory"}
-                            </option>
-                            {subcategories.map(s => (
-                                <option key={s._id} value={s._id}>{displayName(s)}</option>
-                            ))}
-                        </select>
+                            disabled={!selectedCategory || subcategories.length === 0}
+                        />
                     </div>
 
-                    {/* Brand */}
+                    {/* Brand - custom søgbar dropdown */}
                     <div>
                         <label className="block font-semibold mb-1 uppercase text-xs tracking-wider">Brand</label>
-                        <select name="brand" required className="w-full p-3 bg-ivory border border-racing-green/20 rounded-lg focus:ring-2 focus:ring-racing-green focus:outline-none text-black">
-                            <option value="">Select brand</option>
-                            {brands.map(b => (
-                                <option key={b._id} value={b._id}>{displayName(b)}</option>
-                            ))}
-                        </select>
+                        <CustomDropdown
+                            options={mapOptions(brands)}
+                            value={selectedBrand}
+                            onChange={setSelectedBrand}
+                            placeholder="Select brand"
+                            name="brand"
+                            required
+                            searchable
+                        />
                     </div>
 
                     {/* Size — optional, filtered by selected category */}
                     <div>
                         <label className="block font-semibold mb-1 uppercase text-xs tracking-wider">Size <span className="text-racing-green/50 normal-case">(optional)</span></label>
-                        <select
+                        <CustomDropdown
+                            options={mapOptions(sizes)}
+                            value={selectedSize}
+                            onChange={setSelectedSize}
+                            placeholder={selectedCategory ? (sizes.length === 0 ? "No sizes for this category" : "Select size") : "Select category first"}
                             name="size"
-                            disabled={!selectedCategory}
-                            className="w-full p-3 bg-ivory border border-racing-green/20 rounded-lg focus:ring-2 focus:ring-racing-green focus:outline-none text-black disabled:opacity-50"
-                        >
-                            <option value="">{selectedCategory ? (sizes.length === 0 ? "No sizes for this category" : "Select size") : "Select category first"}</option>
-                            {sizes.map(s => (
-                                <option key={s._id} value={s._id}>{displayName(s)}</option>
-                            ))}
-                        </select>
+                            required={false}
+                            disabled={!selectedCategory || sizes.length === 0}
+                        />
                     </div>
 
                     {/* Condition */}
                     <div>
                         <label className="block font-semibold mb-1 uppercase text-xs tracking-wider">Condition</label>
-                        <select name="condition" required className="w-full p-3 bg-ivory border border-racing-green/20 rounded-lg focus:ring-2 focus:ring-racing-green focus:outline-none text-black">
-                            <option value="">Select condition</option>
-                            {conditions.map(c => (
-                                <option key={c._id} value={c._id}>{displayName(c)}</option>
-                            ))}
-                        </select>
+                        <CustomDropdown
+                            options={mapOptions(conditions)}
+                            value={selectedCondition}
+                            onChange={setSelectedCondition}
+                            placeholder="Select condition"
+                            name="condition"
+                            required
+                        />
                     </div>
 
                     {/* Color */}
                     <div>
                         <label className="block font-semibold mb-1 uppercase text-xs tracking-wider">Color</label>
-                        <select name="color" required className="w-full p-3 bg-ivory border border-racing-green/20 rounded-lg focus:ring-2 focus:ring-racing-green focus:outline-none text-black">
-                            <option value="">Select color</option>
-                            {colors.map(c => (
-                                <option key={c._id} value={c._id}>{displayName(c)}</option>
-                            ))}
-                        </select>
+                        <CustomDropdown
+                            options={mapOptions(colors)}
+                            value={selectedColor}
+                            onChange={setSelectedColor}
+                            placeholder="Select color"
+                            name="color"
+                            required
+                        />
                     </div>
 
                     {/* Material */}
                     <div>
                         <label className="block font-semibold mb-1 uppercase text-xs tracking-wider">Material</label>
-                        <select name="material" required className="w-full p-3 bg-ivory border border-racing-green/20 rounded-lg focus:ring-2 focus:ring-racing-green focus:outline-none text-black">
-                            <option value="">Select material</option>
-                            {materials.map(m => (
-                                <option key={m._id} value={m._id}>{displayName(m)}</option>
-                            ))}
-                        </select>
+                        <CustomDropdown
+                            options={mapOptions(materials)}
+                            value={selectedMaterial}
+                            onChange={setSelectedMaterial}
+                            placeholder="Select material"
+                            name="material"
+                            required
+                        />
                     </div>
 
                     {/* Tags */}

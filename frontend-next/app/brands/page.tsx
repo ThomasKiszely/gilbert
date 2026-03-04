@@ -33,15 +33,21 @@ export default function BrandsPage() {
         b.name.toLowerCase().includes(search.toLowerCase())
     );
 
-    // Gruppér efter første bogstav
+    // Gruppér efter første bogstav, '#' for ikke-bogstaver
     const grouped = filtered.reduce<Record<string, Brand[]>>((acc, brand) => {
-        const letter = brand.name[0].toUpperCase();
+        const firstChar = brand.name[0];
+        const letter = /[a-zA-Z]/.test(firstChar) ? firstChar.toUpperCase() : '#';
         if (!acc[letter]) acc[letter] = [];
         acc[letter].push(brand);
         return acc;
     }, {});
 
-    const letters = Object.keys(grouped).sort();
+    // Sortér: '#' først, derefter alfabetisk
+    const letters = Object.keys(grouped).sort((a, b) => {
+        if (a === '#') return -1;
+        if (b === '#') return 1;
+        return a.localeCompare(b);
+    });
 
     return (
         <div className="max-w-5xl mx-auto px-4 pt-24 pb-16">
@@ -120,4 +126,3 @@ export default function BrandsPage() {
         </div>
     );
 }
-
