@@ -10,6 +10,8 @@ const userRepo = require('../data/userRepo');
 const notificationService = require('../services/notificationService');
 const notificationTypes = require('../utils/notificationTypes');
 const chatService = require('../services/chatService');
+const discountCodeService = require('../services/discountCodeService');
+require('dotenv').config();
 
 
 const {
@@ -85,15 +87,20 @@ async function initiateOrder(
         finalPrice = bid.counterAmount || bid.amount;
     }
 
-    // ⭐ Fragtpris fra Shipmondo
-    const rate = await shippingService.getRate({
-        fromAddress: seller.profile.address,
-        toAddress: address,
-        weight: product.weight,
-        dimensions: product.dimensions,
-        shippingMethod,
-    });
-    const shippingPrice = rate.price;
+    let shippingPrice = 0;
+    if (process.env.NODE_ENV === 'production') {
+        // ⭐ Fragtpris fra Shipmondo
+        const rate = await shippingService.getRate({
+            fromAddress: seller.profile.address,
+            toAddress: address,
+            weight: product.weight,
+            dimensions: product.dimensions,
+            shippingMethod,
+        });
+        shippingPrice = rate.price;
+    } else {
+        shippingPrice = 50;
+    }
 
     // ⭐ Rabatkode
     let discountAmount = 0;
@@ -135,7 +142,7 @@ async function initiateOrder(
         status: 'pending',
         shippingAddress: address,
         shippingPrice,
-        discountCode: appliedDiscountId,
+        appliedDiscountCode: appliedDiscountId,
         discountAmount,
     };
 

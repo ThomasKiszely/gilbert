@@ -21,7 +21,7 @@ const orderSchema = new mongoose.Schema({
     authenticationNotes: { type: String, default: "" },
     disputeReason: { type: String, default: "" },
 
-    appliedDiscountCode: { type: String },
+    appliedDiscountCode: { type: mongoose.Schema.Types.ObjectId, ref: "DiscountCode" },
     discountAmount: { type: Number, default: 0 },
 
     stripePaymentIntentId: { type: String },
@@ -51,13 +51,14 @@ const orderSchema = new mongoose.Schema({
     shippingAddress: {
         name: String,
         street: String,
+        houseNumber: String,
         city: String,
         zip: String,
         country: { type: String, default: 'Denmark' }
     },
 
-    shippingTrackingNumber: { type: String },
-    shippingLabelUrl: { type: String },
+    trackingNumber: { type: String },
+    labelUrl: { type: String },
     externalShippingId: { type: String },
     shippingError: { type: String },
     shipmondoOrderId: { type: String },

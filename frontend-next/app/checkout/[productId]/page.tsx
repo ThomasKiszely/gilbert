@@ -15,7 +15,8 @@ import {
     Tag,
     ChevronDown,
     Info,
-    CheckCircle2
+    CheckCircle2,
+    Loader2
 } from "lucide-react";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -77,7 +78,8 @@ export default function CheckoutPage() {
     }, [productId]);
 
     // 2. Calculate Checkout Logic
-    const calculateTotal = useCallback(async () => {
+    const calculateTotal = useCallback(async (forcedCode?: string | null) => {
+        // Vi kræver zip/by for at beregne fragt korrekt
         if (!address.zip || !address.city || address.zip.length < 4) return;
 
         setIsCalculating(true);
@@ -92,7 +94,8 @@ export default function CheckoutPage() {
                     productId,
                     address,
                     shippingMethod,
-                    discountCode: appliedDiscount ? discountCode : null
+                    // Hvis forcedCode er defineret (selv som null), bruger vi den, ellers tjekker vi appliedDiscount staten
+                    discountCode: forcedCode !== undefined ? forcedCode : (appliedDiscount ? discountCode : null)
                 })
             });
 
@@ -113,12 +116,62 @@ export default function CheckoutPage() {
         }
     }, [address.zip, address.city, productId, user?.token, shippingMethod, appliedDiscount, discountCode]);
 
+    // Re-calculate when shipping or address changes
     useEffect(() => {
         const timer = setTimeout(() => calculateTotal(), 600);
         return () => clearTimeout(timer);
-    }, [address.zip, address.city, shippingMethod, appliedDiscount, calculateTotal]);
+    }, [address.zip, address.city, shippingMethod, calculateTotal]);
 
-    // 3. Handle Order Creation
+    // 3. Discount Logic
+    const applyDiscount = async () => {
+        if (!discountCode) return;
+
+        setIsCalculating(true);
+        try {
+            const res = await fetch(`/api/checkout/calculate`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${user?.token}`
+                },
+                body: JSON.stringify({
+                    productId,
+                    address,
+                    shippingMethod,
+                    discountCode: discountCode
+                })
+            });
+
+            const data = await res.json();
+
+            if (data.success && data.discount > 0) {
+                setAppliedDiscount(true);
+                setAmounts({
+                    productPrice: data.productPrice,
+                    shipping: data.shipping,
+                    discount: data.discount,
+                    authenticationFee: data.authenticationFee,
+                    total: data.total
+                });
+            } else {
+                setAppliedDiscount(false);
+                alert(data.reason || "Invalid or inactive discount code");
+            }
+        } catch (err) {
+            alert("Error validating discount code");
+        } finally {
+            setIsCalculating(false);
+        }
+    };
+
+    const removeDiscount = () => {
+        setAppliedDiscount(false);
+        setDiscountCode("");
+        // Genberegn med null kode
+        calculateTotal(null);
+    };
+
+    // 4. Handle Order Creation
     const handlePreparePayment = async () => {
         if (!user) {
             router.push("/login");
@@ -141,7 +194,7 @@ export default function CheckoutPage() {
                 body: JSON.stringify({
                     productId,
                     address,
-                    shippingMethod, // Vi sender det valgte firma med
+                    shippingMethod,
                     discountCode: appliedDiscount ? discountCode : null,
                     bidId: null,
                     wantAuth: false
@@ -171,7 +224,7 @@ export default function CheckoutPage() {
 
     if (loading) return (
         <div className="min-h-screen bg-[#003d2b] flex flex-col items-center justify-center space-y-4">
-            <div className="w-12 h-12 border-4 border-white/10 border-t-white rounded-full animate-spin" />
+            <Loader2 className="w-12 h-12 text-white animate-spin opacity-20" />
             <div className="font-mono text-[10px] uppercase tracking-[0.4em] text-white/40">Securing Session...</div>
         </div>
     );
@@ -281,18 +334,36 @@ export default function CheckoutPage() {
 
                             {/* DISCOUNT CODE BOX */}
                             <div className="mb-8 flex gap-2">
-                                <input
-                                    className="flex-1 bg-black/40 border border-white/5 p-4 rounded-xl text-[10px] uppercase font-black tracking-widest text-white outline-none focus:border-white/20"
-                                    placeholder="Discount Code"
-                                    value={discountCode}
-                                    onChange={(e) => setDiscountCode(e.target.value)}
-                                />
-                                <button
-                                    onClick={() => setAppliedDiscount(true)}
-                                    className="bg-white/10 hover:bg-white/20 px-4 rounded-xl transition-all"
-                                >
-                                    <CheckCircle2 size={18} className={appliedDiscount ? "text-green-500" : "text-white/20"} />
-                                </button>
+                                <div className="relative flex-1">
+                                    <input
+                                        className={`w-full bg-black/40 border ${appliedDiscount ? 'border-green-500/50' : 'border-white/5'} p-4 rounded-xl text-[10px] uppercase font-black tracking-widest text-white outline-none focus:border-white/20 transition-all placeholder:text-white/20`}
+                                        placeholder={appliedDiscount ? "Code Applied!" : "Discount Code"}
+                                        value={discountCode}
+                                        disabled={appliedDiscount}
+                                        onChange={(e) => setDiscountCode(e.target.value)}
+                                    />
+                                    {appliedDiscount && (
+                                        <button
+                                            onClick={removeDiscount}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-red-400 uppercase hover:text-red-300"
+                                        >
+                                            Remove
+                                        </button>
+                                    )}
+                                </div>
+                                {!appliedDiscount && (
+                                    <button
+                                        onClick={applyDiscount}
+                                        disabled={isCalculating || !discountCode}
+                                        className="bg-white/10 hover:bg-white/20 px-6 rounded-xl transition-all flex items-center justify-center disabled:opacity-30"
+                                    >
+                                        {isCalculating ? (
+                                            <Loader2 size={18} className="text-white animate-spin" />
+                                        ) : (
+                                            <CheckCircle2 size={18} className="text-white" />
+                                        )}
+                                    </button>
+                                )}
                             </div>
 
                             <div className="space-y-5 py-8 border-y border-white/10 mb-8">
@@ -324,7 +395,7 @@ export default function CheckoutPage() {
                                     <div className="flex justify-between text-xs items-center text-green-400 font-black">
                                         <div className="flex items-center gap-2">
                                             <Tag size={14} />
-                                            <span className="uppercase tracking-widest">Discount</span>
+                                            <span className="uppercase tracking-widest">Discount Applied</span>
                                         </div>
                                         <span className="text-base">-{amounts.discount} DKK</span>
                                     </div>

@@ -3,13 +3,14 @@ const Order = require('../models/Order');
 async function createOrder(orderData) {
     const order = new Order(orderData);
     await order.save();
-    return await order.populate('product buyer seller');
+    return await order.populate('product buyer seller appliedDiscountCode');
 }
 
 async function findOrderById(id) {
     return await Order.findById(id)
         .populate('product')
         .populate('buyer')
+        .populate('appliedDiscountCode')
         .populate({
             path: 'seller',
             select: 'username email profile stripeAccountId'
@@ -46,6 +47,7 @@ async function getOrdersByBuyer(buyerId) {
     return await Order.find({ buyer: buyerId })
         .populate('product')
         .populate('seller', 'username')
+        .populate('appliedDiscountCode')
         .sort({ createdAt: -1 });
 }
 
@@ -141,6 +143,7 @@ async function findAllOrders(query = {}) {
             .populate('buyer', 'username email')
             .populate('seller', 'username email')
             .populate('product', 'title price images')
+            .populate('appliedDiscountCode')
             .sort({ createdAt: -1 });
     } catch (error) {
         throw new Error("Repository error: " + error.message);
@@ -150,6 +153,7 @@ async function getOrdersBySeller(sellerId) {
     return await Order.find({ seller: sellerId })
         .populate('product')
         .populate('buyer', 'username email')
+        .populate('appliedDiscountCode')
         .sort({ createdAt: -1 });
 }
 

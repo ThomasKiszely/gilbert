@@ -2,6 +2,7 @@ const productRepo = require("../data/productRepo");
 const shippingService = require("../services/shippingService");
 const discountCodeService = require("../services/discountCodeService");
 const { AUTH_THRESHOLD, AUTHENTICATION_FEE } = require("../utils/platformSettings");
+require('dotenv').config();
 
 async function calculateCheckout(req, res, next) {
     try {
@@ -15,16 +16,22 @@ async function calculateCheckout(req, res, next) {
 
         const basePrice = product.price;
 
-        // ⭐ Fragtpris fra Shipmondo
-        const rate = await shippingService.getRate({
-            fromAddress: product.seller.profile.address,
-            toAddress: address,
-            weight: product.weight,
-            dimensions: product.dimensions,
-            shippingMethod,
-        });
+        let shippingPrice = 0;
 
-        const shippingPrice = rate.price;
+        if (process.env.NODE_ENV === 'production') {
+            // ⭐ Fragtpris fra Shipmondo
+            const rate = await shippingService.getRate({
+                fromAddress: product.seller.profile.address,
+                toAddress: address,
+                weight: product.weight,
+                dimensions: product.dimensions,
+                shippingMethod,
+            });
+
+            shippingPrice = rate.price;
+        } else {
+            shippingPrice = 50;
+        }
 
         // ⭐ Rabat
         let discountAmount = 0;

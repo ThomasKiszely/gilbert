@@ -15,7 +15,9 @@ async function initiateOrder(req, res, next) {
             buyerId,
             address, // <--- Her er den!
             bidId,
-            wantAuth
+            wantAuth,
+            discountCode,
+            shippingMethod
         );
 
         // Bemærk: orderService returnerer { order, clientSecret }
