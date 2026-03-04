@@ -2,6 +2,10 @@ const productRepo = require("../data/productRepo");
 const favoriteRepo = require("../data/favoriteRepo");
 const imageService = require("../services/imageService");
 const userRepo = require("../data/userRepo");
+const followRepo = require("../data/followRepo");
+const notificationService = require("../services/notificationService");
+const notificationTypes = require("../utils/notificationTypes");
+
 
 async function attachFavoriteStatus(products, userId) {
     if (!userId) return products;
@@ -45,7 +49,29 @@ async function createProduct(productData) {
          throw err;
     }
 
-    return await productRepo.createProduct(productData);
+    const product = await productRepo.createProduct(productData);
+
+    // ⭐ Find followers af sælgeren
+    const followers = await followRepo.getFollowers(product.seller);
+
+// ⭐ Send notifikationer til alle followers
+    for (const follow of followers) {
+        try {
+            await notificationService.notifyUser(follow.followerId._id, {
+                type: notificationTypes.new_product_from_following,
+                data: {
+                    productId: product._id,
+                    sellerId: product.seller,
+                    title: product.title,
+                    image: product.images?.[0] || null,
+                    price: product.price
+                }
+            });
+        } catch (e) {
+            console.error("Follower notification error:", e);
+        }
+    }
+    return product;
 }
 
 async function readAllProducts(page, limit, userId) {

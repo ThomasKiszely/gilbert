@@ -8,4 +8,5 @@ module.exports = {
     report: "report",
     professional_approved: "professional_approved",
     professional_rejected: "professional_rejected",
+    new_product_from_following: "new_product_from_following",
 }
