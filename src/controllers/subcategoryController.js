@@ -18,7 +18,11 @@ async function createSubcategory(req, res, next) {
 
 async function readAllSubcategories(req, res, next) {
     try {
-        const subcategories = await subcategoryService.readAllSubcategories();
+        const filters = {};
+        if (req.query.gender) filters.gender = req.query.gender;
+        if (req.query.category) filters.category = req.query.category;
+
+        const subcategories = await subcategoryService.readAllSubcategories(filters);
         if (!subcategories) {
             const error = new Error('Failed to read all subcategories');
             error.status = 400;

@@ -10,17 +10,15 @@ async function readAllCategories() {
 }
 
 async function getFullCategoryTree(gender) {
-    const { categories, subcategories } = await categoryRepo.getAllCategoriesWithSubcategories();
+    const { categories, subcategories } = await categoryRepo.getAllCategoriesWithSubcategories(gender);
 
     const tree = {};
 
-    categories.forEach(cat => {
-        tree[cat.name] = [];
-    });
-
+    // Only include categories that have matching subcategories
     subcategories.forEach(sub => {
         const parent = categories.find(c => c._id.toString() === sub.category?.toString());
         if (parent) {
+            if (!tree[parent.name]) tree[parent.name] = [];
             tree[parent.name].push({
                 id: sub._id.toString(),
                 name: sub.name

@@ -15,6 +15,7 @@ const materialRouter = require('./routes/materialRoutes');
 const sizeRouter = require('./routes/sizeRoutes');
 const subcategoryRouter = require('./routes/subcategoryRoutes');
 const tagRouter = require('./routes/tagRoutes');
+const genderRouter = require('./routes/genderRoutes');
 const adminRouter = require('./routes/adminRoutes');
 const favoriteRouter = require('./routes/favoriteRoutes');
 const bidRouter = require('./routes/bidRoutes');
@@ -99,6 +100,7 @@ app.use('/api/materials', materialRouter);
 app.use('/api/sizes', sizeRouter);
 app.use('/api/subcategories', subcategoryRouter);
 app.use('/api/tags', tagRouter);
+app.use('/api/genders', genderRouter);
 
 // Search funktion
 app.use('/api/search', searchRouter);

@@ -17,7 +17,11 @@ async function createSize(req, res, next) {
 
 async function readAllSizes(req, res, next) {
     try {
-        const sizes = await sizeService.readAllSizes();
+        const filters = {};
+        if (req.query.category) filters.category = req.query.category;
+        if (req.query.type) filters.type = req.query.type;
+
+        const sizes = await sizeService.readAllSizes(filters);
         if(!sizes) {
             const error = new Error('Failed to read all sizes.');
             error.status = 400;

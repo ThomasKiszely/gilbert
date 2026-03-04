@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const {genders} = require('../utils/gender');
 const {statuses} = require('../utils/statusType');
 
 const productSchema = new mongoose.Schema({
@@ -7,8 +6,8 @@ const productSchema = new mongoose.Schema({
     category: {type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true},
     subcategory: {type: mongoose.Schema.Types.ObjectId, ref: 'Subcategory', required: true},
     brand: {type: mongoose.Schema.Types.ObjectId, ref: 'Brand', required: true},
-    gender: {type: String, enum: genders, required: true},
-    size: {type: mongoose.Schema.Types.ObjectId, ref: 'Size', required: true},
+    gender: {type: mongoose.Schema.Types.ObjectId, ref: 'Gender', required: true},
+    size: {type: mongoose.Schema.Types.ObjectId, ref: 'Size', default: null},
     condition: {type: mongoose.Schema.Types.ObjectId, ref: 'Condition', required: true},
     color: {type: mongoose.Schema.Types.ObjectId, ref: 'Color', required: true},
     material: {type: mongoose.Schema.Types.ObjectId, ref: 'Material', required: true},

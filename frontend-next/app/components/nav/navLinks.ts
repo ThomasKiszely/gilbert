@@ -3,6 +3,6 @@ export const navLinks = [
     { label: "Brands", href: "/brands" },
     { label: "Women", href: "/products/filter?gender=Female" },
     { label: "Men", href: "/products/filter?gender=Male" },
-    { label: "Watches and Jewelry", href: "/products/filter?category=jewelry" },
-    { label: "Sale", href: "/sale", highlight: true },
+    { label: "Beauty", href: "/products/filter?category=jewelry" },
+    { label: "Home", href: "/products/filter?category=home" },
 ];

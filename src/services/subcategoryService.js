@@ -5,8 +5,8 @@ async function createSubcategory(subcategoryData) {
     return await subcategoryRepo.createSubcategory(subcategoryData);
 }
 
-async function readAllSubcategories() {
-    return await subcategoryRepo.readAllSubcategories();
+async function readAllSubcategories(filters) {
+    return await subcategoryRepo.readAllSubcategories(filters);
 }
 
 async function getSubcategoryName(id) {

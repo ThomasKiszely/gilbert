@@ -1,6 +1,7 @@
 const Product = require("../models/Product");
+const Gender = require("../models/Gender");
 const {Types} = require("mongoose");
-const POPULATE_FIELDS = 'category subcategory brand size condition color material tags seller';
+const POPULATE_FIELDS = 'category subcategory brand gender size condition color material tags seller';
 
 async function createProduct(productData) {
     const newProduct = new Product(productData);
@@ -42,7 +43,23 @@ async function findProducts(filters, page = 1, limit = 20) {
     }
 
     if (filters.gender) {
-        query.gender = filters.gender;
+        // Frontend sends name (e.g. "Male"), resolve to ObjectId
+        // Also include "Unisex" products when filtering by Male or Female
+        if (Types.ObjectId.isValid(filters.gender)) {
+            const unisexDoc = await Gender.findOne({ name: "Unisex" });
+            const ids = [new Types.ObjectId(filters.gender)];
+            if (unisexDoc) ids.push(unisexDoc._id);
+            query.gender = { $in: ids };
+        } else {
+            const [genderDoc, unisexDoc] = await Promise.all([
+                Gender.findOne({ name: filters.gender }),
+                Gender.findOne({ name: "Unisex" }),
+            ]);
+            const ids = [];
+            if (genderDoc) ids.push(genderDoc._id);
+            if (unisexDoc && filters.gender !== "Unisex") ids.push(unisexDoc._id);
+            if (ids.length > 0) query.gender = { $in: ids };
+        }
     }
 
     if (filters.conditions && filters.conditions.length > 0) {
@@ -154,6 +171,16 @@ async function searchProducts(filters, page = 1, limit = 20) {
                 as: 'tags',
             }
         },
+        // Join gender
+        {
+            $lookup: {
+                from: 'genders',
+                localField: 'gender',
+                foreignField: '_id',
+                as: 'gender',
+            }
+        },
+        { $unwind: { path: '$gender', preserveNullAndEmptyArrays: true } },
         {$match: { status: 'Approved' }},
 
         ...(filters.$or ? [{$match: { $or: filters.$or } }] : []),
@@ -175,6 +202,7 @@ async function findProductsBySeller(sellerId, includeAll = false) {
         .populate("category")
         .populate("subcategory")
         .populate("brand")
+        .populate("gender")
         .populate("size")
         .populate("condition")
         .populate("color")
@@ -252,6 +280,10 @@ async function getEditorsPicks(limit = 3) {
         {
             $lookup: { from: 'tags', localField: 'tags', foreignField: '_id', as: 'tags' }
         },
+        {
+            $lookup: { from: 'genders', localField: 'gender', foreignField: '_id', as: 'gender' }
+        },
+        { $unwind: { path: '$gender', preserveNullAndEmptyArrays: true } },
         {
             $lookup: { from: 'users', localField: 'seller', foreignField: '_id', as: 'seller' }
         },

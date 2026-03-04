@@ -4,8 +4,8 @@ async function createSize(sizeData) {
     return await sizeRepo.createSize(sizeData);
 }
 
-async function readAllSizes() {
-    return await sizeRepo.readAllSizes();
+async function readAllSizes(filters) {
+    return await sizeRepo.readAllSizes(filters);
 }
 
 module.exports = {

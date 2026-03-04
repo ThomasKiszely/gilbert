@@ -1,9 +1,8 @@
 const {Types} = require("mongoose");
 const Product = require("../models/Product");
-const {genders} = require("../utils/gender");
-const {validateEnum} = require("../utils/validate");
 const {sanitizeString} = require("../utils/sanitize");
 const {statuses} = require("../utils/statusType");
+const {validateEnum} = require("../utils/validate");
 
 function validateObjectId(id)
 {
@@ -36,14 +35,7 @@ function validateProduct(req, res, next)  {
         req.body.description = sanitizeString(description);
     }
 
-    // Gender via validateEnum
-    req.body.gender = validateEnum(
-        "gender",
-        gender,
-        genders,
-        sanitizeString,
-        errors
-    );
+    // Gender is now an ObjectId (no longer an enum string)
     if(status !== undefined) {
         req.body.status = validateEnum(
             "status",
@@ -55,7 +47,7 @@ function validateProduct(req, res, next)  {
     }
 
     // Validate ObjectIDs
-    const idFields = { category, subcategory, brand, size, condition, color, material };
+    const idFields = { category, subcategory, brand, gender, size, condition, color, material };
 
     for(const [key, value] of Object.entries(idFields)) {
         if(value && !validateObjectId(value)) {

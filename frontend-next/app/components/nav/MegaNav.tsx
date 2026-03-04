@@ -25,9 +25,13 @@ const GENDER_MAP: Record<string, string> = {
 
 const BRANDS_PREVIEW = 15;
 
+// Kategorier der skal være selvstændige menuer
+const SOLO_CATEGORIES = ["Home", "Beauty"];
+
 export default function MegaNav() {
     const [hovered, setHovered] = useState<string | null>(null);
-    const [tree, setTree] = useState<CategoryTree | null>(null);
+    const [genderTrees, setGenderTrees] = useState<Record<string, CategoryTree>>({});
+    const [soloTrees, setSoloTrees] = useState<Record<string, CategoryTree>>({});
     const [treeError, setTreeError] = useState(false);
     const [brands, setBrands] = useState<Brand[]>([]);
     const closeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -87,17 +91,35 @@ export default function MegaNav() {
     };
 
     useEffect(() => {
-        const fetchTree = async () => {
+        const fetchTrees = async () => {
             try {
-                const res = await api(`/api/categories/full`);
-                const data = await res.json();
-                setTree(data);
+                const [maleRes, femaleRes, homeRes, beautyRes] = await Promise.all([
+                    api(`/api/categories/full?gender=Male`),
+                    api(`/api/categories/full?gender=Female`),
+                    api(`/api/categories/full?category=Home`),
+                    api(`/api/categories/full?category=Beauty`),
+                ]);
+                const maleTree = await maleRes.json();
+                const femaleTree = await femaleRes.json();
+                let homeTree = await homeRes.json();
+                let beautyTree = await beautyRes.json();
+                // Filtrér Home/Beauty væk fra Men/Women
+                const filterSolo = (tree: CategoryTree) => {
+                    const t = { ...tree };
+                    SOLO_CATEGORIES.forEach(cat => delete t[cat]);
+                    return t;
+                };
+                // Home skal kun vise Home subcategories
+                homeTree = Object.fromEntries(Object.entries(homeTree).filter(([cat]) => cat === "Home"));
+                // Beauty skal kun vise Beauty subcategories
+                beautyTree = Object.fromEntries(Object.entries(beautyTree).filter(([cat]) => cat === "Beauty"));
+                setGenderTrees({ Men: filterSolo(maleTree), Women: filterSolo(femaleTree) });
+                setSoloTrees({ Home: homeTree, Beauty: beautyTree });
             } catch {
                 setTreeError(true);
-                setTree({});
             }
         };
-        fetchTree();
+        fetchTrees();
     }, []);
 
     useEffect(() => {
@@ -119,10 +141,12 @@ export default function MegaNav() {
                 {navLinks.map((link) => {
                     const isGender = link.label in GENDER_MAP;
                     const isBrands = link.label === "Brands";
-                    const hasDropdown = isGender || isBrands;
+                    // Tilføj Home/Beauty som solo
+                    const isSolo = SOLO_CATEGORIES.includes(link.label);
+                    const hasDropdown = isGender || isBrands || isSolo;
 
                     const sharedClassName = `text-[11px] sm:text-xs md:text-sm whitespace-nowrap px-2 md:px-3 py-1 transition-colors inline-block cursor-pointer ${
-                        link.highlight
+                        (link as any).highlight
                             ? "text-accent font-semibold hover:text-burgundy-light"
                             : hovered === link.label
                                 ? "text-foreground"
@@ -163,14 +187,14 @@ export default function MegaNav() {
                     onMouseEnter={() => handleEnter(hovered)}
                     onMouseLeave={handleLeave}
                 >
-                    <div className="bg-popover border border-border/50 rounded-lg shadow-xl p-4 md:p-6 max-w-[95vw] w-[90vw] md:w-[540px] mt-1">
-                        {tree === null ? (
+                    <div className="bg-popover border border-border/50 rounded-lg shadow-xl p-4 md:p-6 max-w-[95vw] w-auto mt-1">
+                        {!genderTrees[hovered] ? (
                             <p className="text-sm text-muted-foreground">Loading categories…</p>
-                        ) : treeError || Object.keys(tree).length === 0 ? (
+                        ) : treeError || Object.keys(genderTrees[hovered]).length === 0 ? (
                             <p className="text-sm text-muted-foreground">No categories found.</p>
                         ) : (
-                            <div className="flex flex-col sm:flex-row gap-6 md:gap-8 min-w-[250px] md:min-w-[500px]">
-                                {Object.entries(tree).map(([category, subs]) => (
+                            <div className="flex flex-wrap gap-6 md:gap-8">
+                                {Object.entries(genderTrees[hovered]).map(([category, subs]) => (
                                     <div key={`cat-${category}`} className="min-w-[8rem]">
                                         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 font-sans">
                                             {category}
@@ -217,7 +241,7 @@ export default function MegaNav() {
                     onMouseEnter={() => handleEnter("Brands")}
                     onMouseLeave={handleLeave}
                 >
-                    <div className="bg-popover border border-border/50 rounded-lg shadow-xl p-4 md:p-6 max-w-[95vw] w-[90vw] md:w-[540px] mt-1">
+                    <div className="bg-popover border border-border/50 rounded-lg shadow-xl p-4 md:p-6 max-w-[95vw] w-auto mt-1">
                         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
                             Popular brands
                         </h4>
@@ -225,7 +249,7 @@ export default function MegaNav() {
                         {brands.length === 0 ? (
                             <p className="text-sm text-muted-foreground">Loading brands…</p>
                         ) : (
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 min-w-[250px] md:min-w-[500px]">
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-2 min-w-[250px]">
                                 {brands.slice(0, BRANDS_PREVIEW).map((brand) => (
                                     <Link
                                         key={brand._id}
@@ -244,6 +268,60 @@ export default function MegaNav() {
                                 className="text-xs font-medium text-foreground/60 hover:text-foreground transition-colors uppercase tracking-wider"
                             >
                                 See all brands ({brands.length}) →
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Home/Beauty megamenu ── */}
+            {hovered && SOLO_CATEGORIES.includes(hovered) && (
+                <div
+                    className="absolute top-full left-0 right-0 z-[999] flex justify-center px-2 md:px-4"
+                    onMouseEnter={() => handleEnter(hovered)}
+                    onMouseLeave={handleLeave}
+                >
+                    <div className="bg-popover border border-border/50 rounded-lg shadow-xl p-4 md:p-6 max-w-[95vw] w-auto mt-1">
+                        {!soloTrees[hovered] ? (
+                            <p className="text-sm text-muted-foreground">Loading…</p>
+                        ) : treeError || Object.keys(soloTrees[hovered]).length === 0 ? (
+                            <p className="text-sm text-muted-foreground">No categories found.</p>
+                        ) : (
+                            <div className="flex flex-wrap gap-6 md:gap-8">
+                                {Object.entries(soloTrees[hovered]).map(([category, subs]) => (
+                                    <div key={`cat-${category}`} className="min-w-[8rem]">
+                                        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 font-sans">
+                                            {category}
+                                        </h4>
+                                        <ul className="space-y-2">
+                                            {Array.isArray(subs) && subs.length === 0 ? (
+                                                <li className="text-xs text-muted-foreground/60 italic">No subcategories</li>
+                                            ) : (
+                                                subs.map((sub) => (
+                                                    <li key={sub.id}>
+                                                        <Link
+                                                            href={`/products/filter?category=${category}&subcategory=${sub.id}`}
+                                                            className="text-sm text-foreground/70 hover:text-foreground flex items-center gap-1 group/item transition-colors"
+                                                        >
+                                                            <span>{sub.name}</span>
+                                                            <svg className="h-3 w-3 opacity-0 -translate-x-1 group-hover/item:opacity-100 group-hover/item:translate-x-0 transition-all duration-150" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                                                <path d="M9 5l7 7-7 7" />
+                                                            </svg>
+                                                        </Link>
+                                                    </li>
+                                                ))
+                                            )}
+                                        </ul>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <div className="mt-5 pt-4 border-t border-border/30">
+                            <Link
+                                href={`/products/filter?category=${hovered}`}
+                                className="text-xs font-medium text-foreground/60 hover:text-foreground transition-colors uppercase tracking-wider"
+                            >
+                                See everything in {hovered} →
                             </Link>
                         </div>
                     </div>
