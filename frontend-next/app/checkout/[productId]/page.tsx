@@ -1,13 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import StripePayment from "./StripePayment";
 import { Button } from "@/app/components/UI/button";
 import { useAuth } from "@/app/context/AuthContext";
-import { AlertTriangle, X, ExternalLink, ShieldAlert } from "lucide-react";
+import {
+    X,
+    ShieldAlert,
+    Truck,
+    ShieldCheck,
+    Tag,
+    ChevronDown,
+    Info,
+    CheckCircle2
+} from "lucide-react";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -21,10 +30,23 @@ export default function CheckoutPage() {
     const [orderId, setOrderId] = useState("");
     const [loading, setLoading] = useState(true);
     const [isPreparing, setIsPreparing] = useState(false);
+    const [isCalculating, setIsCalculating] = useState(false);
 
-    // Error Modal State
+    // Form states
+    const [shippingMethod, setShippingMethod] = useState("gls");
+    const [discountCode, setDiscountCode] = useState("");
+    const [appliedDiscount, setAppliedDiscount] = useState(false);
+
+    // Calculation State
+    const [amounts, setAmounts] = useState({
+        productPrice: 0,
+        shipping: 0,
+        discount: 0,
+        authenticationFee: 0,
+        total: 0
+    });
+
     const [stripeError, setStripeError] = useState<string | null>(null);
-
     const [address, setAddress] = useState({
         name: "",
         street: "",
@@ -34,13 +56,16 @@ export default function CheckoutPage() {
         country: "Denmark"
     });
 
+    // 1. Fetch Product
     useEffect(() => {
         const fetchProduct = async () => {
             try {
                 const res = await fetch(`/api/products/${productId}`);
                 if (res.ok) {
                     const data = await res.json();
-                    setProduct(data.product || data);
+                    const prod = data.product || data;
+                    setProduct(prod);
+                    setAmounts(prev => ({ ...prev, productPrice: prod.price, total: prod.price }));
                 }
             } catch (err) {
                 console.error("Error fetching product:", err);
@@ -51,6 +76,49 @@ export default function CheckoutPage() {
         fetchProduct();
     }, [productId]);
 
+    // 2. Calculate Checkout Logic
+    const calculateTotal = useCallback(async () => {
+        if (!address.zip || !address.city || address.zip.length < 4) return;
+
+        setIsCalculating(true);
+        try {
+            const res = await fetch(`/api/checkout/calculate`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${user?.token}`
+                },
+                body: JSON.stringify({
+                    productId,
+                    address,
+                    shippingMethod,
+                    discountCode: appliedDiscount ? discountCode : null
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                setAmounts({
+                    productPrice: data.productPrice,
+                    shipping: data.shipping,
+                    discount: data.discount,
+                    authenticationFee: data.authenticationFee,
+                    total: data.total
+                });
+            }
+        } catch (err) {
+            console.error("Calculation failed:", err);
+        } finally {
+            setIsCalculating(false);
+        }
+    }, [address.zip, address.city, productId, user?.token, shippingMethod, appliedDiscount, discountCode]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => calculateTotal(), 600);
+        return () => clearTimeout(timer);
+    }, [address.zip, address.city, shippingMethod, appliedDiscount, calculateTotal]);
+
+    // 3. Handle Order Creation
     const handlePreparePayment = async () => {
         if (!user) {
             router.push("/login");
@@ -73,6 +141,8 @@ export default function CheckoutPage() {
                 body: JSON.stringify({
                     productId,
                     address,
+                    shippingMethod, // Vi sender det valgte firma med
+                    discountCode: appliedDiscount ? discountCode : null,
                     bidId: null,
                     wantAuth: false
                 })
@@ -81,9 +151,8 @@ export default function CheckoutPage() {
             const data = await res.json();
 
             if (!res.ok) {
-                // ⭐ FANG DEN SPECIFIKKE STRIPE FEJL HER
                 if (data.requiresSellerStripeReconnect) {
-                    setStripeError("The seller's Stripe account is currently inactive. They must reconnect their account before this item can be purchased.");
+                    setStripeError("The seller's Stripe account is inactive. They must reconnect their account.");
                 } else {
                     alert(data.error || data.message || "Failed to initiate order");
                 }
@@ -95,168 +164,192 @@ export default function CheckoutPage() {
 
         } catch (err) {
             console.error("Payment preparation failed:", err);
-            alert("An error occurred connecting to the server.");
         } finally {
             setIsPreparing(false);
         }
     };
 
-    if (loading) return <div className="p-20 text-center text-zinc-500 font-mono uppercase text-xs tracking-widest text-white">Loading order details...</div>;
-    if (!product) return <div className="p-20 text-center text-zinc-500 text-white">Product not found.</div>;
+    if (loading) return (
+        <div className="min-h-screen bg-[#003d2b] flex flex-col items-center justify-center space-y-4">
+            <div className="w-12 h-12 border-4 border-white/10 border-t-white rounded-full animate-spin" />
+            <div className="font-mono text-[10px] uppercase tracking-[0.4em] text-white/40">Securing Session...</div>
+        </div>
+    );
+
+    if (!product) return <div className="min-h-screen bg-[#003d2b] flex items-center justify-center text-white font-black italic uppercase">Product not found</div>;
 
     return (
-        <div className="max-w-5xl mx-auto p-6 pt-24 min-h-screen relative">
+        <div className="min-h-screen bg-[#003d2b] pb-32">
+            <div className="max-w-6xl mx-auto p-6 pt-24">
 
-            {/* --- CUSTOM STRIPE ERROR MODAL --- */}
-            {stripeError && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] flex items-center justify-center p-6">
-                    <div className="bg-[#16302b] border border-white/10 w-full max-w-lg rounded-[3rem] p-10 shadow-2xl relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-burgundy/20 blur-3xl -mr-16 -mt-16" />
-
-                        <button onClick={() => setStripeError(null)} className="absolute top-8 right-8 text-zinc-500 hover:text-white transition-colors">
-                            <X size={24} />
-                        </button>
-
-                        <div className="flex flex-col items-center text-center space-y-6 relative z-10">
-                            <div className="w-20 h-20 bg-burgundy/10 rounded-full flex items-center justify-center border border-burgundy/20">
-                                <ShieldAlert size={40} className="text-burgundy-light" />
+                {/* STRIPE ERROR MODAL */}
+                {stripeError && (
+                    <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-white">
+                        <div className="bg-[#16302b] border border-white/10 w-full max-w-lg rounded-[3rem] p-10 shadow-2xl relative overflow-hidden">
+                            <button onClick={() => setStripeError(null)} className="absolute top-8 right-8 text-white/30 hover:text-white"><X size={24} /></button>
+                            <div className="flex flex-col items-center text-center space-y-6">
+                                <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center border border-red-500/20"><ShieldAlert size={40} className="text-red-500" /></div>
+                                <h3 className="text-2xl font-black italic">Action Required</h3>
+                                <p className="text-white/60 text-sm leading-relaxed">{stripeError}</p>
+                                <Button onClick={() => setStripeError(null)} className="w-full bg-white text-black py-4 rounded-2xl font-black uppercase tracking-widest text-[10px]">Close</Button>
                             </div>
+                        </div>
+                    </div>
+                )}
 
-                            <div>
-                                <h3 className="text-2xl font-serif font-black italic text-white mb-2">Merchant Action Required</h3>
-                                <p className="text-zinc-400 text-sm leading-relaxed italic font-serif">
-                                    {stripeError}
-                                </p>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+
+                    {/* LEFT SIDE: INPUTS */}
+                    <div className="lg:col-span-7 space-y-10">
+                        <div>
+                            <h2 className="text-5xl font-black uppercase italic tracking-tighter text-white leading-none">Checkout</h2>
+                            <p className="text-white/40 text-[10px] font-mono uppercase tracking-[0.3em] mt-3">Shipment & Verification</p>
+                        </div>
+
+                        {!clientSecret ? (
+                            <div className="space-y-6">
+                                {/* SHIPPING FORM */}
+                                <div className="bg-black/20 p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-sm shadow-2xl space-y-4">
+                                    <div className="flex items-center gap-3 mb-4 text-white/60">
+                                        <Info size={14} />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Delivery Address</span>
+                                    </div>
+                                    <input className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none focus:bg-white/10 transition-all font-bold placeholder:text-white/10" placeholder="Full Name" value={address.name} onChange={e => setAddress({...address, name: e.target.value})} />
+                                    <div className="flex gap-4">
+                                        <input className="flex-[3] bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none focus:bg-white/10 transition-all font-bold placeholder:text-white/10" placeholder="Street Address" value={address.street} onChange={e => setAddress({...address, street: e.target.value})} />
+                                        <input className="flex-1 bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none focus:bg-white/10 transition-all text-center font-mono placeholder:text-white/10" placeholder="No." value={address.houseNumber} onChange={e => setAddress({...address, houseNumber: e.target.value})} />
+                                    </div>
+                                    <div className="flex gap-4">
+                                        <input className="w-1/3 bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none focus:bg-white/10 transition-all font-mono placeholder:text-white/10" placeholder="Zip" maxLength={4} value={address.zip} onChange={e => setAddress({...address, zip: e.target.value})} />
+                                        <input className="flex-1 bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none focus:bg-white/10 transition-all font-bold placeholder:text-white/10" placeholder="City" value={address.city} onChange={e => setAddress({...address, city: e.target.value})} />
+                                    </div>
+                                </div>
+
+                                {/* SHIPPING METHOD DROPDOWN */}
+                                <div className="bg-black/20 p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-sm shadow-2xl">
+                                    <div className="flex items-center gap-3 mb-6 text-white/60">
+                                        <Truck size={14} />
+                                        <span className="text-[10px] font-black uppercase tracking-widest">Select Shipping Method</span>
+                                    </div>
+                                    <div className="relative group">
+                                        <select
+                                            value={shippingMethod}
+                                            onChange={(e) => setShippingMethod(e.target.value)}
+                                            className="w-full appearance-none bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none font-bold cursor-pointer hover:bg-white/10 transition-all"
+                                        >
+                                            <option value="gls" className="bg-[#16302b]">GLS - Home Delivery</option>
+                                            <option value="dao" className="bg-[#16302b]">DAO - Home Delivery</option>
+                                            <option value="bring" className="bg-[#16302b]">Bring - Service Point</option>
+                                        </select>
+                                        <ChevronDown size={18} className="absolute right-5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none group-hover:text-white" />
+                                    </div>
+                                </div>
+
+                                <Button
+                                    onClick={handlePreparePayment}
+                                    disabled={isPreparing || isCalculating}
+                                    className="w-full bg-white text-black py-8 rounded-[2rem] text-xs font-black uppercase tracking-[0.2em] shadow-2xl hover:scale-[1.02] transition-all disabled:opacity-50"
+                                >
+                                    {isPreparing ? "Initializing..." : "Proceed to Payment"}
+                                </Button>
                             </div>
+                        ) : (
+                            <div className="bg-white p-10 rounded-[3rem] shadow-2xl">
+                                <Elements stripe={stripePromise} options={{ clientSecret }}>
+                                    <StripePayment orderId={orderId} clientSecret={clientSecret} />
+                                </Elements>
+                            </div>
+                        )}
+                    </div>
 
-                            <div className="w-full bg-black/40 border border-white/5 rounded-2xl p-4 text-left">
-                                <p className="text-[10px] uppercase tracking-widest font-black text-zinc-500 mb-2">Share help-link with seller:</p>
-                                <div className="flex items-center justify-between bg-white/5 p-3 rounded-lg border border-white/5">
-                                    <code className="text-[10px] text-burgundy-light truncate mr-4">
-                                        {typeof window !== 'undefined' ? `${window.location.origin}/settings/payouts` : ""}
-                                    </code>
-                                    <button
-                                        onClick={() => {
-                                            navigator.clipboard.writeText(`${window.location.origin}/settings/payouts`);
-                                            alert("Link copied!");
-                                        }}
-                                        className="text-[9px] font-black uppercase tracking-widest text-white hover:text-burgundy-light transition-colors shrink-0"
-                                    >
-                                        Copy Link
-                                    </button>
+                    {/* RIGHT SIDE: SUMMARY */}
+                    <div className="lg:col-span-5">
+                        <div className="bg-[#16302b] rounded-[3rem] p-10 border border-white/10 shadow-2xl sticky top-24 text-white">
+                            <h3 className="text-[10px] uppercase tracking-[0.3em] font-black text-white/50 mb-10">Order Summary</h3>
+
+                            <div className="flex gap-6 mb-10 items-start">
+                                <div className="w-24 h-24 bg-black/40 rounded-[1.5rem] overflow-hidden border border-white/10 shrink-0">
+                                    {product.images?.[0] && <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover" />}
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="font-bold text-xl leading-tight truncate uppercase tracking-tighter italic">{product.title}</p>
+                                    <p className="text-white/60 text-[10px] mt-1 font-mono uppercase tracking-widest">
+                                        {typeof product.category === 'object' ? product.category.name : (product.category || 'Item')}
+                                    </p>
                                 </div>
                             </div>
 
-                            <Button
-                                onClick={() => setStripeError(null)}
-                                className="w-full bg-white text-black py-5 rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-zinc-200"
-                            >
-                                Understood
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                {/* LEFT SIDE */}
-                <div className="space-y-8">
-                    <h2 className="text-3xl font-black uppercase italic tracking-tighter text-burgundy-light">
-                        {clientSecret ? "Secure Payment" : "Shipping Details"}
-                    </h2>
-
-                    {!clientSecret ? (
-                        <div className="space-y-4 bg-white/5 p-8 rounded-[2rem] border border-white/10 shadow-2xl">
-                            <input
-                                className="w-full bg-black/40 border border-white/10 p-4 rounded-xl text-white focus:border-burgundy outline-none transition-all italic font-serif"
-                                placeholder="Full Name"
-                                value={address.name}
-                                onChange={e => setAddress({...address, name: e.target.value})}
-                            />
-
-                            <div className="flex gap-4">
+                            {/* DISCOUNT CODE BOX */}
+                            <div className="mb-8 flex gap-2">
                                 <input
-                                    className="flex-[3] bg-black/40 border border-white/10 p-4 rounded-xl text-white focus:border-burgundy outline-none transition-all italic font-serif"
-                                    placeholder="Street Name"
-                                    value={address.street}
-                                    onChange={e => setAddress({...address, street: e.target.value})}
+                                    className="flex-1 bg-black/40 border border-white/5 p-4 rounded-xl text-[10px] uppercase font-black tracking-widest text-white outline-none focus:border-white/20"
+                                    placeholder="Discount Code"
+                                    value={discountCode}
+                                    onChange={(e) => setDiscountCode(e.target.value)}
                                 />
-                                <input
-                                    className="flex-1 bg-black/40 border border-white/10 p-4 rounded-xl text-white focus:border-burgundy outline-none transition-all text-center font-mono"
-                                    placeholder="No."
-                                    value={address.houseNumber}
-                                    onChange={e => setAddress({...address, houseNumber: e.target.value})}
-                                />
+                                <button
+                                    onClick={() => setAppliedDiscount(true)}
+                                    className="bg-white/10 hover:bg-white/20 px-4 rounded-xl transition-all"
+                                >
+                                    <CheckCircle2 size={18} className={appliedDiscount ? "text-green-500" : "text-white/20"} />
+                                </button>
                             </div>
 
-                            <div className="flex gap-4">
-                                <input
-                                    className="w-1/3 bg-black/40 border border-white/10 p-4 rounded-xl text-white focus:border-burgundy outline-none transition-all font-mono"
-                                    placeholder="Zip Code"
-                                    maxLength={4}
-                                    value={address.zip}
-                                    onChange={e => setAddress({...address, zip: e.target.value})}
-                                />
-                                <input
-                                    className="flex-1 bg-black/40 border border-white/10 p-4 rounded-xl text-white focus:border-burgundy outline-none transition-all italic font-serif"
-                                    placeholder="City"
-                                    value={address.city}
-                                    onChange={e => setAddress({...address, city: e.target.value})}
-                                />
+                            <div className="space-y-5 py-8 border-y border-white/10 mb-8">
+                                <div className="flex justify-between text-xs items-center">
+                                    <span className="text-white/50 uppercase font-black tracking-widest">Price</span>
+                                    <span className="font-bold text-base">{amounts.productPrice} DKK</span>
+                                </div>
+                                <div className="flex justify-between text-xs items-center">
+                                    <div className="flex items-center gap-2">
+                                        <Truck size={14} className="text-white/30" />
+                                        <span className="text-white/50 uppercase font-black tracking-widest">Shipping ({shippingMethod.toUpperCase()})</span>
+                                    </div>
+                                    <span className={`font-bold text-base ${isCalculating ? "animate-pulse" : ""}`}>
+                                        {amounts.shipping > 0 ? `${amounts.shipping} DKK` : "Calculating..."}
+                                    </span>
+                                </div>
+
+                                {amounts.authenticationFee > 0 && (
+                                    <div className="flex justify-between text-xs items-center text-amber-400">
+                                        <div className="flex items-center gap-2">
+                                            <ShieldCheck size={14} />
+                                            <span className="uppercase font-black tracking-widest">Authentication Fee</span>
+                                        </div>
+                                        <span className="font-bold text-base">+{amounts.authenticationFee} DKK</span>
+                                    </div>
+                                )}
+
+                                {amounts.discount > 0 && (
+                                    <div className="flex justify-between text-xs items-center text-green-400 font-black">
+                                        <div className="flex items-center gap-2">
+                                            <Tag size={14} />
+                                            <span className="uppercase tracking-widest">Discount</span>
+                                        </div>
+                                        <span className="text-base">-{amounts.discount} DKK</span>
+                                    </div>
+                                )}
                             </div>
 
-                            <Button
-                                onClick={handlePreparePayment}
-                                disabled={isPreparing}
-                                className="w-full bg-white hover:bg-zinc-200 text-black py-8 rounded-2xl text-lg font-bold uppercase tracking-widest mt-4 shadow-xl transition-all active:scale-95 disabled:opacity-50"
-                            >
-                                {isPreparing ? "Preparing Order..." : "Continue to Payment"}
-                            </Button>
-                        </div>
-                    ) : (
-                        <div className="bg-white p-8 rounded-[2rem] shadow-2xl">
-                            <Elements stripe={stripePromise} options={{ clientSecret }}>
-                                <StripePayment orderId={orderId} clientSecret={clientSecret} />
-                            </Elements>
-                        </div>
-                    )}
-                </div>
+                            <div className="flex justify-between items-end mb-10">
+                                <div>
+                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/50 block mb-1">Total Payment</span>
+                                    <div className="h-1 w-8 bg-white/20 rounded-full" />
+                                </div>
+                                <span className="text-5xl font-black tracking-tighter italic leading-none">{amounts.total} DKK</span>
+                            </div>
 
-                {/* RIGHT SIDE (Order Summary) */}
-                <div className="bg-[#16302b] rounded-[3rem] p-10 border border-white/5 shadow-2xl h-fit lg:sticky lg:top-24 text-white">
-                    <h3 className="text-xs uppercase tracking-[0.2em] font-bold text-zinc-500 mb-8">Order Summary</h3>
-
-                    <div className="flex gap-6 mb-8 items-center">
-                        <div className="w-24 h-24 bg-black/20 rounded-2xl overflow-hidden border border-white/10">
-                            {product.images?.[0] && (
-                                <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover" />
-                            )}
-                        </div>
-                        <div>
-                            <p className="font-bold text-lg leading-tight">{product.title}</p>
-                            <p className="text-burgundy-light font-black text-2xl mt-1">{product.price} DKK</p>
+                            <div className="p-6 bg-black/30 rounded-[2rem] border border-white/5 backdrop-blur-sm">
+                                <div className="flex items-start gap-4">
+                                    <div className="mt-1 h-2 w-2 rounded-full bg-green-500 animate-pulse shrink-0" />
+                                    <p className="text-[10px] text-white/60 leading-relaxed uppercase tracking-widest font-medium">
+                                        <span className="text-white font-black block mb-1">Escrow Protection Active</span>
+                                        Payment is held securely and only released to the seller after your confirmation.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </div>
-
-                    <div className="space-y-3 py-6 border-y border-white/5 mb-6">
-                        <div className="flex justify-between text-sm italic font-serif">
-                            <span className="text-zinc-400">Subtotal</span>
-                            <span className="font-bold">{product.price} DKK</span>
-                        </div>
-                        <div className="flex justify-between text-[10px] font-black text-green-400 uppercase tracking-widest">
-                            <span>Shipping</span>
-                            <span>Insured & Tracked</span>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                        <span className="text-lg font-bold uppercase tracking-tighter">Total Amount</span>
-                        <span className="text-3xl font-black">{product.price} DKK</span>
-                    </div>
-
-                    <p className="text-[10px] text-zinc-500 mt-8 leading-relaxed italic font-serif">
-                        By proceeding, you agree to the escrow terms. Your money is only released to the seller once you've confirmed receipt of the item.
-                    </p>
                 </div>
             </div>
         </div>

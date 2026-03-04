@@ -28,6 +28,8 @@ const orderRouter = require('./routes/orderRoutes');
 const reviewRouter = require('./routes/reviewRoutes');
 const authenticationRouter = require('./routes/authenticationRoutes');
 const stripeRouter = require('./routes/stripeRoutes');
+const checkoutRouter = require('./routes/checkoutRoutes');
+const discountCodeRoutes = require('./routes/discountCodeRoutes');
 const cookieParser = require('cookie-parser') ;
 const { limitRate } = require('./middlewares/rateLimiter');
 const { log } = require('./middlewares/logger');
@@ -77,11 +79,13 @@ app.use('/api/reports', reportRouter);
 app.use('/api/orders', orderRouter);
 app.use('/api/reviews', reviewRouter);
 app.use('/api/stripe', stripeRouter);
+app.use('/api/checkout', checkoutRouter );
 
 //Favorites
 app.use('/api/favorites', favoriteRouter);
 
 // Admin routes
+app.use('/api/discount-codes', discountCodeRoutes);
 app.use('/api/admin', requireAuth, requireRole("admin"), adminRouter);
 app.use('/api/authentication', requireAuth, requireRole("admin"), authenticationRouter);
 

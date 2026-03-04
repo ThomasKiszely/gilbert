@@ -1,7 +1,7 @@
 'use client';
 
 import Link from "next/link";
-import { BookOpen, AlertCircle, ShoppingBag, Gavel, ShieldCheck, Users, Package, CheckSquare } from "lucide-react";
+import { BookOpen, Tag, AlertCircle, ShoppingBag, Gavel, ShieldCheck, Users, Package, CheckSquare } from "lucide-react";
 
 export default function AdminDashboard() {
     return (
@@ -80,6 +80,15 @@ export default function AdminDashboard() {
                         <BookOpen className="h-5 w-5 opacity-40" />
                     </div>
                     <p className="text-sm text-brown">Write stories and manage your blog posts</p>
+                </Link>
+
+                {/* DISCOUNT CODES */}
+                <Link href="/admin/discounts" className="p-6 rounded-xl bg-ivory text-burgundy shadow-md hover:-translate-y-1 transition border border-transparent hover:border-burgundy/20">
+                    <div className="flex justify-between items-start">
+                        <h2 className="text-xl font-semibold">Discount Codes</h2>
+                        <Tag className="h-5 w-5 opacity-40" />
+                    </div>
+                    <p className="text-sm text-brown">Create and manage promotional campaigns</p>
                 </Link>
 
             </div>

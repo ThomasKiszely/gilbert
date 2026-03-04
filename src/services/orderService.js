@@ -36,19 +36,22 @@ function validateAddress(address) {
 }
 
 
-// ⭐ initiateOrder kræver nu adresse fra frontend
-async function initiateOrder(productId, buyerId, address, bidId = null, wantAuth = false) {
-
-    // ⭐ Valider adresse INDEN noget andet
+async function initiateOrder(
+    productId,
+    buyerId,
+    address,
+    bidId = null,
+    wantAuth = false,
+    discountCode = null,
+    shippingMethod = null
+) {
     validateAddress(address);
 
-    // 1. Hent produktet og valider status
     const product = await productRepo.getProductById(productId);
     if (!product || product.status !== 'Approved') {
         throw new Error("This product is not available for purchase.");
     }
 
-    // Valider sælger adresse:
     const seller = product.seller;
 
     if (!seller.profile?.address?.street ||
@@ -68,7 +71,6 @@ async function initiateOrder(productId, buyerId, address, bidId = null, wantAuth
 
     let finalPrice = product.price;
 
-    // 2. Valider bud hvis et bidId er medsendt
     if (bidId) {
         const bid = await bidRepo.getBidById(bidId);
         if (!bid || bid.productId.toString() !== productId.toString()) {
@@ -83,21 +85,47 @@ async function initiateOrder(productId, buyerId, address, bidId = null, wantAuth
         finalPrice = bid.counterAmount || bid.amount;
     }
 
-    // 3. Authentication logik
+    // ⭐ Fragtpris fra Shipmondo
+    const rate = await shippingService.getRate({
+        fromAddress: seller.profile.address,
+        toAddress: address,
+        weight: product.weight,
+        dimensions: product.dimensions,
+        shippingMethod,
+    });
+    const shippingPrice = rate.price;
+
+    // ⭐ Rabatkode
+    let discountAmount = 0;
+    let appliedDiscountId = null;
+
+    if (discountCode) {
+        const result = await discountCodeService.validateAndCalculate({
+            code: discountCode,
+            userId: buyerId,
+            product,
+            basePrice: finalPrice,
+        });
+
+        if (result.valid) {
+            discountAmount = result.discountAmount;
+            appliedDiscountId = result.discount._id;
+        }
+    }
+
     const isAuthForced = finalPrice >= AUTH_THRESHOLD;
     const requiresAuthentication = isAuthForced || wantAuth;
     const currentAuthFee = requiresAuthentication ? AUTHENTICATION_FEE : 0;
 
-    // 4. Beregn økonomi
     const platformFee = Math.round(finalPrice * (PLATFORM_FEE_PERCENT / 100));
     const sellerPayout = finalPrice - platformFee;
-    const totalAmount = finalPrice + currentAuthFee;
 
-    // 5. Forbered ordre-data
+    const totalAmount = finalPrice - discountAmount + shippingPrice + currentAuthFee;
+
     const orderData = {
         product: productId,
         buyer: buyerId,
-        seller: product.seller._id,
+        seller: seller._id,
         totalAmount,
         platformFee,
         sellerPayout,
@@ -105,21 +133,17 @@ async function initiateOrder(productId, buyerId, address, bidId = null, wantAuth
         authenticationFee: currentAuthFee,
         authenticationStatus: requiresAuthentication ? 'pending' : 'not_required',
         status: 'pending',
-
-        // ⭐ Gem køberens adresse direkte på ordren
-        shippingAddress: address
+        shippingAddress: address,
+        shippingPrice,
+        discountCode: appliedDiscountId,
+        discountAmount,
     };
 
-    // 6. Opret ordren
     const order = await orderRepo.createOrder(orderData);
 
-    // Auto-reject alle bud på produktet, da det nu er reserveret til køberen
     await autoRejectBidsForPurchasedProduct(productId);
 
-
-    // 7. Opret Stripe PaymentIntent
     let paymentIntent;
-
     try {
         paymentIntent = await stripe.paymentIntents.create({
             amount: totalAmount * 100,
@@ -127,18 +151,16 @@ async function initiateOrder(productId, buyerId, address, bidId = null, wantAuth
             capture_method: 'manual',
             application_fee_amount: platformFee * 100,
             transfer_data: {
-                destination: product.seller.stripeAccountId
+                destination: seller.stripeAccountId
             },
             metadata: {
                 orderId: order._id.toString(),
                 productId: productId.toString(),
                 buyerId: buyerId.toString(),
-                sellerId: product.seller._id.toString()
+                sellerId: seller._id.toString()
             }
         });
     } catch (err) {
-
-        // ⭐ Stripe siger at sælgers konto er inaktiv / slettet
         if (
             err.code === "account_invalid" ||
             err.code === "destination_account_inactive" ||
@@ -154,8 +176,6 @@ async function initiateOrder(productId, buyerId, address, bidId = null, wantAuth
         throw err;
     }
 
-
-    // 8. Gem PaymentIntent ID
     await orderRepo.updateOrderPaymentIntentId(order._id, paymentIntent.id);
 
     return {
@@ -163,6 +183,7 @@ async function initiateOrder(productId, buyerId, address, bidId = null, wantAuth
         clientSecret: paymentIntent.client_secret
     };
 }
+
 
 async function getOrderById(orderId, userId) {
     const order = await orderRepo.findOrderById(orderId);

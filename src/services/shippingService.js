@@ -2,6 +2,8 @@
 const axios = require('axios');
 const orderRepo = require('../data/orderRepo');
 const { GILBERT_SHIPPING_ADDRESS } = require('../utils/platformSettings');
+const shipmondoClient = require("../utils/shipmondoClient");
+
 
 const countries = require("i18n-iso-countries");
 countries.registerLocale(require("i18n-iso-countries/langs/en.json"));
@@ -229,7 +231,27 @@ async function createForwardLabel(orderId) {
     return response.data;
 }
 
+
+async function getRate({ fromAddress, toAddress, weight, dimensions }) {
+    // Tilpas til jeres faktiske Shipmondo‑client
+    const payload = {
+        from: fromAddress,
+        to: toAddress,
+        weight,
+        dimensions,
+    };
+
+    const res = await shipmondoClient.getRate(payload);
+    // Antag res.total er pris i DKK
+    return {
+        price: res.total,
+        raw: res,
+    };
+}
+
+
 module.exports = {
     createShipmondoLabel,
-    createForwardLabel
+    createForwardLabel,
+    getRate,
 };
