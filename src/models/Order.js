@@ -37,7 +37,8 @@ const orderSchema = new mongoose.Schema({
             'disputed',
             'awaiting_return',
             'completed',
-            'cancelled'
+            'cancelled',
+            'awaiting_pickup'
         ],
         default: 'pending'
     },

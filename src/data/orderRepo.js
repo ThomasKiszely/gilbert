@@ -200,6 +200,16 @@ async function findByExternalShippingId(id) {
         .populate('product');
 }
 
+async function updateOrderAfterPickup(orderId, updateData) {
+    return Order.findByIdAndUpdate(orderId, updateData, { new: true });
+}
+
+async function countOrdersByBuyer(buyerId) {
+    return await Order.countDocuments({
+        buyer: buyerId,
+        status: { $in: ['completed', 'delivered', 'paid', 'shipped'] }
+    });
+}
 
 
 module.exports = {
@@ -223,4 +233,6 @@ module.exports = {
     setDeliveredAt,
     setPayoutEligibleAt,
     findByExternalShippingId,
+    updateOrderAfterPickup,
+    countOrdersByBuyer,
 };

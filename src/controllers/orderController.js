@@ -5,7 +5,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 async function initiateOrder(req, res, next) {
     try {
         // Vi trækker 'address' ud fra req.body (som vi sender fra Next.js)
-        const { productId, bidId, wantAuth, address } = req.body;
+        const { productId, bidId, wantAuth, address, discountCode, shippingMethod } = req.body;
         const buyerId = req.user._id;
 
         // VIGTIGT: Vi sender 'address' med som det 3. argument,
@@ -13,7 +13,7 @@ async function initiateOrder(req, res, next) {
         const result = await orderService.initiateOrder(
             productId,
             buyerId,
-            address, // <--- Her er den!
+            address,
             bidId,
             wantAuth,
             discountCode,
@@ -155,6 +155,26 @@ async function approveDelivery(req, res, next) {
     }
 }
 
+async function confirmPickup(req, res, next) {
+    try {
+        const orderId = req.params.orderId;
+        const buyerId = req.user.id;
+
+        const updatedOrder = await orderService.confirmPickup(orderId, buyerId);
+
+        return res.json({
+            success: true,
+            message: "Pickup confirmed. Your 72-hour protection period has started.",
+            order: updatedOrder
+        });
+
+    } catch (err) {
+        next(err);
+    }
+}
+
+
+
 
 module.exports = {
     initiateOrder,
@@ -164,5 +184,6 @@ module.exports = {
     getOrderById,
     getMySales,
     handleShipmondoWebhook,
-    approveDelivery
+    approveDelivery,
+    confirmPickup,
 };

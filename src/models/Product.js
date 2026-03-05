@@ -26,6 +26,7 @@ const productSchema = new mongoose.Schema({
             // 'set' runder automatisk op/ned til nærmeste heltal, hvis nogen sender 1000.5
             set: v => Math.round(v)
         },
+    isLargeItem: {type: Boolean, default: false},
 },
 {timestamps: true });
 module.exports = mongoose.model('Product', productSchema);

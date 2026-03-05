@@ -16,7 +16,8 @@ import {
     ChevronDown,
     Info,
     CheckCircle2,
-    Loader2
+    Loader2,
+    PackageSearch // Ny ikon til store varer
 } from "lucide-react";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -47,6 +48,9 @@ export default function CheckoutPage() {
         total: 0
     });
 
+    // Ny state til at holde styr på om det er en stor vare
+    const [isLargeItem, setIsLargeItem] = useState(false);
+
     const [stripeError, setStripeError] = useState<string | null>(null);
     const [address, setAddress] = useState({
         name: "",
@@ -66,6 +70,8 @@ export default function CheckoutPage() {
                     const data = await res.json();
                     const prod = data.product || data;
                     setProduct(prod);
+                    // ⭐ Tjek om varen er markeret som stor
+                    setIsLargeItem(prod.isLargeItem === true);
                     setAmounts(prev => ({ ...prev, productPrice: prod.price, total: prod.price }));
                 }
             } catch (err) {
@@ -79,8 +85,8 @@ export default function CheckoutPage() {
 
     // 2. Calculate Checkout Logic
     const calculateTotal = useCallback(async (forcedCode?: string | null) => {
-        // Vi kræver zip/by for at beregne fragt korrekt
-        if (!address.zip || !address.city || address.zip.length < 4) return;
+        // Vi kræver zip/by for at beregne fragt korrekt (medmindre det er afhentning)
+        if (!isLargeItem && (!address.zip || !address.city || address.zip.length < 4)) return;
 
         setIsCalculating(true);
         try {
@@ -93,8 +99,8 @@ export default function CheckoutPage() {
                 body: JSON.stringify({
                     productId,
                     address,
-                    shippingMethod,
-                    // Hvis forcedCode er defineret (selv som null), bruger vi den, ellers tjekker vi appliedDiscount staten
+                    // Hvis det er en stor vare, sender vi 'manual' som metode
+                    shippingMethod: isLargeItem ? "manual" : shippingMethod,
                     discountCode: forcedCode !== undefined ? forcedCode : (appliedDiscount ? discountCode : null)
                 })
             });
@@ -114,7 +120,7 @@ export default function CheckoutPage() {
         } finally {
             setIsCalculating(false);
         }
-    }, [address.zip, address.city, productId, user?.token, shippingMethod, appliedDiscount, discountCode]);
+    }, [address.zip, address.city, productId, user?.token, shippingMethod, appliedDiscount, discountCode, isLargeItem]);
 
     // Re-calculate when shipping or address changes
     useEffect(() => {
@@ -137,7 +143,7 @@ export default function CheckoutPage() {
                 body: JSON.stringify({
                     productId,
                     address,
-                    shippingMethod,
+                    shippingMethod: isLargeItem ? "manual" : shippingMethod,
                     discountCode: discountCode
                 })
             });
@@ -167,7 +173,6 @@ export default function CheckoutPage() {
     const removeDiscount = () => {
         setAppliedDiscount(false);
         setDiscountCode("");
-        // Genberegn med null kode
         calculateTotal(null);
     };
 
@@ -194,7 +199,7 @@ export default function CheckoutPage() {
                 body: JSON.stringify({
                     productId,
                     address,
-                    shippingMethod,
+                    shippingMethod: isLargeItem ? "manual" : shippingMethod,
                     discountCode: appliedDiscount ? discountCode : null,
                     bidId: null,
                     wantAuth: false
@@ -256,7 +261,9 @@ export default function CheckoutPage() {
                     <div className="lg:col-span-7 space-y-10">
                         <div>
                             <h2 className="text-5xl font-black uppercase italic tracking-tighter text-white leading-none">Checkout</h2>
-                            <p className="text-white/40 text-[10px] font-mono uppercase tracking-[0.3em] mt-3">Shipment & Verification</p>
+                            <p className="text-white/40 text-[10px] font-mono uppercase tracking-[0.3em] mt-3">
+                                {isLargeItem ? "Manual Pickup Arrangement" : "Shipment & Verification"}
+                            </p>
                         </div>
 
                         {!clientSecret ? (
@@ -265,7 +272,9 @@ export default function CheckoutPage() {
                                 <div className="bg-black/20 p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-sm shadow-2xl space-y-4">
                                     <div className="flex items-center gap-3 mb-4 text-white/60">
                                         <Info size={14} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">Delivery Address</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest">
+                                            {isLargeItem ? "Your Contact Information" : "Delivery Address"}
+                                        </span>
                                     </div>
                                     <input className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none focus:bg-white/10 transition-all font-bold placeholder:text-white/10" placeholder="Full Name" value={address.name} onChange={e => setAddress({...address, name: e.target.value})} />
                                     <div className="flex gap-4">
@@ -278,24 +287,41 @@ export default function CheckoutPage() {
                                     </div>
                                 </div>
 
-                                {/* SHIPPING METHOD DROPDOWN */}
+                                {/* ⭐ SHIPPING METHOD / LARGE ITEM INFO */}
                                 <div className="bg-black/20 p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-sm shadow-2xl">
                                     <div className="flex items-center gap-3 mb-6 text-white/60">
                                         <Truck size={14} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">Select Shipping Method</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest">
+                                            {isLargeItem ? "Pickup Arrangement" : "Select Shipping Method"}
+                                        </span>
                                     </div>
-                                    <div className="relative group">
-                                        <select
-                                            value={shippingMethod}
-                                            onChange={(e) => setShippingMethod(e.target.value)}
-                                            className="w-full appearance-none bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none font-bold cursor-pointer hover:bg-white/10 transition-all"
-                                        >
-                                            <option value="gls" className="bg-[#16302b]">GLS - Home Delivery</option>
-                                            <option value="dao" className="bg-[#16302b]">DAO - Home Delivery</option>
-                                            <option value="bring" className="bg-[#16302b]">Bring - Service Point</option>
-                                        </select>
-                                        <ChevronDown size={18} className="absolute right-5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none group-hover:text-white" />
-                                    </div>
+
+                                    {isLargeItem ? (
+                                        /* Vis dette hvis varen er et møbel/stor vare */
+                                        <div className="flex items-start gap-4 p-5 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
+                                            <PackageSearch className="text-amber-500 shrink-0" size={24} />
+                                            <div>
+                                                <p className="text-xs font-black uppercase text-amber-500 mb-1">Large Item Policy</p>
+                                                <p className="text-[10px] text-white/60 leading-relaxed uppercase font-medium">
+                                                    This item is too large for standard shipping. You and the seller must arrange pickup or 3rd party delivery manually after purchase.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        /* Vis dette for normale varer */
+                                        <div className="relative group">
+                                            <select
+                                                value={shippingMethod}
+                                                onChange={(e) => setShippingMethod(e.target.value)}
+                                                className="w-full appearance-none bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none font-bold cursor-pointer hover:bg-white/10 transition-all"
+                                            >
+                                                <option value="gls" className="bg-[#16302b]">GLS - Home Delivery</option>
+                                                <option value="dao" className="bg-[#16302b]">DAO - Home Delivery</option>
+                                                <option value="bring" className="bg-[#16302b]">Bring - Service Point</option>
+                                            </select>
+                                            <ChevronDown size={18} className="absolute right-5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none group-hover:text-white" />
+                                        </div>
+                                    )}
                                 </div>
 
                                 <Button
@@ -374,10 +400,12 @@ export default function CheckoutPage() {
                                 <div className="flex justify-between text-xs items-center">
                                     <div className="flex items-center gap-2">
                                         <Truck size={14} className="text-white/30" />
-                                        <span className="text-white/50 uppercase font-black tracking-widest">Shipping ({shippingMethod.toUpperCase()})</span>
+                                        <span className="text-white/50 uppercase font-black tracking-widest">
+                                            {isLargeItem ? "Delivery" : `Shipping (${shippingMethod.toUpperCase()})`}
+                                        </span>
                                     </div>
                                     <span className={`font-bold text-base ${isCalculating ? "animate-pulse" : ""}`}>
-                                        {amounts.shipping > 0 ? `${amounts.shipping} DKK` : "Calculating..."}
+                                        {isLargeItem ? "Arranged Manually" : (amounts.shipping > 0 ? `${amounts.shipping} DKK` : "Calculating...")}
                                     </span>
                                 </div>
 
@@ -410,12 +438,15 @@ export default function CheckoutPage() {
                                 <span className="text-5xl font-black tracking-tighter italic leading-none">{amounts.total} DKK</span>
                             </div>
 
+                            {/* ESCROW INFO BOX */}
                             <div className="p-6 bg-black/30 rounded-[2rem] border border-white/5 backdrop-blur-sm">
                                 <div className="flex items-start gap-4">
                                     <div className="mt-1 h-2 w-2 rounded-full bg-green-500 animate-pulse shrink-0" />
                                     <p className="text-[10px] text-white/60 leading-relaxed uppercase tracking-widest font-medium">
                                         <span className="text-white font-black block mb-1">Escrow Protection Active</span>
-                                        Payment is held securely and only released to the seller after your confirmation.
+                                        {isLargeItem
+                                            ? "Payment is held securely. You must manually confirm receipt in the app once you have picked up the item to start the 72h protection window."
+                                            : "Payment is held securely and only released to the seller after your confirmation."}
                                     </p>
                                 </div>
                             </div>

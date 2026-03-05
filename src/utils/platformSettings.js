@@ -26,5 +26,6 @@ module.exports = {
         length: 40,
         width: 30,
         height: 20
-    }
+    },
+    NO_SHIPPING_SUBCATEGORIES: ["furniture"]
 };

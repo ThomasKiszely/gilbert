@@ -18,7 +18,8 @@ const {
     PLATFORM_FEE_PERCENT,
     AUTHENTICATION_FEE,
     AUTH_THRESHOLD,
-    DEFAULT_PACKAGE_DIMENSIONS
+    DEFAULT_PACKAGE_DIMENSIONS,
+    NO_SHIPPING_SUBCATEGORIES,
 } = require('../utils/platformSettings');
 
 
@@ -55,7 +56,7 @@ async function initiateOrder(
         throw new Error("This product is not available for purchase.");
     }
 
-// ⭐ Vægt-failsafe (korrekt version til service-lag)
+    // Weight validation
     if (
         !product.weight ||
         typeof product.weight !== "number" ||
@@ -66,7 +67,6 @@ async function initiateOrder(
         err.status = 400;
         throw err;
     }
-
 
     const seller = product.seller;
 
@@ -85,8 +85,14 @@ async function initiateOrder(
         throw err;
     }
 
+    // ⭐ Determine if this is a large item (manual pickup)
+    const isLargeItem =
+        product.isLargeItem === true ||
+        NO_SHIPPING_SUBCATEGORIES?.includes(product.subcategory.toString());
+
     let finalPrice = product.price;
 
+    // Bid logic
     if (bidId) {
         const bid = await bidRepo.getBidById(bidId);
         if (!bid || bid.productId.toString() !== productId.toString()) {
@@ -101,22 +107,25 @@ async function initiateOrder(
         finalPrice = bid.counterAmount || bid.amount;
     }
 
+    // ⭐ Shipping price
     let shippingPrice = 0;
-    if (process.env.NODE_ENV === 'production') {
-        // ⭐ Fragtpris fra Shipmondo
-        const rate = await shippingService.getRate({
-            fromAddress: seller.profile.address,
-            toAddress: address,
-            weight: product.weight,
-            dimensions: product.dimensions || DEFAULT_PACKAGE_DIMENSIONS,
-            shippingMethod,
-        });
-        shippingPrice = rate.price;
-    } else {
-        shippingPrice = 50;
+
+    if (!isLargeItem) {
+        if (process.env.NODE_ENV === 'production') {
+            const rate = await shippingService.getRate({
+                fromAddress: seller.profile.address,
+                toAddress: address,
+                weight: product.weight,
+                dimensions: product.dimensions || DEFAULT_PACKAGE_DIMENSIONS,
+                shippingMethod,
+            });
+            shippingPrice = rate.price;
+        } else {
+            shippingPrice = 50;
+        }
     }
 
-    // ⭐ Rabatkode
+    // ⭐ Discount code
     let discountAmount = 0;
     let appliedDiscountId = null;
 
@@ -134,15 +143,19 @@ async function initiateOrder(
         }
     }
 
+    // Authentication fee
     const isAuthForced = finalPrice >= AUTH_THRESHOLD;
     const requiresAuthentication = isAuthForced || wantAuth;
     const currentAuthFee = requiresAuthentication ? AUTHENTICATION_FEE : 0;
 
+    // Platform fee + seller payout
     const platformFee = Math.round(finalPrice * (PLATFORM_FEE_PERCENT / 100));
     const sellerPayout = finalPrice - platformFee;
 
+    // Total amount (shippingPrice = 0 for large items)
     const totalAmount = finalPrice - discountAmount + shippingPrice + currentAuthFee;
 
+    // ⭐ Order data
     const orderData = {
         product: productId,
         buyer: buyerId,
@@ -153,7 +166,10 @@ async function initiateOrder(
         requiresAuthentication,
         authenticationFee: currentAuthFee,
         authenticationStatus: requiresAuthentication ? 'pending' : 'not_required',
-        status: 'pending',
+
+        // ⭐ Large items start in "awaiting_pickup"
+        status: isLargeItem ? 'awaiting_pickup' : 'pending',
+
         shippingAddress: address,
         shippingPrice,
         appliedDiscountCode: appliedDiscountId,
@@ -164,6 +180,7 @@ async function initiateOrder(
 
     await autoRejectBidsForPurchasedProduct(productId);
 
+    // ⭐ PaymentIntent (unchanged)
     let paymentIntent;
     try {
         paymentIntent = await stripe.paymentIntents.create({
@@ -479,6 +496,76 @@ async function autoRejectBidsForPurchasedProduct(productId) {
         }
     }
 }
+async function confirmPickup(orderId, buyerId) {
+    const order = await orderRepo.getOrderById(orderId);
+    if (!order) {
+        const err = new Error("Order not found.");
+        err.status = 404;
+        throw err;
+    }
+
+    if (order.buyer.toString() !== buyerId.toString()) {
+        const err = new Error("You are not the buyer of this order.");
+        err.status = 403;
+        throw err;
+    }
+
+    if (order.status !== "awaiting_pickup") {
+        const err = new Error("This order is not awaiting pickup.");
+        err.status = 400;
+        throw err;
+    }
+
+    const now = new Date();
+    const payoutEligibleAt = new Date(now.getTime() + 72 * 60 * 60 * 1000);
+
+    const updatedOrder = await orderRepo.updateOrderAfterPickup(orderId, {
+        status: "delivered",
+        deliveredAt: now,
+        payoutEligibleAt
+    });
+
+    return updatedOrder;
+}
+
+async function approveDelivery(orderId, buyerId) {
+    const order = await orderRepo.getOrderById(orderId);
+    if (!order) {
+        const err = new Error("Order not found.");
+        err.status = 404;
+        throw err;
+    }
+
+    // Buyer must own the order
+    if (order.buyer.toString() !== buyerId.toString()) {
+        const err = new Error("You are not the buyer of this order.");
+        err.status = 403;
+        throw err;
+    }
+
+    // Order must be in a state where approval makes sense
+    if (order.status !== "delivered" && order.status !== "awaiting_pickup") {
+        const err = new Error("This order cannot be approved at this stage.");
+        err.status = 400;
+        throw err;
+    }
+
+    // ⭐ Capture the PaymentIntent immediately
+    let capture;
+    try {
+        capture = await stripe.paymentIntents.capture(order.stripePaymentIntentId);
+    } catch (err) {
+        const e = new Error("Payment could not be captured. Please try again later.");
+        e.status = 500;
+        throw e;
+    }
+
+    // ⭐ Update order as completed + paid out
+    const updatedOrder = await orderRepo.approveDelivery(orderId, capture.id);
+
+    return updatedOrder;
+}
+
 
 module.exports = {
     initiateOrder,
@@ -489,4 +576,6 @@ module.exports = {
     getOrderById,
     getUserSales,
     handleShipmondoWebhook,
+    confirmPickup,
+    approveDelivery
 };
