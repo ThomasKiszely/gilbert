@@ -132,6 +132,8 @@ export default function CreateProduct() {
         formData.set("condition", selectedCondition);
         formData.set("color", selectedColor);
         formData.set("material", selectedMaterial);
+        // Brand: send altid valgt brand ObjectId
+        formData.set("brand", selectedBrand);
 
         try {
             const res = await api("/api/products", {
@@ -169,7 +171,16 @@ export default function CreateProduct() {
     const displayName = (item: DropdownItem) => item.name || item.label || item.value || "";
 
     // Helper to map dropdown data to CustomDropdown format
-    const mapOptions = (arr: DropdownItem[]) => arr.map(o => ({ _id: o._id, label: displayName(o) }));
+    const mapOptions = (arr: DropdownItem[], includeNone = false) => {
+        let options = arr.map(o => ({ _id: o._id, label: displayName(o) }));
+        if (includeNone) {
+            const noneBrand = arr.find(o => o.name === "None" || o.label === "None");
+            if (noneBrand) {
+                options = [{ _id: noneBrand._id, label: "None" }, ...options.filter(o => o.label !== "None")];
+            }
+        }
+        return options;
+    };
 
     // Luk dropdown hvis klik udenfor
     useEffect(() => {
@@ -247,7 +258,7 @@ export default function CreateProduct() {
                     <div>
                         <label className="block font-semibold mb-1 uppercase text-xs tracking-wider">Brand</label>
                         <CustomDropdown
-                            options={mapOptions(brands)}
+                            options={mapOptions(brands, true)}
                             value={selectedBrand}
                             onChange={setSelectedBrand}
                             placeholder="Select brand"

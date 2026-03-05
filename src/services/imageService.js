@@ -37,6 +37,7 @@ async function saveBlogImage(file) {
         .webp({ quality: 80 })
         .toFile(outputPath);
     fs.unlinkSync(file.path);
+    // Skal ændre til cdn url til `https://cdn.yoursite.com/images/blogs/${outputFilename}`
     return `/api/images/blogs/${outputFilename}`;
 }
 
