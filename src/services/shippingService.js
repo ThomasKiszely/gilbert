@@ -3,11 +3,8 @@ const axios = require('axios');
 const orderRepo = require('../data/orderRepo');
 const { GILBERT_SHIPPING_ADDRESS } = require('../utils/platformSettings');
 const shipmondoClient = require("../utils/shipmondoClient");
+const { toCountryCode } = require("../utils/countryUtils");
 
-
-const countries = require("i18n-iso-countries");
-countries.registerLocale(require("i18n-iso-countries/langs/en.json"));
-countries.registerLocale(require("i18n-iso-countries/langs/da.json"));
 
 // ⭐ Startup-check: valider hele GILBERT_SHIPPING_ADDRESS
 (function validateGilbertAddress() {
@@ -31,9 +28,7 @@ countries.registerLocale(require("i18n-iso-countries/langs/da.json"));
         return;
     }
 
-    const countryCode =
-        countries.getAlpha2Code(addr.country, "en") ||
-        countries.getAlpha2Code(addr.country, "da");
+    const countryCode = toCountryCode(addr.country);
 
     if (!countryCode) {
         console.error(`❌ GILBERT_SHIPPING_ADDRESS.country er ugyldigt: "${addr.country}".`);
@@ -61,17 +56,6 @@ const DEFAULT_CARRIER_CODE = process.env.SHIPMONDO_CARRIER_CODE || 'dao';
 const DEFAULT_PRODUCT_CODE = process.env.SHIPMONDO_PRODUCT_CODE || 'dao_home';
 const DEFAULT_SERVICE_ID = parseInt(process.env.SHIPMONDO_SERVICE_ID || '1', 10);
 
-// ⭐ Helper: konverter "Denmark" → "DK"
-function toCountryCode(country) {
-    if (!country) return "DK";
-
-    const code =
-        countries.getAlpha2Code(country, "en") ||
-        countries.getAlpha2Code(country, "da");
-
-    return code || "DK";
-}
-
 // ⭐ Helper: valider adressefelter
 function validateAddress(address, type) {
     if (!address) throw new Error(`${type} address mangler`);
@@ -84,6 +68,20 @@ function validateAddress(address, type) {
     }
 }
 
+// ⭐ Helper: valider e-mail
+function validateEmail(email, type) {
+    if (!email || typeof email !== "string" || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        throw new Error(`${type} e-mail mangler eller er ugyldig`);
+    }
+}
+
+// ⭐ Helper: valider telefonnummer
+function validatePhone(phone, type) {
+    if (phone && !/^\+?[0-9\- ]{7,}$/.test(phone)) {
+        throw new Error(`${type} telefonnummer er ugyldigt`);
+    }
+}
+
 // ⭐ Helper: byg sender-adresse fra sælger
 function getSenderAddress(seller) {
     const addr = seller.profile?.address;
@@ -92,13 +90,33 @@ function getSenderAddress(seller) {
         throw new Error("Sælger mangler adresseoplysninger – kan ikke oprette label.");
     }
 
+    validateEmail(seller.email, "Afsender");
+    // Telefon kan evt. tilføjes til seller.profile.phone
+
     return {
         name: seller.username,
-        street: addr.street,
-        zip: addr.zip,
+        address1: addr.street + (addr.houseNumber ? ` ${addr.houseNumber}` : ""),
+        zipcode: addr.zip,
         city: addr.city,
         country_code: toCountryCode(addr.country),
-        email: seller.email
+        email: seller.email,
+        // phone: seller.profile?.phone || undefined
+    };
+}
+
+// ⭐ Helper: byg modtager-adresse fra ordre
+function getReceiverAddress(order, receiverAddress) {
+    validateEmail(order.buyer?.email, "Modtager");
+    // Telefon kan evt. tilføjes til order.buyer.profile.phone
+
+    return {
+        name: receiverAddress.name,
+        address1: receiverAddress.street + (receiverAddress.houseNumber ? ` ${receiverAddress.houseNumber}` : ""),
+        zipcode: receiverAddress.zip,
+        city: receiverAddress.city,
+        country_code: toCountryCode(receiverAddress.country),
+        email: order.buyer?.email,
+        // phone: order.buyer?.profile?.phone || undefined
     };
 }
 
@@ -126,26 +144,22 @@ async function createShipmondoLabel(orderId) {
 
     validateAddress(receiverAddress, "Receiver");
 
-    const finalWeight = order.product?.weight || 1000;
+    const finalWeight = Math.max(1, order.product?.weight || 1000);
 
+    // --- Shipmondo shipmentData ---
     const shipmentData = {
         test_mode: process.env.NODE_ENV !== 'production',
         own_agreement: false,
         carrier_code: DEFAULT_CARRIER_CODE,
         product_code: DEFAULT_PRODUCT_CODE,
         service_id: DEFAULT_SERVICE_ID,
+        reference: orderId,
         sender: getSenderAddress(seller),
-        receiver: {
-            name: receiverAddress.name,
-            address1: receiverAddress.street,
-            zipcode: receiverAddress.zip,
-            city: receiverAddress.city,
-            country_code: toCountryCode(receiverAddress.country),
-            email: order.buyer?.email
-        },
+        receiver: getReceiverAddress(order, receiverAddress),
         parcels: [
             { weight: finalWeight }
         ]
+        // Tilføj dimensioner hvis ønsket: length, width, height
     };
 
     try {
@@ -170,7 +184,7 @@ async function createShipmondoLabel(orderId) {
 
     } catch (err) {
         const errorDetail = err.response?.data || err.message;
-        console.error("❌ Shipmondo fejl:", errorDetail);
+        console.error("❌ Shipmondo fejl:", errorDetail, "\nRequest:", JSON.stringify(shipmentData, null, 2));
 
         await orderRepo.updateOrderShipping(orderId, {
             shippingError: typeof errorDetail === 'string' ? errorDetail : JSON.stringify(errorDetail)

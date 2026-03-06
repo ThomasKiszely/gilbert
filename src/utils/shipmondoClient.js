@@ -1,4 +1,5 @@
 const axios = require("axios");
+const { toCountryCode } = require("./countryUtils");
 
 const isProd = process.env.NODE_ENV === "production";
 
@@ -18,46 +19,49 @@ async function getRate({ from, to, weight, dimensions }) {
     try {
         const payload = {
             sender: {
-                address1: from.street,
+                address1: from.street + (from.houseNumber ? ` ${from.houseNumber}` : ""),
                 zipcode: from.zip,
                 city: from.city,
-                country_code: from.country_code || from.country || "DK"
+                country_code: toCountryCode(from.country || from.country_code),
             },
             receiver: {
-                address1: to.street,
+                address1: to.street + (to.houseNumber ? ` ${to.houseNumber}` : ""),
                 zipcode: to.zip,
                 city: to.city,
-                country_code: to.country_code || to.country || "DK"
+                country_code: toCountryCode(to.country || to.country_code),
             },
             parcels: [
                 {
-                    weight: weight || 1000,
-                    length: dimensions?.length || 30,
-                    width: dimensions?.width || 20,
-                    height: dimensions?.height || 10
+                    weight: weight > 0 ? weight : 1000
                 }
             ]
         };
-
+        console.log("Shipmondo rate payload:", JSON.stringify(payload, null, 2));
+        console.log('Shipmondo endpoint:', RATE_ENDPOINT);
+        console.log('Shipmondo user:', SHIPMONDO_API_USER);
+        console.log('Node env:', process.env.NODE_ENV);
         const response = await axios.post(RATE_ENDPOINT, payload, {
             auth: {
                 username: SHIPMONDO_API_USER,
                 password: SHIPMONDO_API_KEY
             }
         });
-
+        console.log("Shipmondo rate response:", JSON.stringify(response.data, null, 2));
         const best = response.data?.rates?.[0];
-        if (!best) throw new Error("No shipping rates returned from Shipmondo");
-
+        if (!best) throw new Error(response.data?.error || "No shipping rates returned from Shipmondo");
         return {
             total: best.total,
             currency: best.currency,
             raw: best
         };
-
     } catch (err) {
-        console.error("❌ Shipmondo rate error:", err.response?.data || err.message);
-        throw new Error("Failed to fetch shipping rate from Shipmondo");
+        const shipmondoError = err.response?.data || err.message;
+        if (err.response) {
+            console.error("❌ Shipmondo rate error:", shipmondoError, "Status:", err.response.status, "Headers:", err.response.headers);
+        } else {
+            console.error("❌ Shipmondo rate error:", shipmondoError);
+        }
+        throw new Error(typeof shipmondoError === 'string' ? shipmondoError : JSON.stringify(shipmondoError));
     }
 }
 
