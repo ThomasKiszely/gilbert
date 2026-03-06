@@ -17,7 +17,7 @@ import {
     Info,
     CheckCircle2,
     Loader2,
-    PackageSearch // Ny ikon til store varer
+    PackageSearch
 } from "lucide-react";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
@@ -34,12 +34,10 @@ export default function CheckoutPage() {
     const [isPreparing, setIsPreparing] = useState(false);
     const [isCalculating, setIsCalculating] = useState(false);
 
-    // Form states
     const [shippingMethod, setShippingMethod] = useState("gls");
     const [discountCode, setDiscountCode] = useState("");
     const [appliedDiscount, setAppliedDiscount] = useState(false);
 
-    // Calculation State
     const [amounts, setAmounts] = useState({
         productPrice: 0,
         shipping: 0,
@@ -48,9 +46,7 @@ export default function CheckoutPage() {
         total: 0
     });
 
-    // Ny state til at holde styr på om det er en stor vare
     const [isLargeItem, setIsLargeItem] = useState(false);
-
     const [stripeError, setStripeError] = useState<string | null>(null);
     const [address, setAddress] = useState({
         name: "",
@@ -70,7 +66,6 @@ export default function CheckoutPage() {
                     const data = await res.json();
                     const prod = data.product || data;
                     setProduct(prod);
-                    // ⭐ Tjek om varen er markeret som stor
                     setIsLargeItem(prod.isLargeItem === true);
                     setAmounts(prev => ({ ...prev, productPrice: prod.price, total: prod.price }));
                 }
@@ -85,7 +80,6 @@ export default function CheckoutPage() {
 
     // 2. Calculate Checkout Logic
     const calculateTotal = useCallback(async (forcedCode?: string | null) => {
-        // Vi kræver zip/by for at beregne fragt korrekt (medmindre det er afhentning)
         if (!isLargeItem && (!address.zip || !address.city || address.zip.length < 4)) return;
 
         setIsCalculating(true);
@@ -99,7 +93,6 @@ export default function CheckoutPage() {
                 body: JSON.stringify({
                     productId,
                     address,
-                    // Hvis det er en stor vare, sender vi 'manual' som metode
                     shippingMethod: isLargeItem ? "manual" : shippingMethod,
                     discountCode: forcedCode !== undefined ? forcedCode : (appliedDiscount ? discountCode : null)
                 })
@@ -122,7 +115,6 @@ export default function CheckoutPage() {
         }
     }, [address.zip, address.city, productId, user?.token, shippingMethod, appliedDiscount, discountCode, isLargeItem]);
 
-    // Re-calculate when shipping or address changes
     useEffect(() => {
         const timer = setTimeout(() => calculateTotal(), 600);
         return () => clearTimeout(timer);
@@ -131,7 +123,6 @@ export default function CheckoutPage() {
     // 3. Discount Logic
     const applyDiscount = async () => {
         if (!discountCode) return;
-
         setIsCalculating(true);
         try {
             const res = await fetch(`/api/checkout/calculate`, {
@@ -147,9 +138,7 @@ export default function CheckoutPage() {
                     discountCode: discountCode
                 })
             });
-
             const data = await res.json();
-
             if (data.success && data.discount > 0) {
                 setAppliedDiscount(true);
                 setAmounts({
@@ -176,7 +165,7 @@ export default function CheckoutPage() {
         calculateTotal(null);
     };
 
-    // 4. Handle Order Creation
+    // 4. Handle Order Creation (Rettet her for at undgå "Failed to fetch")
     const handlePreparePayment = async () => {
         if (!user) {
             router.push("/login");
@@ -190,7 +179,8 @@ export default function CheckoutPage() {
 
         setIsPreparing(true);
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/orders/create`, {
+            // ÆNDRET: Vi bruger den relative sti '/api/orders/create' for at undgå problemer med miljøvariabler
+            const res = await fetch(`/api/orders/create`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -214,6 +204,7 @@ export default function CheckoutPage() {
                 } else {
                     alert(data.error || data.message || "Failed to initiate order");
                 }
+                setIsPreparing(false);
                 return;
             }
 
@@ -222,6 +213,7 @@ export default function CheckoutPage() {
 
         } catch (err) {
             console.error("Payment preparation failed:", err);
+            alert("Could not connect to the server. Please try again later.");
         } finally {
             setIsPreparing(false);
         }
@@ -240,7 +232,6 @@ export default function CheckoutPage() {
         <div className="min-h-screen bg-[#003d2b] pb-32">
             <div className="max-w-6xl mx-auto p-6 pt-24">
 
-                {/* STRIPE ERROR MODAL */}
                 {stripeError && (
                     <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-white">
                         <div className="bg-[#16302b] border border-white/10 w-full max-w-lg rounded-[3rem] p-10 shadow-2xl relative overflow-hidden">
@@ -256,8 +247,6 @@ export default function CheckoutPage() {
                 )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-
-                    {/* LEFT SIDE: INPUTS */}
                     <div className="lg:col-span-7 space-y-10">
                         <div>
                             <h2 className="text-5xl font-black uppercase italic tracking-tighter text-white leading-none">Checkout</h2>
@@ -268,7 +257,6 @@ export default function CheckoutPage() {
 
                         {!clientSecret ? (
                             <div className="space-y-6">
-                                {/* SHIPPING FORM */}
                                 <div className="bg-black/20 p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-sm shadow-2xl space-y-4">
                                     <div className="flex items-center gap-3 mb-4 text-white/60">
                                         <Info size={14} />
@@ -287,7 +275,6 @@ export default function CheckoutPage() {
                                     </div>
                                 </div>
 
-                                {/* ⭐ SHIPPING METHOD / LARGE ITEM INFO */}
                                 <div className="bg-black/20 p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-sm shadow-2xl">
                                     <div className="flex items-center gap-3 mb-6 text-white/60">
                                         <Truck size={14} />
@@ -297,18 +284,16 @@ export default function CheckoutPage() {
                                     </div>
 
                                     {isLargeItem ? (
-                                        /* Vis dette hvis varen er et møbel/stor vare */
                                         <div className="flex items-start gap-4 p-5 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
                                             <PackageSearch className="text-amber-500 shrink-0" size={24} />
                                             <div>
                                                 <p className="text-xs font-black uppercase text-amber-500 mb-1">Large Item Policy</p>
                                                 <p className="text-[10px] text-white/60 leading-relaxed uppercase font-medium">
-                                                    This item is too large for standard shipping. You and the seller must arrange pickup or 3rd party delivery manually after purchase.
+                                                    This item is too large for standard shipping. You and the seller must arrange pickup manually.
                                                 </p>
                                             </div>
                                         </div>
                                     ) : (
-                                        /* Vis dette for normale varer */
                                         <div className="relative group">
                                             <select
                                                 value={shippingMethod}
@@ -341,11 +326,9 @@ export default function CheckoutPage() {
                         )}
                     </div>
 
-                    {/* RIGHT SIDE: SUMMARY */}
                     <div className="lg:col-span-5">
                         <div className="bg-[#16302b] rounded-[3rem] p-10 border border-white/10 shadow-2xl sticky top-24 text-white">
                             <h3 className="text-[10px] uppercase tracking-[0.3em] font-black text-white/50 mb-10">Order Summary</h3>
-
                             <div className="flex gap-6 mb-10 items-start">
                                 <div className="w-24 h-24 bg-black/40 rounded-[1.5rem] overflow-hidden border border-white/10 shrink-0">
                                     {product.images?.[0] && <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover" />}
@@ -356,40 +339,6 @@ export default function CheckoutPage() {
                                         {typeof product.category === 'object' ? product.category.name : (product.category || 'Item')}
                                     </p>
                                 </div>
-                            </div>
-
-                            {/* DISCOUNT CODE BOX */}
-                            <div className="mb-8 flex gap-2">
-                                <div className="relative flex-1">
-                                    <input
-                                        className={`w-full bg-black/40 border ${appliedDiscount ? 'border-green-500/50' : 'border-white/5'} p-4 rounded-xl text-[10px] uppercase font-black tracking-widest text-white outline-none focus:border-white/20 transition-all placeholder:text-white/20`}
-                                        placeholder={appliedDiscount ? "Code Applied!" : "Discount Code"}
-                                        value={discountCode}
-                                        disabled={appliedDiscount}
-                                        onChange={(e) => setDiscountCode(e.target.value)}
-                                    />
-                                    {appliedDiscount && (
-                                        <button
-                                            onClick={removeDiscount}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black text-red-400 uppercase hover:text-red-300"
-                                        >
-                                            Remove
-                                        </button>
-                                    )}
-                                </div>
-                                {!appliedDiscount && (
-                                    <button
-                                        onClick={applyDiscount}
-                                        disabled={isCalculating || !discountCode}
-                                        className="bg-white/10 hover:bg-white/20 px-6 rounded-xl transition-all flex items-center justify-center disabled:opacity-30"
-                                    >
-                                        {isCalculating ? (
-                                            <Loader2 size={18} className="text-white animate-spin" />
-                                        ) : (
-                                            <CheckCircle2 size={18} className="text-white" />
-                                        )}
-                                    </button>
-                                )}
                             </div>
 
                             <div className="space-y-5 py-8 border-y border-white/10 mb-8">
@@ -408,7 +357,6 @@ export default function CheckoutPage() {
                                         {isLargeItem ? "Arranged Manually" : (amounts.shipping > 0 ? `${amounts.shipping} DKK` : "Calculating...")}
                                     </span>
                                 </div>
-
                                 {amounts.authenticationFee > 0 && (
                                     <div className="flex justify-between text-xs items-center text-amber-400">
                                         <div className="flex items-center gap-2">
@@ -416,16 +364,6 @@ export default function CheckoutPage() {
                                             <span className="uppercase font-black tracking-widest">Authentication Fee</span>
                                         </div>
                                         <span className="font-bold text-base">+{amounts.authenticationFee} DKK</span>
-                                    </div>
-                                )}
-
-                                {amounts.discount > 0 && (
-                                    <div className="flex justify-between text-xs items-center text-green-400 font-black">
-                                        <div className="flex items-center gap-2">
-                                            <Tag size={14} />
-                                            <span className="uppercase tracking-widest">Discount Applied</span>
-                                        </div>
-                                        <span className="text-base">-{amounts.discount} DKK</span>
                                     </div>
                                 )}
                             </div>
@@ -438,15 +376,14 @@ export default function CheckoutPage() {
                                 <span className="text-5xl font-black tracking-tighter italic leading-none">{amounts.total} DKK</span>
                             </div>
 
-                            {/* ESCROW INFO BOX */}
                             <div className="p-6 bg-black/30 rounded-[2rem] border border-white/5 backdrop-blur-sm">
                                 <div className="flex items-start gap-4">
                                     <div className="mt-1 h-2 w-2 rounded-full bg-green-500 animate-pulse shrink-0" />
                                     <p className="text-[10px] text-white/60 leading-relaxed uppercase tracking-widest font-medium">
                                         <span className="text-white font-black block mb-1">Escrow Protection Active</span>
                                         {isLargeItem
-                                            ? "Payment is held securely. You must manually confirm receipt in the app once you have picked up the item to start the 72h protection window."
-                                            : "Payment is held securely and only released to the seller after your confirmation."}
+                                            ? "Payment is held securely. You must manually confirm receipt in the app after pickup."
+                                            : "Payment is held securely and only released after your confirmation."}
                                     </p>
                                 </div>
                             </div>

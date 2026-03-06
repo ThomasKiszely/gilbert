@@ -111,19 +111,17 @@ async function initiateOrder(
     let shippingPrice = 0;
 
     if (!isLargeItem) {
-        if (process.env.NODE_ENV === 'production') {
-            const rate = await shippingService.getRate({
-                fromAddress: seller.profile.address,
-                toAddress: address,
-                weight: product.weight,
-                dimensions: product.dimensions || DEFAULT_PACKAGE_DIMENSIONS,
-                shippingMethod,
-            });
-            shippingPrice = rate.price;
-        } else {
-            shippingPrice = 50;
-        }
+        const rate = await shippingService.getRate({
+            fromAddress: seller.profile.address,
+            toAddress: address,
+            weight: product.weight,
+            dimensions: product.dimensions || DEFAULT_PACKAGE_DIMENSIONS,
+            shippingMethod,
+        });
+
+        shippingPrice = rate.price;
     }
+
 
     // ⭐ Discount code
     let discountAmount = 0;

@@ -1,9 +1,18 @@
 const axios = require("axios");
 
-const SHIPMONDO_API_USER = process.env.SHIPMONDO_API_USER;
-const SHIPMONDO_API_KEY = process.env.SHIPMONDO_API_KEY;
+const isProd = process.env.NODE_ENV === "production";
 
-const RATE_ENDPOINT = "https://app.shipmondo.com/api/public/v3/rates";
+const SHIPMONDO_API_USER = isProd
+    ? process.env.SHIPMONDO_API_USER
+    : process.env.SHIPMONDO_API_USER_SANDBOX;
+
+const SHIPMONDO_API_KEY = isProd
+    ? process.env.SHIPMONDO_API_KEY
+    : process.env.SHIPMONDO_API_KEY_SANDBOX;
+
+const RATE_ENDPOINT = isProd
+    ? "https://app.shipmondo.com/api/public/v3/rates"
+    : "https://sandbox.shipmondo.com/api/public/v3/rates";
 
 async function getRate({ from, to, weight, dimensions }) {
     try {
@@ -37,12 +46,8 @@ async function getRate({ from, to, weight, dimensions }) {
             }
         });
 
-        // Shipmondo returnerer en liste af mulige priser
         const best = response.data?.rates?.[0];
-
-        if (!best) {
-            throw new Error("No shipping rates returned from Shipmondo");
-        }
+        if (!best) throw new Error("No shipping rates returned from Shipmondo");
 
         return {
             total: best.total,
