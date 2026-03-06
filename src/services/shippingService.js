@@ -38,19 +38,9 @@ const { toCountryCode } = require("../utils/countryUtils");
     console.log(`✅ Gilbert-adresse valideret: ${addr.street}, ${addr.zip} ${addr.city}, ${addr.country} → ${countryCode}`);
 })();
 
-const isProd = process.env.NODE_ENV === "production";
-
-const SHIPMONDO_API_USER = isProd
-    ? process.env.SHIPMONDO_API_USER
-    : process.env.SHIPMONDO_API_USER_SANDBOX;
-
-const SHIPMONDO_API_KEY = isProd
-    ? process.env.SHIPMONDO_API_KEY
-    : process.env.SHIPMONDO_API_KEY_SANDBOX;
-
-const SHIPMONDO_ENDPOINT = isProd
-    ? "https://app.shipmondo.com/api/public/v3/shipments"
-    : "https://sandbox.shipmondo.com/api/public/v3/shipments";
+const SHIPMONDO_API_USER = process.env.SHIPMONDO_API_USER;
+const SHIPMONDO_API_KEY = process.env.SHIPMONDO_API_KEY;
+const SHIPMONDO_ENDPOINT = 'https://app.shipmondo.com/api/public/v3/shipments';
 
 const DEFAULT_CARRIER_CODE = process.env.SHIPMONDO_CARRIER_CODE || 'dao';
 const DEFAULT_PRODUCT_CODE = process.env.SHIPMONDO_PRODUCT_CODE || 'dao_home';

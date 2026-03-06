@@ -57,11 +57,10 @@ export default function CheckoutPage() {
         country: "Denmark"
     });
 
-    // 1. Fetch Product
     useEffect(() => {
         const fetchProduct = async () => {
             try {
-                const res = await fetch(`/api/products/${productId}`);
+                const res = await fetch(`/api/products/${productId}`, { credentials: "include" });
                 if (res.ok) {
                     const data = await res.json();
                     const prod = data.product || data;
@@ -78,7 +77,6 @@ export default function CheckoutPage() {
         fetchProduct();
     }, [productId]);
 
-    // 2. Calculate Checkout Logic
     const calculateTotal = useCallback(async (forcedCode?: string | null) => {
         if (!isLargeItem && (!address.zip || !address.city || address.zip.length < 4)) return;
 
@@ -86,10 +84,8 @@ export default function CheckoutPage() {
         try {
             const res = await fetch(`/api/checkout/calculate`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${user?.token}`
-                },
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({
                     productId,
                     address,
@@ -113,24 +109,21 @@ export default function CheckoutPage() {
         } finally {
             setIsCalculating(false);
         }
-    }, [address.zip, address.city, productId, user?.token, shippingMethod, appliedDiscount, discountCode, isLargeItem]);
+    }, [address.zip, address.city, productId, shippingMethod, appliedDiscount, discountCode, isLargeItem]);
 
     useEffect(() => {
         const timer = setTimeout(() => calculateTotal(), 600);
         return () => clearTimeout(timer);
     }, [address.zip, address.city, shippingMethod, calculateTotal]);
 
-    // 3. Discount Logic
     const applyDiscount = async () => {
         if (!discountCode) return;
         setIsCalculating(true);
         try {
             const res = await fetch(`/api/checkout/calculate`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${user?.token}`
-                },
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({
                     productId,
                     address,
@@ -165,7 +158,6 @@ export default function CheckoutPage() {
         calculateTotal(null);
     };
 
-    // 4. Handle Order Creation (Rettet her for at undgå "Failed to fetch")
     const handlePreparePayment = async () => {
         if (!user) {
             router.push("/login");
@@ -179,13 +171,10 @@ export default function CheckoutPage() {
 
         setIsPreparing(true);
         try {
-            // ÆNDRET: Vi bruger den relative sti '/api/orders/create' for at undgå problemer med miljøvariabler
             const res = await fetch(`/api/orders/create`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${user.token}`
-                },
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
                 body: JSON.stringify({
                     productId,
                     address,
@@ -197,10 +186,9 @@ export default function CheckoutPage() {
             });
 
             const data = await res.json();
-
             if (!res.ok) {
                 if (data.requiresSellerStripeReconnect) {
-                    setStripeError("The seller's Stripe account is inactive. They must reconnect their account.");
+                    setStripeError("The seller's Stripe account is inactive.");
                 } else {
                     alert(data.error || data.message || "Failed to initiate order");
                 }
@@ -210,10 +198,9 @@ export default function CheckoutPage() {
 
             setClientSecret(data.clientSecret);
             setOrderId(data.order._id);
-
         } catch (err) {
             console.error("Payment preparation failed:", err);
-            alert("Could not connect to the server. Please try again later.");
+            alert("Could not connect to the server.");
         } finally {
             setIsPreparing(false);
         }
@@ -231,7 +218,6 @@ export default function CheckoutPage() {
     return (
         <div className="min-h-screen bg-[#003d2b] pb-32">
             <div className="max-w-6xl mx-auto p-6 pt-24">
-
                 {stripeError && (
                     <div className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6 text-white">
                         <div className="bg-[#16302b] border border-white/10 w-full max-w-lg rounded-[3rem] p-10 shadow-2xl relative overflow-hidden">
@@ -245,7 +231,6 @@ export default function CheckoutPage() {
                         </div>
                     </div>
                 )}
-
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
                     <div className="lg:col-span-7 space-y-10">
                         <div>
@@ -254,16 +239,9 @@ export default function CheckoutPage() {
                                 {isLargeItem ? "Manual Pickup Arrangement" : "Shipment & Verification"}
                             </p>
                         </div>
-
                         {!clientSecret ? (
                             <div className="space-y-6">
                                 <div className="bg-black/20 p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-sm shadow-2xl space-y-4">
-                                    <div className="flex items-center gap-3 mb-4 text-white/60">
-                                        <Info size={14} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">
-                                            {isLargeItem ? "Your Contact Information" : "Delivery Address"}
-                                        </span>
-                                    </div>
                                     <input className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none focus:bg-white/10 transition-all font-bold placeholder:text-white/10" placeholder="Full Name" value={address.name} onChange={e => setAddress({...address, name: e.target.value})} />
                                     <div className="flex gap-4">
                                         <input className="flex-[3] bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none focus:bg-white/10 transition-all font-bold placeholder:text-white/10" placeholder="Street Address" value={address.street} onChange={e => setAddress({...address, street: e.target.value})} />
@@ -274,46 +252,25 @@ export default function CheckoutPage() {
                                         <input className="flex-1 bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none focus:bg-white/10 transition-all font-bold placeholder:text-white/10" placeholder="City" value={address.city} onChange={e => setAddress({...address, city: e.target.value})} />
                                     </div>
                                 </div>
-
                                 <div className="bg-black/20 p-8 rounded-[2.5rem] border border-white/10 backdrop-blur-sm shadow-2xl">
                                     <div className="flex items-center gap-3 mb-6 text-white/60">
                                         <Truck size={14} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">
-                                            {isLargeItem ? "Pickup Arrangement" : "Select Shipping Method"}
-                                        </span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest">{isLargeItem ? "Pickup Arrangement" : "Select Shipping Method"}</span>
                                     </div>
-
                                     {isLargeItem ? (
                                         <div className="flex items-start gap-4 p-5 bg-amber-500/10 border border-amber-500/20 rounded-2xl">
                                             <PackageSearch className="text-amber-500 shrink-0" size={24} />
-                                            <div>
-                                                <p className="text-xs font-black uppercase text-amber-500 mb-1">Large Item Policy</p>
-                                                <p className="text-[10px] text-white/60 leading-relaxed uppercase font-medium">
-                                                    This item is too large for standard shipping. You and the seller must arrange pickup manually.
-                                                </p>
-                                            </div>
+                                            <p className="text-[10px] text-white/60 leading-relaxed uppercase font-medium">This item is too large for standard shipping. You and the seller must arrange pickup manually.</p>
                                         </div>
                                     ) : (
-                                        <div className="relative group">
-                                            <select
-                                                value={shippingMethod}
-                                                onChange={(e) => setShippingMethod(e.target.value)}
-                                                className="w-full appearance-none bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none font-bold cursor-pointer hover:bg-white/10 transition-all"
-                                            >
-                                                <option value="gls" className="bg-[#16302b]">GLS - Home Delivery</option>
-                                                <option value="dao" className="bg-[#16302b]">DAO - Home Delivery</option>
-                                                <option value="bring" className="bg-[#16302b]">Bring - Service Point</option>
-                                            </select>
-                                            <ChevronDown size={18} className="absolute right-5 top-1/2 -translate-y-1/2 text-white/30 pointer-events-none group-hover:text-white" />
-                                        </div>
+                                        <select value={shippingMethod} onChange={(e) => setShippingMethod(e.target.value)} className="w-full bg-white/5 border border-white/10 p-5 rounded-2xl text-white outline-none font-bold cursor-pointer hover:bg-white/10 transition-all">
+                                            <option value="gls" className="bg-[#16302b]">GLS - Home Delivery</option>
+                                            <option value="dao" className="bg-[#16302b]">DAO - Home Delivery</option>
+                                            <option value="bring" className="bg-[#16302b]">Bring - Service Point</option>
+                                        </select>
                                     )}
                                 </div>
-
-                                <Button
-                                    onClick={handlePreparePayment}
-                                    disabled={isPreparing || isCalculating}
-                                    className="w-full bg-white text-black py-8 rounded-[2rem] text-xs font-black uppercase tracking-[0.2em] shadow-2xl hover:scale-[1.02] transition-all disabled:opacity-50"
-                                >
+                                <Button onClick={handlePreparePayment} disabled={isPreparing || isCalculating} className="w-full bg-white text-black py-8 rounded-[2rem] text-xs font-black uppercase tracking-[0.2em] shadow-2xl hover:scale-[1.02] transition-all disabled:opacity-50">
                                     {isPreparing ? "Initializing..." : "Proceed to Payment"}
                                 </Button>
                             </div>
@@ -325,66 +282,13 @@ export default function CheckoutPage() {
                             </div>
                         )}
                     </div>
-
                     <div className="lg:col-span-5">
                         <div className="bg-[#16302b] rounded-[3rem] p-10 border border-white/10 shadow-2xl sticky top-24 text-white">
                             <h3 className="text-[10px] uppercase tracking-[0.3em] font-black text-white/50 mb-10">Order Summary</h3>
-                            <div className="flex gap-6 mb-10 items-start">
-                                <div className="w-24 h-24 bg-black/40 rounded-[1.5rem] overflow-hidden border border-white/10 shrink-0">
-                                    {product.images?.[0] && <img src={product.images[0]} alt={product.title} className="w-full h-full object-cover" />}
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="font-bold text-xl leading-tight truncate uppercase tracking-tighter italic">{product.title}</p>
-                                    <p className="text-white/60 text-[10px] mt-1 font-mono uppercase tracking-widest">
-                                        {typeof product.category === 'object' ? product.category.name : (product.category || 'Item')}
-                                    </p>
-                                </div>
-                            </div>
-
                             <div className="space-y-5 py-8 border-y border-white/10 mb-8">
                                 <div className="flex justify-between text-xs items-center">
-                                    <span className="text-white/50 uppercase font-black tracking-widest">Price</span>
-                                    <span className="font-bold text-base">{amounts.productPrice} DKK</span>
-                                </div>
-                                <div className="flex justify-between text-xs items-center">
-                                    <div className="flex items-center gap-2">
-                                        <Truck size={14} className="text-white/30" />
-                                        <span className="text-white/50 uppercase font-black tracking-widest">
-                                            {isLargeItem ? "Delivery" : `Shipping (${shippingMethod.toUpperCase()})`}
-                                        </span>
-                                    </div>
-                                    <span className={`font-bold text-base ${isCalculating ? "animate-pulse" : ""}`}>
-                                        {isLargeItem ? "Arranged Manually" : (amounts.shipping > 0 ? `${amounts.shipping} DKK` : "Calculating...")}
-                                    </span>
-                                </div>
-                                {amounts.authenticationFee > 0 && (
-                                    <div className="flex justify-between text-xs items-center text-amber-400">
-                                        <div className="flex items-center gap-2">
-                                            <ShieldCheck size={14} />
-                                            <span className="uppercase font-black tracking-widest">Authentication Fee</span>
-                                        </div>
-                                        <span className="font-bold text-base">+{amounts.authenticationFee} DKK</span>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="flex justify-between items-end mb-10">
-                                <div>
-                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/50 block mb-1">Total Payment</span>
-                                    <div className="h-1 w-8 bg-white/20 rounded-full" />
-                                </div>
-                                <span className="text-5xl font-black tracking-tighter italic leading-none">{amounts.total} DKK</span>
-                            </div>
-
-                            <div className="p-6 bg-black/30 rounded-[2rem] border border-white/5 backdrop-blur-sm">
-                                <div className="flex items-start gap-4">
-                                    <div className="mt-1 h-2 w-2 rounded-full bg-green-500 animate-pulse shrink-0" />
-                                    <p className="text-[10px] text-white/60 leading-relaxed uppercase tracking-widest font-medium">
-                                        <span className="text-white font-black block mb-1">Escrow Protection Active</span>
-                                        {isLargeItem
-                                            ? "Payment is held securely. You must manually confirm receipt in the app after pickup."
-                                            : "Payment is held securely and only released after your confirmation."}
-                                    </p>
+                                    <span className="text-white/50 uppercase font-black tracking-widest">Total Payment</span>
+                                    <span className="text-5xl font-black tracking-tighter italic leading-none">{amounts.total} DKK</span>
                                 </div>
                             </div>
                         </div>
