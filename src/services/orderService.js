@@ -56,6 +56,12 @@ async function initiateOrder(
         throw new Error("This product is not available for purchase.");
     }
 
+    if (product.seller._id.toString() === buyerId.toString()) {
+        const err = new Error("You cannot purchase your own product.");
+        err.status = 400;
+        throw err;
+    }
+
     // Weight validation
     if (
         !product.weight ||
