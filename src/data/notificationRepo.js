@@ -13,8 +13,15 @@ async function createNotification(userId, type, data = {}) {
 }
 
 async function getNotificationsForUser(userId) {
-    // Sørg for at vi kun henter notifikationer, der rent faktisk tilhører brugeren
-    return await Notification.find({ userId }).sort({ createdAt: -1 }).limit(20);
+    // Hent alle ulæste først
+    const unread = await Notification.find({ userId, read: false }).sort({ createdAt: -1 });
+    // Hent de seneste læste, så vi har max 20 i alt
+    const readLimit = Math.max(0, 20 - unread.length);
+    const read = readLimit > 0
+        ? await Notification.find({ userId, read: true }).sort({ createdAt: -1 }).limit(readLimit)
+        : [];
+    // Kombiner ulæste og læste
+    return [...unread, ...read];
 }
 
 async function markAsRead(notificationId) {
