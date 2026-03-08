@@ -6,9 +6,10 @@ const userController = require('../controllers/userController');
 const { validateUserRole } = require('../middlewares/validateUserRole');
 const { validateProfessionalStatus } = require('../middlewares/validateprofessionalStatus');
 const { validateUserBadges } = require('../middlewares/validateUserBadges');
-const { validateUserSuspension } = require('../middlewares/validateUserSuspension');
+const {validateUserSuspension} = require("../middlewares/validateUserSuspension");
+const {requireRole} = require("../middlewares/requireRole");
 
-//router.use(requireRole("admin"));
+router.use(requireRole("admin"));
 
 
 router.put('/users/:id/role', validateUserRole, adminController.updateUserRole);
@@ -19,6 +20,9 @@ router.get('/users/:id', adminController.getUserById);
 router.get('/users', adminController.getAllUsersPaginated);
 router.get('/products', adminController.getAllProducts);
 router.get('/products/in-review', adminController.getProductsInReview);
+
+// Admin preview GET product by id
+router.get('/products/:id', adminController.getProductById);
 
 router.put('/products/:id/approve',adminController.approveProduct);
 router.put('/products/:id/reject', adminController.rejectProduct);

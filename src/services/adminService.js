@@ -221,7 +221,6 @@ async function getOrderDetails(orderId) {
 
     return order;
 }
-
 async function resolveDispute(orderId, resolution, reason = "") {
     const order = await orderRepo.findOrderById(orderId);
     if (!order) throw new Error("Order not found");
@@ -373,6 +372,10 @@ async function markOrderDeliveredToBuyer(orderId) {
 }
 
 
+// ADMIN: get a product by id regardless of status (used for preview)
+async function getProductForAdmin(productId) {
+    return await productRepo.getProductByIdAny(productId);
+}
 
 module.exports = {
     updateStatusProduct,
@@ -390,4 +393,5 @@ module.exports = {
     resolveDispute,
     requestReturn,
     markOrderDeliveredToBuyer,
+    getProductForAdmin,
 }

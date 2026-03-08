@@ -61,6 +61,7 @@ async function getProductById(req, res, next) {
     try {
         const userId = req.user?.id;
         const product = await productService.getProductById(req.params.id, userId);
+
         if (!product) {
             const err = new Error('Product not found with valid id');
             err.status = 400;

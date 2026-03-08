@@ -155,6 +155,22 @@ async function getAllOrders(req, res, next) {
     }
 }
 
+// Admin: fetch a product by id regardless of status (preview)
+async function getProductById(req, res, next) {
+    try {
+        const id = req.params.id;
+        const product = await adminService.getProductForAdmin(id);
+        if (!product) {
+            const err = new Error('Product not found');
+            err.status = 404;
+            return next(err);
+        }
+        return res.status(200).json(product);
+    } catch (error) {
+        next(error);
+    }
+}
+
 async function getOrderDetails(req, res, next) {
     try {
         const { id } = req.params;
@@ -235,4 +251,5 @@ module.exports = {
     resolveDispute,
     requestReturn,
     markOrderDeliveredToBuyer,
+    getProductById,
 }

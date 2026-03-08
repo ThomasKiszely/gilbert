@@ -19,6 +19,11 @@ async function allProducts(page = 1, limit = 20) {
 async function getProductById(productId) {
     return await Product.findOne({_id: productId, status: 'Approved'}).populate(POPULATE_FIELDS).lean();
 }
+
+// Admin-preview helper: fetch a product by id regardless of status
+async function getProductByIdAny(productId) {
+    return await Product.findById(productId).populate(POPULATE_FIELDS).lean();
+}
 // Til specfik side fx. Mænd -> Clothing -> T-Shirt
 async function findProducts(filters, page = 1, limit = 20) {
     const query = { status: "Approved" };
@@ -307,4 +312,5 @@ module.exports = {
     updateManyProductsStatus,
     getTrendingProducts,
     getEditorsPicks,
+    getProductByIdAny,
 }
