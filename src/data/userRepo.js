@@ -126,6 +126,10 @@ async function updateStripeAccountId(userId, stripeAccountId) {
     return await User.findByIdAndUpdate(userId, { stripeAccountId }, { new: true });
 }
 
+async function countPendingProfessionalUsers() {
+    return await User.countDocuments({ professionalStatus: 'pending' });
+}
+
 module.exports = {
     findUserByEmail,
     createUser,
@@ -141,4 +145,5 @@ module.exports = {
     findAdmins,
     toggleUserSuspension,
     updateStripeAccountId,
+    countPendingProfessionalUsers
 }

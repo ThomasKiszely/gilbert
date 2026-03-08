@@ -16,6 +16,7 @@ interface PublicUser {
     _id: string;
     username: string;
     cvr?: string;
+    professionalStatus?: string;
     location?: { city?: string; country?: string };
     profile?: { bio?: string; language?: string; avatarUrl?: string };
     stats?: { ratingAverage?: number; ratingCount?: number };
@@ -373,7 +374,16 @@ export default function PublicProfilePage() {
                     <div className="space-y-2 text-sm text-muted-foreground break-words">
                         <p><strong>City:</strong> {user.location?.city || "Not specified"}</p>
                         <p><strong>Country:</strong> {user.location?.country || "Not specified"}</p>
-                        <p><strong>CVR:</strong> {user.cvr || "N/A"}</p>
+                        {user.cvr && (
+                            <div>
+                                <p><strong>CVR:</strong> {user.cvr}</p>
+                                {user.professionalStatus === 'approved' && (
+                                    <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700 border border-green-200">
+                    ✓ CVR Approved
+                </span>
+                                )}
+                            </div>
+                        )}
                         <p><strong>Bio:</strong></p>
                         <p className="italic">{user.profile?.bio || "No bio yet..."}</p>
                         <p><strong>Language:</strong> {user.profile?.language || "en"}</p>

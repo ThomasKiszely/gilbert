@@ -22,7 +22,17 @@ async function getProductsInReview() {
 }
 
 async function getAllUsersPaginated(page, limit) {
-    return await userRepo.getAllUsersPaginated(page, limit);
+    // Vi kalder to funktioner i repoet samtidigt
+    const [result, pendingCount] = await Promise.all([
+        userRepo.getAllUsersPaginated(page, limit),
+        userRepo.countPendingProfessionalUsers()
+    ]);
+
+    // Vi returnerer det samlede objekt inklusiv pendingCount
+    return {
+        ...result,
+        pendingCount
+    };
 }
 
 async function getUserById(id) {

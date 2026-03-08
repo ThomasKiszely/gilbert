@@ -11,11 +11,8 @@ export default function AdminUserEdit() {
 
     const [user, setUser] = useState<any>(null);
     const [message, setMessage] = useState("");
-
-    // Nye states til ban-funktionalitet
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [suspensionReason, setSuspensionReason] = useState("");
-
     const [role, setRole] = useState("user");
     const [status, setStatus] = useState("none");
     const [badges, setBadges] = useState({
@@ -28,12 +25,11 @@ export default function AdminUserEdit() {
         try {
             const res = await api(`/api/admin/users/${userId}`);
             const data = await res.json();
-
             if (data?.data) {
                 setUser(data.data);
                 setRole(data.data.role);
-                setStatus(data.data.professionalStatus);
-                setBadges(data.data.badges);
+                setStatus(data.data.professionalStatus || "none");
+                setBadges(data.data.badges || { isProfessional: false, isExpertSeller: false, isIdVerified: false });
                 setSuspensionReason(data.data.suspensionReason || "");
             }
         } catch (err) {
@@ -41,30 +37,28 @@ export default function AdminUserEdit() {
         }
     }
 
-    // Funktion til at håndtere ban/unban
+    function showMessage(msg: string) {
+        setMessage(msg);
+        setTimeout(() => setMessage(""), 3000);
+    }
+
     async function handleToggleSuspension() {
         const isBanning = !user.isSuspended;
-
         if (isBanning && !suspensionReason.trim()) {
             alert("Please provide a reason for the suspension.");
             return;
         }
-
         try {
             const res = await api(`/api/admin/users/${userId}/suspension`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    isSuspended: isBanning,
-                    reason: suspensionReason
-                })
+                body: JSON.stringify({ isSuspended: isBanning, reason: suspensionReason })
             });
             const data = await res.json();
-
             if (res.ok) {
                 setUser(data.data);
                 setIsModalOpen(false);
-                setMessage(isBanning ? "User suspended!" : "User reinstated!");
+                showMessage(isBanning ? "User suspended!" : "User reinstated!");
             }
         } catch (err) {
             console.error("Suspension error", err);
@@ -79,18 +73,20 @@ export default function AdminUserEdit() {
         });
         const data = await res.json();
         setUser(data.data);
-        setMessage("Role updated!");
+        showMessage("Role updated!");
     }
 
-    async function updateStatus() {
+    async function updateStatus(newStatus?: string) {
+        const targetStatus = newStatus || status;
         const res = await api(`/api/admin/users/${userId}/professional`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ professionalStatus: status })
+            body: JSON.stringify({ professionalStatus: targetStatus })
         });
         const data = await res.json();
         setUser(data.data);
-        setMessage("Status updated!");
+        setStatus(data.data.professionalStatus);
+        showMessage("Status updated!");
     }
 
     async function updateBadges() {
@@ -101,179 +97,93 @@ export default function AdminUserEdit() {
         });
         const data = await res.json();
         setUser(data.data);
-        setMessage("Badges updated!");
+        showMessage("Badges updated!");
     }
 
     useEffect(() => {
         if (userId) fetchUser();
     }, [userId]);
 
-    if (!user) {
-        return <p className="p-6 text-center text-ivory">Loading user…</p>;
-    }
+    if (!user) return <p className="p-6 text-center text-ivory">Loading user…</p>;
 
     return (
         <div className="max-w-3xl mx-auto p-6 text-ivory">
             <h1 className="text-3xl font-bold mb-4">Admin – Edit User</h1>
-
-            <Link href="/admin/users" className="text-sm underline text-ivory/60 hover:text-ivory">
-                ← Back to users
-            </Link>
+            <Link href="/admin/users" className="text-sm underline text-ivory/60 hover:text-ivory">← Back to users</Link>
 
             <div className="flex items-center justify-between mt-6">
                 <h2 className="text-2xl font-semibold">{user.username}</h2>
-                {user.isSuspended && (
-                    <span className="bg-red-600 text-white px-3 py-1 rounded text-xs font-bold uppercase tracking-wider">
-                        Suspended
-                    </span>
-                )}
+                {user.isSuspended && <span className="bg-red-600 text-white px-3 py-1 rounded text-xs font-bold uppercase tracking-wider">Suspended</span>}
             </div>
 
-            {/* User Info Box */}
             <div className="mt-4 space-y-2 p-4 bg-gray-50 rounded-lg text-black">
                 <p><strong>Email:</strong> {user.email}</p>
+                <p><strong>CVR:</strong> {user.cvr || "Not provided"}</p>
                 <p><strong>Role:</strong> {user.role}</p>
                 <p><strong>Status:</strong> {user.professionalStatus}</p>
-                {user.isSuspended && (
-                    <p className="text-red-600"><strong>Reason:</strong> {user.suspensionReason}</p>
-                )}
-                <p>
-                    <strong>Badges:</strong>{" "}
-                    Professional: {user.badges?.isProfessional ? "✔" : "✘"},{" "}
-                    Expert: {user.badges?.isExpertSeller ? "✔" : "✘"},{" "}
-                    ID Verified: {user.badges?.isIdVerified ? "✔" : "✘"}
-                </p>
+                {user.isSuspended && <p className="text-red-600"><strong>Reason:</strong> {user.suspensionReason}</p>}
+                <p><strong>Badges:</strong> Professional: {user.badges?.isProfessional ? "✔" : "✘"}, Expert: {user.badges?.isExpertSeller ? "✔" : "✘"}, ID Verified: {user.badges?.isIdVerified ? "✔" : "✘"}</p>
             </div>
+
+            {/* ⭐ Hurtig-knap til godkendelse */}
+            {status === 'pending' && (
+                <div className="mt-6 p-4 bg-yellow-100 border border-yellow-300 rounded-lg text-black">
+                    <p className="mb-2">Denne bruger afventer godkendelse af CVR: <strong>{user.cvr}</strong></p>
+                    <button onClick={() => updateStatus("approved")} className="w-full bg-racing-green text-white py-2 rounded font-bold hover:bg-green-700">
+                        Godkend CVR nu
+                    </button>
+                </div>
+            )}
 
             <hr className="my-6 border-ivory/20" />
 
-            {/* Update Role */}
             <h3 className="text-xl font-semibold">Update role</h3>
             <div className="flex gap-2 mt-2">
-                <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                    className="border p-2 rounded flex-1 bg-white text-black"
-                >
+                <select value={role} onChange={(e) => setRole(e.target.value)} className="border p-2 rounded flex-1 bg-white text-black">
                     <option value="user">User</option>
                     <option value="professional">Professional</option>
                     <option value="admin">Admin</option>
                 </select>
-                <button onClick={updateRole} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                    Update
-                </button>
+                <button onClick={updateRole} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Update</button>
             </div>
 
-            {/* Update Status */}
             <h3 className="text-xl font-semibold mt-6">Update professional status</h3>
             <div className="flex gap-2 mt-2">
-                <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value)}
-                    className="border p-2 rounded flex-1 bg-white text-black"
-                >
+                <select value={status} onChange={(e) => setStatus(e.target.value)} className="border p-2 rounded flex-1 bg-white text-black">
                     <option value="none">None</option>
                     <option value="pending">Pending</option>
                     <option value="approved">Approved</option>
                     <option value="rejected">Rejected</option>
                 </select>
-                <button onClick={updateStatus} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                    Update
-                </button>
+                <button onClick={() => updateStatus()} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Update</button>
             </div>
 
-            {/* Update Badges */}
             <h3 className="text-xl font-semibold mt-6">Update badges</h3>
             <div className="space-y-2 mt-2 p-4 border border-ivory/20 rounded">
-                <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                        type="checkbox"
-                        checked={badges.isProfessional}
-                        onChange={(e) => setBadges({ ...badges, isProfessional: e.target.checked })}
-                    />
-                    Professional
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                        type="checkbox"
-                        checked={badges.isExpertSeller}
-                        onChange={(e) => setBadges({ ...badges, isExpertSeller: e.target.checked })}
-                    />
-                    Expert Seller
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                        type="checkbox"
-                        checked={badges.isIdVerified}
-                        onChange={(e) => setBadges({ ...badges, isIdVerified: e.target.checked })}
-                    />
-                    ID Verified
-                </label>
-                <button onClick={updateBadges} className="w-full bg-blue-600 text-white px-4 py-2 rounded mt-2 hover:bg-blue-700">
-                    Update badges
-                </button>
+                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={badges.isProfessional} onChange={(e) => setBadges({ ...badges, isProfessional: e.target.checked })} /> Professional</label>
+                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={badges.isExpertSeller} onChange={(e) => setBadges({ ...badges, isExpertSeller: e.target.checked })} /> Expert Seller</label>
+                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={badges.isIdVerified} onChange={(e) => setBadges({ ...badges, isIdVerified: e.target.checked })} /> ID Verified</label>
+                <button onClick={updateBadges} className="w-full bg-blue-600 text-white px-4 py-2 rounded mt-2 hover:bg-blue-700">Update badges</button>
             </div>
 
-            {/* DANGER ZONE - Suspension */}
             <hr className="my-10 border-red-500/30" />
             <h3 className="text-xl font-semibold text-red-500">Danger Zone</h3>
             <div className="mt-4 p-4 border border-red-500/30 rounded-lg bg-red-500/5">
-                <p className="text-sm mb-4 text-ivory/80">
-                    {user.isSuspended
-                        ? "Account is currently suspended. Reinstating will allow the user to log in again."
-                        : "Suspending the account will block the user and hide all their active listings."}
-                </p>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className={`w-full py-2 rounded font-bold text-white transition-colors ${
-                        user.isSuspended ? "bg-green-700 hover:bg-green-600" : "bg-red-700 hover:bg-red-600"
-                    }`}
-                >
+                <button onClick={() => setIsModalOpen(true)} className={`w-full py-2 rounded font-bold text-white ${user.isSuspended ? "bg-green-700 hover:bg-green-600" : "bg-red-700 hover:bg-red-600"}`}>
                     {user.isSuspended ? "Unban / Reinstate User" : "Ban / Suspend User"}
                 </button>
             </div>
 
-            {message && (
-                <div className="mt-4 p-3 bg-green-600 text-white rounded font-semibold text-center">
-                    {message}
-                </div>
-            )}
+            {message && <div className="mt-4 p-3 bg-green-600 text-white rounded font-semibold text-center">{message}</div>}
 
-            {/* MODAL FOR REASON */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
                     <div className="bg-white text-black p-6 rounded-xl max-w-md w-full shadow-2xl">
-                        <h3 className="text-xl font-bold mb-4">
-                            {user.isSuspended ? "Confirm Unban" : "Provide Reason for Suspension"}
-                        </h3>
-
-                        {!user.isSuspended ? (
-                            <textarea
-                                className="w-full border p-3 rounded-lg mb-4 outline-none focus:border-blue-600"
-                                placeholder="Example: Fraudulent listings or harassment..."
-                                value={suspensionReason}
-                                onChange={(e) => setSuspensionReason(e.target.value)}
-                                rows={4}
-                            />
-                        ) : (
-                            <p className="mb-6">Are you sure you want to lift the suspension for this user?</p>
-                        )}
-
+                        <h3 className="text-xl font-bold mb-4">{user.isSuspended ? "Confirm Unban" : "Provide Reason"}</h3>
+                        {!user.isSuspended && <textarea className="w-full border p-3 rounded-lg mb-4" placeholder="Reason..." value={suspensionReason} onChange={(e) => setSuspensionReason(e.target.value)} rows={4} />}
                         <div className="flex gap-3">
-                            <button
-                                onClick={() => setIsModalOpen(false)}
-                                className="flex-1 py-2 bg-gray-200 rounded font-semibold hover:bg-gray-300"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleToggleSuspension}
-                                className={`flex-1 py-2 text-white rounded font-semibold ${
-                                    user.isSuspended ? "bg-green-700 hover:bg-green-800" : "bg-red-700 hover:bg-red-800"
-                                }`}
-                            >
-                                Confirm
-                            </button>
+                            <button onClick={() => setIsModalOpen(false)} className="flex-1 py-2 bg-gray-200 rounded">Cancel</button>
+                            <button onClick={handleToggleSuspension} className={`flex-1 py-2 text-white rounded ${user.isSuspended ? "bg-green-700" : "bg-red-700"}`}>Confirm</button>
                         </div>
                     </div>
                 </div>
