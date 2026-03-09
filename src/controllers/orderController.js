@@ -74,38 +74,55 @@ async function handleStripeWebhook(req, res, next) {
     let event;
 
     try {
-        // Vi bruger req.rawBody, som du gemmer i app.js via verify-funktionen
         if (!req.rawBody) {
-            console.error("❌ rawBody mangler! Tjek app.js verify-konfigurationen.");
             return res.status(400).send("Webhook Error: Raw body missing");
         }
 
-        event = stripe.webhooks.constructEvent(
-            req.rawBody,
-            sig,
-            webhookSecret
-        );
+        event = stripe.webhooks.constructEvent(req.rawBody, sig, webhookSecret);
     } catch (err) {
         console.error(`❌ Webhook fejl: ${err.message}`);
-        // Det er vigtigt at sende fejlen tilbage til Stripe, så de ved, signaturen var forkert
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
-    // ⭐ NYT: PaymentIntent succeeded
-    if (event.type === 'payment_intent.succeeded') {
-        const intent = event.data.object;
-        try {
-            await orderService.handlePaymentIntentSucceeded(intent);
-            console.log(`✅ PaymentIntent succeeded for order ${intent.metadata.orderId}`);
-        } catch (error) {
-            console.error("❌ Fejl i handlePaymentIntentSucceeded:", error.message);
+    // 1. Log event type for at debugge (Du kan fjerne denne senere)
+    console.log(`⚡ Event modtaget: ${event.type}`);
+
+    // 2. Håndter både PaymentIntent og Charge events
+    // Charge events indeholder ofte et 'payment_intent' ID, som vi kan bruge
+    if (event.type === 'payment_intent.succeeded' || event.type === 'charge.succeeded') {
+        const object = event.data.object;
+
+        // Vi skal finde orderId.
+        // Ved 'payment_intent.succeeded' ligger det i metadata direkte.
+        // Ved 'charge.succeeded' ligger metadata ofte i det tilknyttede PaymentIntent.
+        let orderId = object.metadata?.orderId;
+
+        // Hvis vi er i en charge, og metadata mangler, prøver vi at hente PaymentIntent
+        if (!orderId && object.payment_intent) {
+            try {
+                const paymentIntent = await stripe.paymentIntents.retrieve(object.payment_intent);
+                orderId = paymentIntent.metadata?.orderId;
+            } catch (err) {
+                console.error("❌ Kunne ikke hente PaymentIntent for charge:", err.message);
+            }
+        }
+
+        if (orderId) {
+            try {
+                // Vi sender objektet videre, men sørger for at orderService ved hvilket ID vi taler om
+                await orderService.handlePaymentIntentSucceeded({ ...object, metadata: { orderId } });
+                console.log(`✅ Ordre ${orderId} markeret som betalt via ${event.type}`);
+            } catch (error) {
+                console.error("❌ Fejl i orderService:", error.message);
+                return res.status(500).send("Internal Server Error");
+            }
+        } else {
+            console.warn("⚠️ Event modtaget uden orderId i metadata", event.type);
         }
     }
 
-
     res.json({ received: true });
 }
-
 async function getOrderById(req, res, next) {
     try {
         const order = await orderService.getOrderById(req.params.id, req.user._id);

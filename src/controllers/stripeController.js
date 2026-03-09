@@ -9,4 +9,13 @@ async function connectStripe(req, res, next) {
     }
 }
 
-module.exports = { connectStripe };
+async function getStripeStatus(req, res, next) {
+    try {
+        const status = await stripeService.getStripeStatus(req.user._id);
+        res.json(status);
+    } catch (error) {
+        next(error);
+    }
+}
+
+module.exports = { connectStripe, getStripeStatus };

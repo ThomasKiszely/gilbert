@@ -261,27 +261,54 @@ async function processEligiblePayouts() {
 
     for (const order of eligibleOrders) {
         try {
-
+            // 1) Skip hvis auth ikke er færdig
             if (order.requiresAuthentication) {
-                // Auth ikke færdig → skip
-                if (order.authenticationStatus !== 'passed') {
-                    console.log(`⏸ Skipping payout for order ${order._id} – auth not passed`);
-                    continue;
-                }
-
-                // Auth passed, men varen ikke leveret → skip
-                if (order.status !== 'delivered') {
-                    console.log(`⏸ Skipping payout for order ${order._id} – not delivered yet`);
-                    continue;
-                }
+                if (order.authenticationStatus !== 'passed') continue;
+                if (order.status !== 'delivered') continue;
             }
 
-            console.log(`🤖 Cron: Capturing PaymentIntent for order ${order._id}`);
+            const seller = order.seller;
+            if (!seller || !seller.stripeAccountId) {
+                console.error(`❌ Order ${order._id} mangler seller.stripeAccountId`);
+                continue;
+            }
+
+            // 2) Tjek Stripe account status
+            const status = await checkStripeAccountStatus(seller.stripeAccountId);
+
+            if (status.needsOnboarding) {
+                console.log(`⏸ Seller ${seller._id} mangler onboarding → ingen payout`);
+                continue;
+            }
+
+            // 3) Capture PaymentIntent (pengene går til din platform)
+            console.log(`🤖 Capturing PaymentIntent for order ${order._id}`);
             const capture = await stripe.paymentIntents.capture(order.stripePaymentIntentId);
-            await orderRepo.updateOrderAsPaidOut(order._id, capture.id);
-            console.log(`✅ PaymentIntent captured and paid out for order: ${order._id}`);
+
+            // 4) Lav transfer til sælgerens Stripe‑konto
+            const transferAmount = Math.round(order.sellerPayout * 100);// i øre
+
+            console.log(`🤖 Transferring ${transferAmount} øre to seller ${seller.stripeAccountId}`);
+
+            const transfer = await stripe.transfers.create({
+                amount: transferAmount,
+                currency: "dkk",
+                destination: seller.stripeAccountId,
+                metadata: {
+                    orderId: order._id.toString(),
+                }
+            });
+
+            // 5) Markér ordren som paid out
+            await orderRepo.updateOrderAsPaidOut(order._id, {
+                paymentIntentId: capture.id,
+                transferId: transfer.id
+            });
+
+            console.log(`✅ Payout completed for order ${order._id}`);
+
         } catch (error) {
-            console.error(`❌ Error capturing PaymentIntent for order ${order._id}:`, error.message);
+            console.error(`❌ Error processing payout for order ${order._id}:`, error.message);
         }
     }
 }
@@ -373,6 +400,10 @@ async function handlePaymentIntentSucceeded(intent) {
         shippingAddress: order.shippingAddress,
         stripePaymentIntentId: intent.id
     });
+
+    const productId = order.product._id || order.product;
+    await productRepo.updateStatusProduct(productId, 'Sold');
+    console.log(`✅ Produkt ${productId} er nu markeret som 'Sold'`);
 
     // 2. Opret fragtlabel hos Shipmondo
     try {

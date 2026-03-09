@@ -31,6 +31,7 @@ const authenticationRouter = require('./routes/authenticationRoutes');
 const stripeRouter = require('./routes/stripeRoutes');
 const checkoutRouter = require('./routes/checkoutRoutes');
 const discountCodeRoutes = require('./routes/discountCodeRoutes');
+const webhookRouter = require('./routes/webhookRoutes');
 const cookieParser = require('cookie-parser') ;
 const { limitRate } = require('./middlewares/rateLimiter');
 const { log } = require('./middlewares/logger');
@@ -47,30 +48,30 @@ connectToMongo();
 //app.set('trust proxy', 1); //hvis jeg ligger bag reverse proxy
 
 
-app.use(cookieParser());
-app.use(express.json({
+// Webhook routes – stadig før alt andet
+// I din app.js, find sektionen for webhooks og ret den til dette:
+app.use('/api/webhooks/', express.raw({
+    type: 'application/json',
     verify: (req, res, buf) => {
-        if (req.originalUrl.startsWith('/api/orders/webhook')) {
-            req.rawBody = buf; // Vi gemmer den rå body til senere brug i controlleren
-        }
+        req.rawBody = buf; // Her opretter vi req.rawBody som controlleren forventer
     }
-}));
+}), webhookRouter);
+
+// Almindelig middleware – MÅ IKKE komme før webhooks
+app.use(cookieParser());
+app.use(express.json());
 app.use(limitRate);
 app.use(log);
 app.use(express.static(path.join(__dirname, '..', 'public')));
-//app.use("/avatars", express.static(path.join(__dirname, "..", "public", "avatars")));
 
 
-// TIL UPLOAD AF BILLEDER
+// Billede uploads
 app.use("/api/images/products", express.static("uploads/products"));
 app.use("/api/images/avatars", express.static("uploads/avatars"));
 app.use("/api/images/blogs", express.static("uploads/blogs"));
 
-
-// Routes
+// API routes
 app.use('/api/auth', authRouter);
-
-
 app.use('/api/users', userRouter);
 app.use('/api/bids', bidRouter);
 app.use('/api/notifications', notificationRouter);
@@ -80,17 +81,11 @@ app.use('/api/reports', reportRouter);
 app.use('/api/orders', orderRouter);
 app.use('/api/reviews', reviewRouter);
 app.use('/api/stripe', stripeRouter);
-app.use('/api/checkout', checkoutRouter );
-
-//Favorites
+app.use('/api/checkout', checkoutRouter);
 app.use('/api/favorites', favoriteRouter);
-
-// Admin routes
 app.use('/api/discount-codes', discountCodeRoutes);
 app.use('/api/admin', requireAuth, requireRole("admin"), adminRouter);
 app.use('/api/authentication', requireAuth, requireRole("admin"), authenticationRouter);
-
-// Product routes
 app.use('/api/products', productRouter);
 app.use('/api/brands', brandRouter);
 app.use('/api/colors', colorRouter);
@@ -101,15 +96,12 @@ app.use('/api/sizes', sizeRouter);
 app.use('/api/subcategories', subcategoryRouter);
 app.use('/api/tags', tagRouter);
 app.use('/api/genders', genderRouter);
-
-// Search funktion
 app.use('/api/search', searchRouter);
-
-// Follows route
 app.use('/api/follows', followRouter);
-//app.use('/', viewRouter);
 
+// 404 og error handler – ALTID sidst
 app.use(notFound);
 app.use(errorHandler);
+
 
 module.exports = app;

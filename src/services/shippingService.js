@@ -40,10 +40,13 @@ const { toCountryCode } = require("../utils/countryUtils");
 
 const SHIPMONDO_API_USER = process.env.SHIPMONDO_API_USER;
 const SHIPMONDO_API_KEY = process.env.SHIPMONDO_API_KEY;
-const SHIPMONDO_ENDPOINT = 'https://app.shipmondo.com/api/public/v3/shipments';
+const SHIPMONDO_ENDPOINT = process.env.NODE_ENV === 'production'
+    ? 'https://app.shipmondo.com/api/public/v3/shipments'
+    : 'https://sandbox.shipmondo.com/api/public/v3/shipments';
+
 
 const DEFAULT_CARRIER_CODE = process.env.SHIPMONDO_CARRIER_CODE || 'dao';
-const DEFAULT_PRODUCT_CODE = process.env.SHIPMONDO_PRODUCT_CODE || 'dao_home';
+const DEFAULT_PRODUCT_CODE = process.env.SHIPMONDO_PRODUCT_CODE || 'DAO_STH';
 const DEFAULT_SERVICE_ID = parseInt(process.env.SHIPMONDO_SERVICE_ID || '1', 10);
 
 // ⭐ Helper: valider adressefelter
@@ -144,12 +147,12 @@ async function createShipmondoLabel(orderId) {
         product_code: DEFAULT_PRODUCT_CODE,
         service_id: DEFAULT_SERVICE_ID,
         reference: orderId,
+        service_codes: "EMAIL_NT",   // ← NYT OG KRÆVET AF DAO
         sender: getSenderAddress(seller),
         receiver: getReceiverAddress(order, receiverAddress),
         parcels: [
             { weight: finalWeight }
         ]
-        // Tilføj dimensioner hvis ønsket: length, width, height
     };
 
     try {
@@ -204,6 +207,7 @@ async function createForwardLabel(orderId) {
         carrier_code: DEFAULT_CARRIER_CODE,
         product_code: DEFAULT_PRODUCT_CODE,
         service_id: DEFAULT_SERVICE_ID,
+        service_codes: "EMAIL_NT",   // ← NYT OG KRÆVET
         sender: {
             name: sender.name,
             address1: sender.street,
@@ -224,6 +228,7 @@ async function createForwardLabel(orderId) {
             { weight: order.product?.weight || 1000 }
         ]
     };
+
 
     const response = await axios.post(SHIPMONDO_ENDPOINT, shipmentData, {
         auth: {
