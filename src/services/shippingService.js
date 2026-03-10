@@ -35,7 +35,7 @@ async function createShipmondoLabel(orderId) {
     const finalWeight = Math.max(1, order.product?.weight || 1000);
 
     const shipmentData = {
-        test_mode: !IS_PROD,
+        //test_mode: !IS_PROD,
         own_agreement: false,
         product_code: "DAO_STH",
         service_codes: "EMAIL_NT",
@@ -46,7 +46,7 @@ async function createShipmondoLabel(orderId) {
             {
                 type: "sender",
                 name: seller.username || "Gilbert ApS",
-                attention: seller.username,
+                //attention: seller.username,
                 address1: buildAddress1(seller.profile.address.street, seller.profile.address.houseNumber),
                 postal_code: seller.profile.address.zip,
                 city: seller.profile.address.city,
@@ -56,7 +56,7 @@ async function createShipmondoLabel(orderId) {
             {
                 type: "receiver",
                 name: receiverAddress.name,
-                attention: receiverAddress.name,
+                //attention: receiverAddress.name,
                 address1: buildAddress1(receiverAddress.street, receiverAddress.houseNumber),
                 postal_code: receiverAddress.zip,
                 city: receiverAddress.city,
@@ -103,7 +103,7 @@ async function createForwardLabel(orderId) {
     const finalWeight = Math.max(1, order.product?.weight || 1000);
 
     const shipmentData = {
-        test_mode: !IS_PROD,
+       // test_mode: !IS_PROD,
         own_agreement: false,
         product_code: "DAO_STH",
         service_codes: "EMAIL_NT",
@@ -114,7 +114,7 @@ async function createForwardLabel(orderId) {
             {
                 type: "sender",
                 name: sender.name,
-                attention: sender.name,
+                //attention: sender.name,
                 address1: buildAddress1(sender.street, sender.houseNumber),
                 postal_code: sender.zip,
                 city: sender.city,
@@ -124,7 +124,7 @@ async function createForwardLabel(orderId) {
             {
                 type: "receiver",
                 name: receiver.name,
-                attention: receiver.name,
+                //attention: receiver.name,
                 address1: buildAddress1(receiver.street, receiver.houseNumber),
                 postal_code: receiver.zip,
                 city: receiver.city,
