@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -14,9 +14,26 @@ import { useAuth } from "@/app/context/AuthContext";
 import ChatView from "@/app/components/chat/ChatView";
 import { PlaceBid } from "@/app/components/Bids/PlaceBid";
 import { toggleFavorite } from "@/app/api/favorites";
+import { api } from "@/app/api/api";
 import ProductCard from "@/app/components/product/ProductCard";
 import { cn } from "@/app/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/app/components/UI/avatar";
+
+interface ProductItem {
+    _id: string;
+    title: string;
+    price: number;
+    originalPrice?: number;
+    images?: string[];
+    brand?: { _id: string; name: string } | string;
+    subcategory?: { _id: string; name: string };
+    size?: { label?: string; name?: string } | string;
+    condition?: { name?: string } | string;
+    color?: { name?: string } | string;
+    material?: { name?: string } | string;
+    seller?: { _id: string; username?: string; profile?: { avatarUrl?: string }; stats?: { ratingAverage?: number; numberOfSales?: number }; rating?: number; sales?: number };
+    isFavorite?: boolean;
+}
 
 const formatPrice = (price: number) => price?.toLocaleString("da-DK") + " kr.";
 
@@ -26,8 +43,8 @@ const ProductDetailsPage = () => {
     const { user } = useAuth();
 
     const [state, setState] = useState({
-        product: null as any,
-        similarProducts: [] as any[],
+        product: null as ProductItem | null,
+        similarProducts: [] as ProductItem[],
         loading: true,
         isFavorite: false,
     });
@@ -35,81 +52,93 @@ const ProductDetailsPage = () => {
     const [selectedImage, setSelectedImage] = useState(0);
     const [isChatOpen, setIsChatOpen] = useState(false);
 
-    const fetchAllData = useCallback(async () => {
-        try {
-            const isPreviewAdmin = typeof window !== 'undefined' && new URL(window.location.href).searchParams.get('preview') === 'admin';
-            const productUrl = isPreviewAdmin ? `/api/admin/products/${id}` : `/api/products/${id}`;
+    useEffect(() => {
+        let cancelled = false;
 
-            const [productRes, favRes] = await Promise.allSettled([
-                fetch(productUrl, { credentials: "include" }),
-                fetch("/api/favorites", { credentials: "include" }),
-            ]);
+        const fetchAllData = async () => {
+            try {
+                const isPreviewAdmin = typeof window !== 'undefined' && new URL(window.location.href).searchParams.get('preview') === 'admin';
+                const productUrl = isPreviewAdmin ? `/api/admin/products/${id}` : `/api/products/${id}`;
 
-            let favoriteIds = new Set<string>();
-            if (favRes.status === "fulfilled" && favRes.value.ok) {
-                const favData = await favRes.value.json();
-                if (favData.success) {
-                    favoriteIds = new Set((favData.favorites || []).map((f: any) => String(f._id)));
-                }
-            }
+                const [productRes, favRes] = await Promise.allSettled([
+                    api(productUrl),
+                    api("/api/favorites"),
+                ]);
 
-            if (productRes.status === "fulfilled" && productRes.value.ok) {
-                const data = await productRes.value.json();
-                const p = data.product || data;
-
-                // FIX: Vi opdaterer alt i én omgang for at undgå at layoutet hopper
-                const params = new URLSearchParams();
-                if (p.brand?._id) params.set("brands", p.brand._id);
-                if (p.subcategory?._id) params.set("subcategory", p.subcategory._id);
-                params.set("limit", "5");
-
-                let similar = [];
-                try {
-                    const simRes = await fetch(`/api/products/filter?${params.toString()}`, { credentials: "include" });
-                    if (simRes.ok) {
-                        const simData = await simRes.json();
-                        similar = (simData.products || simData.data || [])
-                            .filter((sp: any) => sp._id !== p._id)
-                            .slice(0, 4)
-                            .map((sp: any) => ({ ...sp, isFavorite: favoriteIds.has(String(sp._id)) }));
+                let favoriteIds = new Set<string>();
+                if (favRes.status === "fulfilled" && favRes.value.ok) {
+                    const favData = await favRes.value.json();
+                    if (favData.success) {
+                        favoriteIds = new Set((favData.favorites || []).map((f: { _id: string }) => String(f._id)));
                     }
-                } catch (e) {}
+                }
 
-                setState({
-                    product: p,
-                    similarProducts: similar,
-                    isFavorite: favoriteIds.has(String(p._id)),
-                    loading: false
-                });
-            } else {
-                setState(prev => ({ ...prev, loading: false }));
+                if (productRes.status === "fulfilled" && productRes.value.ok) {
+                    const data = await productRes.value.json();
+                    const p = data.product || data;
+
+                    const params = new URLSearchParams();
+                    if (p.brand?._id) params.set("brands", p.brand._id);
+                    if (p.subcategory?._id) params.set("subcategory", p.subcategory._id);
+                    params.set("limit", "5");
+
+                    let similar: ProductItem[] = [];
+                    try {
+                        const simRes = await api(`/api/products/filter?${params.toString()}`);
+                        if (simRes.ok) {
+                            const simData = await simRes.json();
+                            similar = (simData.products || simData.data || [])
+                                .filter((sp: ProductItem) => sp._id !== p._id)
+                                .slice(0, 4)
+                                .map((sp: ProductItem) => ({ ...sp, isFavorite: favoriteIds.has(String(sp._id)) }));
+                        }
+                        } catch { /* ignore */ }
+
+                    if (!cancelled) {
+                        setState({
+                            product: p,
+                            similarProducts: similar,
+                            isFavorite: favoriteIds.has(String(p._id)),
+                            loading: false
+                        });
+                    }
+                } else if (!cancelled) {
+                    setState(prev => ({ ...prev, loading: false }));
+                }
+            } catch {
+                if (!cancelled) setState(prev => ({ ...prev, loading: false }));
             }
-        } catch (err) {
-            setState(prev => ({ ...prev, loading: false }));
-        }
+        };
+
+        fetchAllData();
+
+        return () => { cancelled = true; };
     }, [id]);
 
-    useEffect(() => {
-        fetchAllData();
-    }, [fetchAllData]);
 
     const meta = useMemo(() => {
         if (!state.product) return null;
         const p = state.product;
+        const brand = typeof p.brand === "object" && p.brand !== null ? p.brand : null;
+        const size = typeof p.size === "object" && p.size !== null ? p.size : p.size;
+        const condition = typeof p.condition === "object" && p.condition !== null ? p.condition : p.condition;
+        const color = typeof p.color === "object" && p.color !== null ? p.color : p.color;
+        const material = typeof p.material === "object" && p.material !== null ? p.material : p.material;
         return {
             discount: p.originalPrice ? Math.round((1 - p.price / p.originalPrice) * 100) : null,
-            brandName: p.brand?.name ?? p.brand ?? "",
+            brandName: brand?.name ?? (typeof p.brand === "string" ? p.brand : ""),
             details: [
-                { label: "Size", value: p.size?.label ?? p.size?.name ?? p.size },
-                { label: "Condition", value: p.condition?.name ?? p.condition },
-                { label: "Color", value: p.color?.name ?? p.color },
-                { label: "Material", value: p.material?.name ?? p.material },
+                { label: "Size", value: typeof size === "object" && size !== null ? (size.label ?? size.name) : size },
+                { label: "Condition", value: typeof condition === "object" && condition !== null ? condition.name : condition },
+                { label: "Color", value: typeof color === "object" && color !== null ? color.name : color },
+                { label: "Material", value: typeof material === "object" && material !== null ? material.name : material },
             ].filter(d => d.value)
         };
     }, [state.product]);
 
     const handleToggleFavorite = async () => {
         if (!user) return router.push("/login");
+        if (!state.product) return;
         const success = await toggleFavorite(String(state.product._id));
         if (success !== undefined) {
             setState(prev => ({ ...prev, isFavorite: !prev.isFavorite }));
@@ -149,9 +178,9 @@ const ProductDetailsPage = () => {
                             sizes="(max-w-768px) 100vw, 50vw"
                         />
                     </div>
-                    {product.images?.length > 1 && (
+                    {(product.images?.length ?? 0) > 1 && (
                         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                            {product.images.map((img: string, i: number) => (
+                            {product.images?.map((img: string, i: number) => (
                                 <button
                                     key={i}
                                     onClick={() => setSelectedImage(i)}
@@ -169,7 +198,7 @@ const ProductDetailsPage = () => {
 
                 <div className="lg:sticky lg:top-24 space-y-6">
                     <div>
-                        <Link href={`/products/filter?brands=${product.brand?._id}`} className="text-xs uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors">
+                        <Link href={`/products/filter?brands=${typeof product.brand === "object" && product.brand !== null ? product.brand._id : ""}`} className="text-xs uppercase tracking-[0.2em] text-muted-foreground hover:text-foreground transition-colors">
                             {meta?.brandName}
                         </Link>
                         <h1 className="text-3xl font-serif mt-2 leading-tight">{product.title}</h1>
@@ -223,12 +252,12 @@ const ProductDetailsPage = () => {
                     <div className="pt-6 border-t border-border/30">
                         <div className="flex items-center gap-4">
                             <Avatar className="h-12 w-12">
-                                <AvatarImage src={product.seller?.avatar} />
+                                <AvatarImage src={product.seller?.profile?.avatarUrl} />
                                 <AvatarFallback>{product.seller?.username?.slice(0,2).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div className="flex-1">
                                 <p className="text-sm font-bold">{product.seller?.username || "Anonymous seller"}</p>
-                                <p className="text-xs text-muted-foreground">⭐ {product.seller?.rating ?? 0} · {product.seller?.sales ?? 0} sales</p>
+                                <p className="text-xs text-muted-foreground">⭐ {product.seller?.stats?.ratingAverage ?? product.seller?.rating ?? 0} · {product.seller?.stats?.numberOfSales ?? product.seller?.sales ?? 0} sales</p>
                             </div>
                             <Link href={`/profile/${product.seller?._id}`}>
                                 <Button variant="secondary" size="sm" className="rounded-full px-4">View profile</Button>
@@ -248,10 +277,10 @@ const ProductDetailsPage = () => {
                                 product={{
                                     id: p._id,
                                     title: p.title,
-                                    brand: p.brand?.name ?? "",
+                                    brand: typeof p.brand === "object" && p.brand !== null ? p.brand.name : (p.brand ?? ""),
                                     price: p.price,
                                     imageUrl: p.images?.[0] ?? "",
-                                    isFavorite: p.isFavorite,
+                                    isFavorite: p.isFavorite ?? false,
                                 }}
                                 onToggleFavorite={async (pid) => {
                                     const ok = await toggleFavorite(pid);

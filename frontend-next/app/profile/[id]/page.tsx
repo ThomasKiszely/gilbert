@@ -147,6 +147,10 @@ export default function PublicProfilePage() {
                 if (meRes.status === "fulfilled" && meRes.value.ok) {
                     const meJson = await meRes.value.json();
                     setCurrentUser(meJson.data);
+                    if (meJson.data?._id === id) {
+                        router.replace("/profile/me");
+                        return;
+                    }
                 }
 
                 if (isFRes.status === "fulfilled" && isFRes.value.ok) {
@@ -159,7 +163,7 @@ export default function PublicProfilePage() {
         }
         loadInitialData();
         return () => controller.abort();
-    }, [id]);
+    }, [id, router]);
 
     // Body scroll lock
     useEffect(() => {
