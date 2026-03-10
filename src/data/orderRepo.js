@@ -1,7 +1,11 @@
 const Order = require('../models/Order');
 
 async function createOrder(orderData) {
-    const order = new Order(orderData);
+    // Sørg for at shippingMethod mappes fra orderData
+    const order = new Order({
+        ...orderData,
+        shippingMethod: orderData.shippingMethod
+    });
     await order.save();
     return await order.populate('product buyer seller appliedDiscountCode');
 }
@@ -83,11 +87,13 @@ async function updateOrderShipping(orderId, shippingData) {
     return await Order.findByIdAndUpdate(
         orderId,
         {
-            shippingTrackingNumber: shippingData.trackingNumber,
-            shippingLabelUrl: shippingData.labelUrl,
-            externalShippingId: shippingData.externalId,
-            shipmondoOrderId: shippingData.orderId,   // ⭐ NYT
-            shippingError: shippingData.shippingError || null
+            $set: {
+                trackingNumber: shippingData.trackingNumber,
+                labelUrl: shippingData.labelUrl,
+                externalShippingId: shippingData.externalShippingId,
+                shipmondoOrderId: shippingData.shipmondoOrderId,
+                shippingError: shippingData.shippingError || null
+            }
         },
         { new: true, runValidators: true }
     );
@@ -100,7 +106,8 @@ async function updateOrderStatusWithAddress(orderId, updateData) {
         {
             status: updateData.status,
             shippingAddress: updateData.shippingAddress,
-            stripePaymentIntentId: updateData.stripePaymentIntentId
+            stripePaymentIntentId: updateData.stripePaymentIntentId,
+            shippingMethod: updateData.shippingMethod // <--- TILFØJ DENNE
         },
         { new: true, runValidators: true }
     );

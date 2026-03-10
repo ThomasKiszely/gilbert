@@ -20,7 +20,7 @@ async function calculateCheckout(req, res, next) {
             return res.status(400).json({ success: false, message: "Product not available" });
         }
 
-        // Weight validation
+        // ⭐ Weight validation
         if (
             !product.weight ||
             typeof product.weight !== "number" ||
@@ -75,23 +75,21 @@ async function calculateCheckout(req, res, next) {
         }
 
         // ⭐ Normal Shipmondo flow
-        let shippingPrice = 0;
+        // Fast, stabil og konsistent shipping-pris pr. transportør
+        const SHIPPING_PRICES = {
+            gls: 49,
+            dao: 39,
+            postnord: 49
+        };
 
-        if (process.env.NODE_ENV === 'production') {
-            const rate = await shippingService.getRate({
-                fromAddress: product.seller.profile.address,
-                toAddress: address,
-                weight: product.weight,
-                dimensions: DEFAULT_PACKAGE_DIMENSIONS,
-                shippingMethod,
-            });
-
-            shippingPrice = rate.price;
-        } else {
-            shippingPrice = 50; // test mode
+        // ⭐ Fallback til DAO hvis shippingMethod er ukendt
+        let shippingPrice = SHIPPING_PRICES[shippingMethod];
+        if (!shippingPrice) {
+            console.warn(`⚠ Ukendt shippingMethod "${shippingMethod}". Fallback til DAO.`);
+            shippingPrice = SHIPPING_PRICES["dao"];
         }
 
-        // Discount
+        // ⭐ Discount
         let discountAmount = 0;
         if (discountCode) {
             const result = await discountCodeService.validateAndCalculate({
@@ -106,11 +104,11 @@ async function calculateCheckout(req, res, next) {
             }
         }
 
-        // Authentication fee
+        // ⭐ Authentication fee
         const isAuthForced = basePrice >= AUTH_THRESHOLD;
         const authenticationFee = isAuthForced ? AUTHENTICATION_FEE : 0;
 
-        // Total
+        // ⭐ Total
         const total = basePrice - discountAmount + shippingPrice + authenticationFee;
 
         return res.json({

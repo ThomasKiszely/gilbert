@@ -181,7 +181,7 @@ async function initiateOrder(
         appliedDiscountCode: appliedDiscountId,
         discountAmount,
     };
-
+    console.log("DEBUG: Data sendt til createOrder:", orderData);
     const order = await orderRepo.createOrder(orderData);
 
     await autoRejectBidsForPurchasedProduct(productId);
@@ -433,6 +433,91 @@ async function handlePaymentIntentSucceeded(intent) {
             console.error("Failed to send admin error email:", mailErr.message);
         }
     }
+
+    // ⭐ Send besked til sælger om at varen er solgt
+    try {
+        const seller = order.seller;
+        const buyer = order.buyer;
+        const shipping = order.shippingAddress;
+
+        const SHIPPING_LABELS = {
+            dao: "DAO – Indlevering",
+            gls: "GLS – Pakkeshop (indlevering)",
+            postnord: "PostNord – MyPack Collect (indlevering)",
+            manual: "Manual pickup"
+        };
+
+        await mailer.send({
+            to: seller.email,
+            subject: `Du har solgt en vare på GILBERT!`,
+            html: `
+            <h2>Du har solgt: ${order.product.title}</h2>
+
+            <p><strong>Køber:</strong> ${buyer.name || buyer.email}</p>
+
+            <p><strong>Leveringsadresse:</strong><br>
+                ${shipping.name}<br>
+                ${shipping.street} ${shipping.houseNumber}<br>
+                ${shipping.zip} ${shipping.city}
+            </p>
+
+            <p><strong>Fragtmetode:</strong> ${SHIPPING_LABELS[order.shippingMethod]}</p>
+
+            <p><strong>Pris:</strong> ${order.totalAmount} DKK</p>
+
+            <p>Du kan nu hente din pakkelabel i dit dashboard.</p>
+        `
+        });
+
+        // ⭐ Intern notifikation (dashboard)
+        await notificationService.notifyUser(seller._id, {
+            type: notificationTypes.order_sold,
+            orderId: order._id,
+            productId: order.product._id || order.product,
+            message: `Du har solgt ${order.product.title}. Klar til forsendelse.`
+        });
+
+    } catch (err) {
+        console.error("❌ Kunne ikke sende sælger-besked:", err.message);
+    }
+
+    // ⭐ Send ordrebekræftelse til køber
+    try {
+        const buyer = order.buyer;
+        const shipping = order.shippingAddress;
+
+        const SHIPPING_LABELS = {
+            dao: "DAO – Indlevering",
+            gls: "GLS – Pakkeshop (indlevering)",
+            postnord: "PostNord – MyPack Collect (indlevering)",
+            manual: "Manual pickup"
+        };
+
+        await mailer.send({
+            to: buyer.email,
+            subject: "Tak for din ordre hos GILBERT!",
+            html: `
+            <h2>Tak for din ordre!</h2>
+
+            <p><strong>Produkt:</strong> ${order.product.title}</p>
+            <p><strong>Pris:</strong> ${order.totalAmount} DKK</p>
+
+            <p><strong>Fragtmetode:</strong> ${SHIPPING_LABELS[order.shippingMethod]}</p>
+
+            <p><strong>Leveringsadresse:</strong><br>
+                ${shipping.name}<br>
+                ${shipping.street} ${shipping.houseNumber}<br>
+                ${shipping.zip} ${shipping.city}
+            </p>
+
+            <p>Du får besked, så snart sælger har sendt varen.</p>
+        `
+        });
+
+    } catch (err) {
+        console.error("❌ Kunne ikke sende ordrebekræftelse til køber:", err.message);
+    }
+
 
     return updatedOrder;
 }

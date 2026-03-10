@@ -63,6 +63,7 @@ const orderSchema = new mongoose.Schema({
     externalShippingId: { type: String },
     shippingError: { type: String },
     shipmondoOrderId: { type: String },
+    shippingMethod: { type: String },
 
 }, { timestamps: true });
 

@@ -9,4 +9,5 @@ module.exports = {
     professional_approved: "professional_approved",
     professional_rejected: "professional_rejected",
     new_product_from_following: "new_product_from_following",
+    order_sold: "order_sold",
 }
