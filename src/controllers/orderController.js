@@ -1,6 +1,7 @@
 const orderService = require('../services/orderService');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
+
 // 1. Opret en ny ordre (Køb nu / Accepter bud)
 async function initiateOrder(req, res, next) {
     try {
@@ -190,10 +191,46 @@ async function confirmPickup(req, res, next) {
     }
 }
 
+async function downloadLabel(req, res, next) {
+    try {
+        const orderId = req.params.id;
+        const userId = req.user._id;
+        const userRole = req.user.role;
+
+        const order = await orderService.findOrderById(orderId);
+        if (!order) return res.status(404).send("No order found.");
+
+        const isSeller = order.seller._id.toString() === userId.toString();
+        const isBuyer = order.buyer._id.toString() === userId.toString();
+        const isAdmin = userRole === "admin";
+
+        if (!isSeller && !isBuyer && !isAdmin) {
+            return res.status(403).send("Not allowed");
+        }
+
+        // ⭐ Support both forward/normal and return labels
+        const labelBase64 = order.labelUrl || order.returnLabelUrl;
+
+        if (!labelBase64) {
+            return res.status(404).send("Label not available");
+        }
+
+        const pdfBuffer = Buffer.from(labelBase64, "base64");
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", "attachment; filename=label.pdf");
+        res.send(pdfBuffer);
+
+    } catch (error) {
+        console.error("Label download error:", error.message);
+        next(error);
+    }
+}
 
 
 
 module.exports = {
+    downloadLabel,
     initiateOrder,
     getMyOrders,
     openOrderDispute,

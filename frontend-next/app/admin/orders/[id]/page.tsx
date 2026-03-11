@@ -82,7 +82,7 @@ export default function AdminOrderDetailsPage() {
             });
             const data = await res.json();
             if (res.ok) {
-                alert("Authentication failed. Buyer refunded, seller notified.");
+                alert("Authentication failed. Return label created and seller notified.");
                 await loadOrder();
             } else {
                 alert(data.error || "Something went wrong.");
@@ -94,7 +94,7 @@ export default function AdminOrderDetailsPage() {
 
     // --- MARK DELIVERED LOGIC ---
     async function handleMarkAsDelivered() {
-        if (!confirm("Confirm that the item has been delivered to the buyer? This starts the 72-hour review timer.")) return;
+        if (!confirm("Confirm that the item has been delivered? This starts the 72-hour review timer (or completes return).")) return;
 
         setIsActionLoading(true);
         try {
@@ -152,6 +152,11 @@ export default function AdminOrderDetailsPage() {
     const showDisputeButtons = isOrderOpen && (currentStatus === 'disputed' || currentStatus === 'awaiting_return');
     const showShippingRetry = isOrderOpen && !!order.shippingError;
 
+    // Tjekker om der findes en label
+    const hasLabel = !!order.shippingLabelUrl;
+    // Er det en returforsendelse til sælger?
+    const isReturningToSeller = order.authenticationStatus === 'failed' || currentStatus === 'auth_failed';
+
     return (
         <div className="max-w-6xl mx-auto p-6 mt-10 mb-20 font-sans text-racing-green">
             <button onClick={() => router.back()} className="flex items-center gap-2 text-zinc-400 hover:text-racing-green transition mb-8 font-bold text-[10px] uppercase tracking-widest">
@@ -170,12 +175,22 @@ export default function AdminOrderDetailsPage() {
                                 <h1 className="text-4xl font-serif font-black italic mt-2">{order.product?.title || "Unknown Product"}</h1>
                             </div>
                             <div className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                                currentStatus === 'disputed' ? 'bg-burgundy text-white' :
+                                currentStatus === 'disputed' || currentStatus === 'auth_failed' ? 'bg-burgundy text-white' :
                                     currentStatus === 'auth_passed' || currentStatus === 'shipped_to_buyer' ? 'bg-racing-green text-white' : 'bg-zinc-800 text-white'
                             }`}>
                                 {currentStatus.replace(/_/g, ' ')}
                             </div>
                         </div>
+
+                        {/* VIS DUMP-GRUND HVIS AUTH FAILED */}
+                        {order.authenticationNotes && (
+                            <div className="mb-10 p-8 bg-zinc-100 border-l-4 border-zinc-800 rounded-r-3xl">
+                                <h4 className="text-[10px] font-black text-zinc-800 uppercase flex items-center gap-2 mb-3 tracking-widest italic">
+                                    <ShieldCheck size={16} /> Authentication Report (Fail):
+                                </h4>
+                                <p className="text-lg italic font-serif text-zinc-700">"{order.authenticationNotes}"</p>
+                            </div>
+                        )}
 
                         {order.disputeReason && (
                             <div className="mb-10 p-8 bg-burgundy/5 border-l-4 border-burgundy rounded-r-3xl">
@@ -207,24 +222,24 @@ export default function AdminOrderDetailsPage() {
                             </div>
                         </div>
 
-                        {/* VIS LABEL OG TRACKING EFTER GODKENDELSE */}
-                        {currentStatus === 'shipped_to_buyer' && (
+                        {/* VIS LABEL OG TRACKING NÅR DEN ER KLAR */}
+                        {(hasLabel) && (
                             <div className="mt-8 pt-8 border-t border-ivory-dark/50 space-y-4">
-                                <div className="flex flex-wrap gap-4 items-center justify-between">
+                                <div className="flex flex-wrap gap-4 items-center justify-between bg-white/50 p-6 rounded-2xl border border-ivory-dark/30">
                                     <div>
-                                        <h4 className="text-[9px] font-bold uppercase text-zinc-400 mb-1 tracking-widest italic">Tracking Number (Buyer)</h4>
+                                        <h4 className="text-[9px] font-bold uppercase text-zinc-400 mb-1 tracking-widest italic">
+                                            {isReturningToSeller ? 'Return Tracking (to Seller)' : 'Outbound Tracking (to Buyer)'}
+                                        </h4>
                                         <p className="text-sm font-black font-mono">{order.shippingTrackingNumber}</p>
                                     </div>
-                                    {order.shippingLabelUrl && (
-                                        <a
-                                            href={order.shippingLabelUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-2 px-6 py-3 bg-racing-green text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-racing-green-dark transition-all"
-                                        >
-                                            <Download size={14} /> Download Label
-                                        </a>
-                                    )}
+                                    <button
+                                        onClick={() => window.open(`/api/orders/${order._id}/label`, '_blank')}
+                                        className={`flex items-center gap-2 px-6 py-3 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md ${
+                                            isReturningToSeller ? 'bg-zinc-800 hover:bg-black' : 'bg-zinc-900 hover:bg-racing-green'
+                                        }`}
+                                    >
+                                        <Download size={14} /> Download {isReturningToSeller ? 'Return' : 'Shipping'} Label
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -276,16 +291,26 @@ export default function AdminOrderDetailsPage() {
                                 </div>
                             )}
 
-                            {/* SHIPPING ACTIONS */}
-                            {currentStatus === 'auth_passed' && (
+                            {/* LOGISTICS ACTIONS (VISES VED BÅDE PASS OG FAIL) */}
+                            {(currentStatus === 'auth_passed' || currentStatus === 'auth_failed') && (
                                 <div className="space-y-3 pb-4">
                                     <p className="text-[9px] text-white/40 uppercase tracking-[0.2em] font-black text-center mb-1">Logistics</p>
+
+                                    {hasLabel && (
+                                        <button
+                                            onClick={() => window.open(`/api/orders/${order._id}/label`, '_blank')}
+                                            className="w-full py-4 bg-white/10 border border-white/20 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-white/20 transition-all flex items-center justify-center gap-3 mb-2"
+                                        >
+                                            <Download size={16} /> Print {isReturningToSeller ? 'Return' : ''} Label
+                                        </button>
+                                    )}
+
                                     <button
                                         onClick={handleMarkAsDelivered}
                                         className="w-full py-5 bg-white text-racing-green rounded-2xl font-black text-[10px] uppercase tracking-widest hover:scale-[1.02] transition-all flex items-center justify-center gap-3 shadow-xl"
                                     >
                                         <Truck size={18} />
-                                        Mark as Delivered
+                                        Mark as {isReturningToSeller ? 'Returned' : 'Delivered'}
                                     </button>
                                 </div>
                             )}
@@ -316,7 +341,7 @@ export default function AdminOrderDetailsPage() {
                             )}
 
                             {/* CLOSED STATE */}
-                            {!showDisputeButtons && currentStatus !== 'received_by_admin' && currentStatus !== 'auth_passed' && !showShippingRetry && (
+                            {!showDisputeButtons && currentStatus !== 'received_by_admin' && currentStatus !== 'auth_passed' && currentStatus !== 'auth_failed' && !showShippingRetry && (
                                 <div className="py-12 flex flex-col items-center justify-center text-center space-y-4 bg-white/5 rounded-[2.5rem] italic">
                                     <ShieldCheck size={48} className="text-white/10" />
                                     <p className="text-[10px] font-black uppercase tracking-widest text-white/20">Case Closed</p>

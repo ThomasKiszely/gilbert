@@ -53,7 +53,7 @@ function mapShipmondoResponse(data) {
     };
 }
 
-// ⭐ Opret Shipmondo label
+// ⭐ Opret Shipmondo label (Seller → Buyer eller Seller → Gilbert)
 async function createShipmondoLabel(orderId) {
     const order = await orderRepo.findOrderById(orderId);
     if (!order) throw new Error("Order not found");
@@ -96,13 +96,9 @@ async function createShipmondoLabel(orderId) {
     };
 
     try {
-        console.log("📤 Shipmondo payload:", JSON.stringify(shipmentData, null, 2));
-
         const response = await axios.post(SHIPMONDO_ENDPOINT, shipmentData, {
             auth: { username: SHIPMONDO_API_USER, password: SHIPMONDO_API_KEY }
         });
-
-        console.log("📦 RAW Shipmondo response:", response.data);
 
         const mapped = mapShipmondoResponse(response.data);
 
@@ -119,17 +115,14 @@ async function createShipmondoLabel(orderId) {
 
     } catch (err) {
         const raw = err.response?.data || err;
-        console.error("❌ SHIPMONDO FEJL:", JSON.stringify(raw, null, 2));
-
         await orderRepo.updateOrderShipping(orderId, {
             shippingError: JSON.stringify(raw)
         });
-
         throw err;
     }
 }
 
-// ⭐ Opret label fra Gilbert → køber
+// ⭐ Opret label fra Gilbert → Køber (Authentication passed)
 async function createForwardLabel(orderId) {
     const order = await orderRepo.findOrderById(orderId);
     if (!order) throw new Error("Order not found");
@@ -196,4 +189,71 @@ async function createForwardLabel(orderId) {
     }
 }
 
-module.exports = { createShipmondoLabel, createForwardLabel };
+// ⭐ Opret return-label fra Gilbert → Sælger (Authentication failed)
+async function createReturnLabel(orderId) {
+    const order = await orderRepo.findOrderById(orderId);
+    if (!order) throw new Error("Order not found");
+
+    const sender = GILBERT_SHIPPING_ADDRESS;
+    const receiver = order.shippingAddress; // sælgers adresse
+
+    validateAddress(receiver, "Receiver");
+
+    const finalWeight = Math.max(1, order.product?.weight || 1000);
+
+    const shipmentData = {
+        own_agreement: false,
+        product_code: "DAO_STH",
+        service_codes: "EMAIL_NT",
+        reference: `RETURN-${orderId}`,
+        label_format: "a4_pdf",
+        automatic_select_service_point: true,
+        parties: [
+            {
+                type: "sender",
+                name: sender.name,
+                address1: buildAddress1(sender.street, sender.houseNumber),
+                postal_code: sender.zip,
+                city: sender.city,
+                country_code: toCountryCode(sender.country),
+                email: process.env.ADMIN_EMAIL
+            },
+            {
+                type: "receiver",
+                name: receiver.name,
+                address1: buildAddress1(receiver.street, receiver.houseNumber),
+                postal_code: receiver.zip,
+                city: receiver.city,
+                country_code: toCountryCode(receiver.country),
+                email: order.seller.email
+            }
+        ],
+        parcels: [{ weight: finalWeight }]
+    };
+
+    try {
+        const response = await axios.post(SHIPMONDO_ENDPOINT, shipmentData, {
+            auth: { username: SHIPMONDO_API_USER, password: SHIPMONDO_API_KEY }
+        });
+
+        const mapped = mapShipmondoResponse(response.data);
+
+        await orderRepo.updateOrder(orderId, {
+            returnTrackingNumber: mapped.trackingNumber,
+            returnLabelUrl: mapped.labelUrl
+        });
+
+        return mapped;
+
+    } catch (err) {
+        const raw = err.response?.data || err;
+        console.error("❌ SHIPMONDO RETURN FEJL:", JSON.stringify(raw, null, 2));
+        throw err;
+    }
+}
+
+module.exports = {
+    createShipmondoLabel,
+    createForwardLabel,
+    createReturnLabel
+};

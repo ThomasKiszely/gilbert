@@ -394,7 +394,7 @@ async function handlePaymentIntentSucceeded(intent) {
     const order = await orderRepo.findOrderById(orderId);
     if (!order) throw new Error("Order not found.");
 
-    // 1. Opdater ordren til 'paid' — behold vores egen adresse
+    // 1. Markér ordren som betalt
     const updatedOrder = await orderRepo.updateOrderStatusWithAddress(orderId, {
         status: 'paid',
         shippingAddress: order.shippingAddress,
@@ -406,10 +406,16 @@ async function handlePaymentIntentSucceeded(intent) {
     console.log(`✅ Produkt ${productId} er nu markeret som 'Sold'`);
 
     // 2. Opret fragtlabel hos Shipmondo
+    let updatedAfterShipping = null;
+
     try {
         console.log(`Requesting Shipmondo label for order: ${orderId}`);
         await shippingService.createShipmondoLabel(orderId);
         console.log(`✅ Shipmondo label created and saved on order.`);
+
+        // ⭐ Hent ordren igen — nu med trackingNumber, labelUrl, externalShippingId
+        updatedAfterShipping = await orderRepo.findOrderById(orderId);
+
     } catch (shippingError) {
         console.error(`❌ Shipmondo error for order ${orderId}:`, shippingError.message);
 
@@ -447,26 +453,41 @@ async function handlePaymentIntentSucceeded(intent) {
             manual: "Manual pickup"
         };
 
+        // ⭐ Tracking + label link (hvis label blev oprettet)
+        const trackingNumber = updatedAfterShipping?.trackingNumber || "Ikke tilgængelig";
+        const labelLink = updatedAfterShipping?.labelUrl
+            ? `https://gilbert.dk/api/orders/${orderId}/label`
+            : null;
+
         await mailer.send({
             to: seller.email,
             subject: `Du har solgt en vare på GILBERT!`,
             html: `
-            <h2>Du har solgt: ${order.product.title}</h2>
+                <h2>Du har solgt: ${order.product.title}</h2>
 
-            <p><strong>Køber:</strong> ${buyer.name || buyer.email}</p>
+                <p><strong>Køber:</strong> ${buyer.name || buyer.email}</p>
 
-            <p><strong>Leveringsadresse:</strong><br>
-                ${shipping.name}<br>
-                ${shipping.street} ${shipping.houseNumber}<br>
-                ${shipping.zip} ${shipping.city}
-            </p>
+                <p><strong>Leveringsadresse:</strong><br>
+                    ${shipping.name}<br>
+                    ${shipping.street} ${shipping.houseNumber}<br>
+                    ${shipping.zip} ${shipping.city}
+                </p>
 
-            <p><strong>Fragtmetode:</strong> ${SHIPPING_LABELS[order.shippingMethod]}</p>
+                <p><strong>Fragtmetode:</strong> ${SHIPPING_LABELS[order.shippingMethod]}</p>
 
-            <p><strong>Pris:</strong> ${order.totalAmount} DKK</p>
+                <p><strong>Pris:</strong> ${order.totalAmount} DKK</p>
 
-            <p>Du kan nu hente din pakkelabel i dit dashboard.</p>
-        `
+                <p><strong>Trackingnummer:</strong> ${trackingNumber}</p>
+
+                ${
+                labelLink
+                    ? `<p><strong>Pakkelabel:</strong><br>
+                           <a href="${labelLink}">Download pakkelabel (PDF)</a></p>`
+                    : `<p><strong>Pakkelabel:</strong> Kunne ikke genereres automatisk. Kontakt support.</p>`
+            }
+
+                <p>Du kan også hente din pakkelabel i dit dashboard.</p>
+            `
         });
 
         // ⭐ Intern notifikation (dashboard)
@@ -497,40 +518,55 @@ async function handlePaymentIntentSucceeded(intent) {
             to: buyer.email,
             subject: "Tak for din ordre hos GILBERT!",
             html: `
-            <h2>Tak for din ordre!</h2>
+                <h2>Tak for din ordre!</h2>
 
-            <p><strong>Produkt:</strong> ${order.product.title}</p>
-            <p><strong>Pris:</strong> ${order.totalAmount} DKK</p>
+                <p><strong>Produkt:</strong> ${order.product.title}</p>
+                <p><strong>Pris:</strong> ${order.totalAmount} DKK</p>
 
-            <p><strong>Fragtmetode:</strong> ${SHIPPING_LABELS[order.shippingMethod]}</p>
+                <p><strong>Fragtmetode:</strong> ${SHIPPING_LABELS[order.shippingMethod]}</p>
 
-            <p><strong>Leveringsadresse:</strong><br>
-                ${shipping.name}<br>
-                ${shipping.street} ${shipping.houseNumber}<br>
-                ${shipping.zip} ${shipping.city}
-            </p>
+                <p><strong>Leveringsadresse:</strong><br>
+                    ${shipping.name}<br>
+                    ${shipping.street} ${shipping.houseNumber}<br>
+                    ${shipping.zip} ${shipping.city}
+                </p>
 
-            <p>Du får besked, så snart sælger har sendt varen.</p>
-        `
+                <p>Du får besked, så snart sælger har sendt varen.</p>
+            `
         });
 
     } catch (err) {
         console.error("❌ Kunne ikke sende ordrebekræftelse til køber:", err.message);
     }
 
-
     return updatedOrder;
 }
+
 async function getUserSales(userId) {
     const sales = await orderRepo.getOrdersBySeller(userId);
 
     return sales.map(order => {
         const orderObj = order.toObject();
 
-        // Beregn om ordren er låst (under 72 timer efter levering)
+        // 1. Beregn om ordren er låst (eksisterende logik)
         if (order.status === 'delivered' && order.payoutEligibleAt) {
             const now = new Date();
             orderObj.payoutLocked = now < order.payoutEligibleAt;
+        }
+
+        // 2. Tilføj ny displayStatus til frontenden
+        // Vi prioriterer leveret -> så afsendt -> så klar til afsendelse
+        if (order.status === 'delivered') {
+            orderObj.displayStatus = 'leveret';
+        } else if (order.trackingNumber && order.trackingNumber !== 'ERROR') {
+            // Hvis vi har et trackingnummer, betragter vi den som afsendt
+            orderObj.displayStatus = 'afsendt';
+        } else if (order.status === 'paid') {
+            // Hvis den er betalt, men mangler tracking/label
+            orderObj.displayStatus = 'klar_til_forsendelse';
+        } else {
+            // Standard backup for andre statuser (pending, awaiting_pickup, etc)
+            orderObj.displayStatus = order.status;
         }
 
         return orderObj;
@@ -687,9 +723,13 @@ async function approveDelivery(orderId, buyerId) {
 
     return updatedOrder;
 }
-
+async function findOrderById(orderId) {
+    const order = await orderRepo.findOrderById(orderId);
+    return order;
+}
 
 module.exports = {
+    findOrderById,
     initiateOrder,
     getUserOrders,
     processEligiblePayouts,

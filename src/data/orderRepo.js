@@ -17,7 +17,7 @@ async function findOrderById(id) {
         .populate('appliedDiscountCode')
         .populate({
             path: 'seller',
-            select: 'username email profile stripeAccountId'
+            select: '_id username email profile stripeAccountId'
         });
 }
 

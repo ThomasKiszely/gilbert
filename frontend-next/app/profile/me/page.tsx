@@ -8,7 +8,7 @@ import { toggleFavorite } from "@/app/api/favorites";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/app/components/UI/avatar";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/app/components/UI/tabs";
-import { Settings, X, ArrowRight, CreditCard, ShieldCheck, AlertCircle } from "lucide-react";
+import { Settings, X, ArrowRight, CreditCard, ShieldCheck, AlertCircle, Download, ExternalLink } from "lucide-react";
 import { Button } from "@/app/components/UI/button";
 
 import {
@@ -29,6 +29,18 @@ interface OrderItem {
     totalAmount?: number;
     sellerPayout?: number;
     status?: string;
+    labelUrl?: string;
+    trackingNumber?: string;
+    buyer?: { name?: string; email?: string };
+    shippingAddress?: {
+        street?: string;
+        houseNumber?: string;
+        zip?: string;
+        city?: string
+    };
+    // Authentication fields
+    requiresAuthentication?: boolean;
+    authenticationStatus?: 'pending' | 'passed' | 'failed' | 'not_required';
 }
 
 interface FollowUser {
@@ -49,7 +61,7 @@ interface UserProfile {
     location?: { city?: string; country?: string };
     profile?: { bio?: string; language?: string; avatarUrl?: string };
     role: string;
-    stripeAccountId?: string; // Tilføjet så vi kan tjekke status
+    stripeAccountId?: string;
 }
 
 const MePage = () => {
@@ -64,17 +76,50 @@ const MePage = () => {
     const [showFollowers, setShowFollowers] = useState(false);
     const [showFollowing, setShowFollowing] = useState(false);
 
+    // State for viewing sale details
+    const [selectedSale, setSelectedSale] = useState<OrderItem | null>(null);
+
+    // Status logic for Seller
+    const getSellerDisplayStatus = (item: OrderItem) => {
+        if (item.requiresAuthentication) {
+            if (item.authenticationStatus === 'pending') return 'Awaiting authentication';
+            if (item.authenticationStatus === 'passed') return 'Authentication passed – shipped to buyer';
+            if (item.authenticationStatus === 'failed') return 'Authentication failed – item returned';
+        }
+        if (item.status === 'delivered') return 'Delivered';
+        if (item.trackingNumber && item.trackingNumber !== 'ERROR') return 'Shipped';
+        if (item.status === 'paid') return 'Ready for shipment';
+        return item.status || 'Pending';
+    };
+
+    // Status logic for Buyer
+    const getBuyerDisplayStatus = (item: OrderItem) => {
+        if (item.requiresAuthentication) {
+            if (item.authenticationStatus === 'pending') return 'Awaiting authentication';
+            if (item.authenticationStatus === 'passed') return 'Authentication passed – on its way';
+            if (item.authenticationStatus === 'failed') return 'Authentication failed – item returned';
+        }
+        if (item.status === 'delivered') return 'Delivered';
+        if (item.trackingNumber && item.trackingNumber !== 'ERROR') return 'Shipped';
+        if (item.status === 'paid') return 'Processing';
+        return item.status || 'Pending';
+    };
+
+    // Helper to generate DAO tracking link
+    const getDaoTrackingLink = (trackingNumber?: string) => {
+        if (!trackingNumber) return "#";
+        return `https://www.dao.as/privat/find-pakke?pakke=${trackingNumber}`;
+    };
+
     useEffect(() => {
         async function loadAll() {
             try {
-                // 1. Hent profil først da vi skal bruge user._id
                 const profileRes = await api("/api/users/me");
                 const profileJson = await profileRes.json();
                 if (!profileJson.success) return;
                 const userData = profileJson.data;
                 setUser(userData);
 
-                // 2. Hent alt andet parallelt
                 const [productsRes, favRes, ordersRes, salesRes, followersRes, followingRes] =
                     await Promise.allSettled([
                         api(`/api/products/user/${userData._id}?all=true`),
@@ -85,7 +130,6 @@ const MePage = () => {
                         api(`/api/follows/${userData._id}/following`),
                     ]);
 
-                // Favorites
                 let favoriteIds = new Set<string>();
                 if (favRes.status === "fulfilled") {
                     try {
@@ -98,7 +142,6 @@ const MePage = () => {
                     } catch {}
                 }
 
-                // Produkter med isFavorite
                 if (productsRes.status === "fulfilled") {
                     const json = await productsRes.value.json();
                     if (json.success) {
@@ -136,7 +179,7 @@ const MePage = () => {
         loadAll();
     }, []);
 
-    // Body scroll lock til modals
+    // Body scroll lock for modals
     useEffect(() => {
         const locked = showFollowers || showFollowing;
         document.body.style.overflow = locked ? "hidden" : "";
@@ -221,7 +264,6 @@ const MePage = () => {
                     <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuItem asChild><Link href="/profile/edit">Edit profile</Link></DropdownMenuItem>
 
-                        {/* PAYOUT SETTINGS LINK */}
                         <DropdownMenuItem asChild>
                             <Link href="/settings/payouts" className="flex items-center gap-2">
                                 <CreditCard size={14} className="text-muted-foreground" />
@@ -293,26 +335,88 @@ const MePage = () => {
 
                 {/* TAB: SOLD (Salg) */}
                 <TabsContent value="sold" className="mt-4">
-                    {soldItems.length === 0 ? (
+                    {selectedSale ? (
+                        <div className="bg-white p-6 rounded-2xl border border-border shadow-sm animate-in fade-in zoom-in duration-200">
+                            <button onClick={() => setSelectedSale(null)} className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-black mb-6 flex items-center gap-2">
+                                ← Back to sales
+                            </button>
+
+                            <div className="flex gap-4 mb-6">
+                                <img src={selectedSale.product?.images?.[0] || "/images/ImagePlaceholder.jpg"} className="w-20 h-20 object-cover rounded-lg border" alt="Product" />
+                                <div>
+                                    <h2 className="text-lg font-bold text-black">{selectedSale.product?.title || "Unknown product"}</h2>
+                                    <p className="font-bold text-burgundy">{selectedSale.totalAmount} DKK</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4 border-t pt-6 text-sm">
+                                <div>
+                                    <label className="text-[9px] uppercase font-bold text-muted-foreground">Status</label>
+                                    <p className="font-medium text-black">{getSellerDisplayStatus(selectedSale)}</p>
+                                </div>
+                                <div>
+                                    <label className="text-[9px] uppercase font-bold text-muted-foreground">Buyer</label>
+                                    <p className="font-medium text-black">{selectedSale.buyer?.name || "Not provided"}</p>
+                                </div>
+                                <div>
+                                    <label className="text-[9px] uppercase font-bold text-muted-foreground">Tracking Number</label>
+                                    <p className="font-medium text-black">{selectedSale.trackingNumber || "None"}</p>
+                                </div>
+                            </div>
+
+                            <div className="mt-8">
+                                <button
+                                    onClick={() => {
+                                        if (!selectedSale.labelUrl) {
+                                            alert("Shipping label has not been generated for this sale yet.");
+                                            return;
+                                        }
+                                        window.open(`/api/orders/${selectedSale._id}/label`, '_blank');
+                                    }}
+                                    className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold text-xs transition-all ${
+                                        selectedSale.labelUrl
+                                            ? "bg-black text-white hover:bg-gray-800"
+                                            : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                    }`}
+                                >
+                                    <Download size={14} />
+                                    {selectedSale.labelUrl ? "Download shipping label" : "Label not ready"}
+                                </button>
+                            </div>
+                        </div>
+                    ) : soldItems.length === 0 ? (
                         <div className="text-center py-12 text-muted-foreground text-sm italic">No sold items yet</div>
                     ) : (
                         <div className="space-y-3">
                             {soldItems.map(item => (
-                                <Link href={`/orders/${item._id}`} key={item._id} className="flex items-center justify-between p-4 bg-white border border-border rounded-2xl hover:bg-muted/30 transition shadow-sm">
+                                <div
+                                    key={item._id}
+                                    onClick={() => setSelectedSale(item)}
+                                    className="flex items-center justify-between p-4 bg-white border border-border rounded-2xl hover:border-black cursor-pointer transition shadow-sm"
+                                >
                                     <div className="flex items-center gap-4">
                                         <div className="h-12 w-12 bg-muted rounded-lg overflow-hidden shrink-0 border relative">
-                                            <Image src={item.product?.images?.[0] || "/images/ImagePlaceholder.jpg"} alt={item.product?.title || "Product"} className="object-cover" fill sizes="48px" />
+                                            <Image
+                                                src={item.product?.images?.[0] || "/images/ImagePlaceholder.jpg"}
+                                                alt={item.product?.title || "Product"}
+                                                className="object-cover"
+                                                fill
+                                                sizes="48px"
+                                                unoptimized
+                                            />
                                         </div>
                                         <div>
-                                            <p className="text-sm font-bold truncate max-w-[150px]">{item.product?.title || "Deleted Product"}</p>
-                                            <p className="text-xs text-green-600 font-bold">Payout: {item.sellerPayout || item.totalAmount} DKK</p>
+                                            <p className="text-sm font-bold text-black truncate max-w-[200px]">{item.product?.title || "Deleted Product"}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <p className="text-xs text-green-600 font-bold">Payout: {item.sellerPayout || item.totalAmount} DKK</p>
+                                                <span className="text-[10px] bg-muted px-2 py-0.5 rounded font-bold uppercase text-muted-foreground truncate max-w-[120px] inline-block">
+                                                    {getSellerDisplayStatus(item)}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-[10px] uppercase font-bold text-muted-foreground">{item.status}</p>
-                                        <ArrowRight size={14} className="ml-auto mt-1 text-muted-foreground" />
-                                    </div>
-                                </Link>
+                                    <ArrowRight size={16} className="text-muted-foreground shrink-0" />
+                                </div>
                             ))}
                         </div>
                     )}
@@ -325,21 +429,48 @@ const MePage = () => {
                     ) : (
                         <div className="space-y-3">
                             {orders.map(order => (
-                                <Link href={`/orders/${order._id}`} key={order._id} className="flex items-center justify-between p-4 bg-white border border-border rounded-2xl hover:bg-muted/30 transition shadow-sm">
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-12 w-12 bg-muted rounded-lg overflow-hidden shrink-0 border relative">
-                                            <Image src={order.product?.images?.[0] || "/images/ImagePlaceholder.jpg"} alt={order.product?.title || "Product"} className="object-cover" fill sizes="48px" />
+                                <div key={order._id} className="bg-white border border-border rounded-2xl shadow-sm overflow-hidden hover:border-muted-foreground transition">
+                                    <Link href={`/orders/${order._id}`} className="flex items-center justify-between p-4 hover:bg-muted/30 transition block">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-12 w-12 bg-muted rounded-lg overflow-hidden shrink-0 border relative">
+                                                <Image
+                                                    src={order.product?.images?.[0] || "/images/ImagePlaceholder.jpg"}
+                                                    alt={order.product?.title || "Product"}
+                                                    className="object-cover"
+                                                    fill
+                                                    sizes="48px"
+                                                    unoptimized
+                                                />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-black truncate max-w-[150px]">{order.product?.title || "Deleted Product"}</p>
+                                                <p className="text-xs text-burgundy font-bold">{order.totalAmount} DKK</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="text-sm font-bold truncate max-w-[150px]">{order.product?.title || "Deleted Product"}</p>
-                                            <p className="text-xs text-burgundy font-bold">{order.totalAmount} DKK</p>
+                                        <div className="text-right">
+                                            <p className="text-[10px] uppercase font-bold text-muted-foreground">{getBuyerDisplayStatus(order)}</p>
+                                            <ArrowRight size={14} className="ml-auto mt-1 text-muted-foreground" />
                                         </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-[10px] uppercase font-bold text-muted-foreground">{order.status}</p>
-                                        <ArrowRight size={14} className="ml-auto mt-1 text-muted-foreground" />
-                                    </div>
-                                </Link>
+                                    </Link>
+
+                                    {/* Tracking info for the buyer right below the order */}
+                                    {order.trackingNumber && order.trackingNumber !== 'ERROR' && (
+                                        <div className="px-4 py-3 bg-muted/20 border-t flex justify-between items-center">
+                                            <div>
+                                                <p className="text-[10px] uppercase font-bold text-muted-foreground">Tracking Number</p>
+                                                <p className="text-xs font-medium text-black">{order.trackingNumber}</p>
+                                            </div>
+                                            <a
+                                                href={getDaoTrackingLink(order.trackingNumber)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 hover:underline"
+                                            >
+                                                Track with DAO <ExternalLink size={12} />
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
                             ))}
                         </div>
                     )}

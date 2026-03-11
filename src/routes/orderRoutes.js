@@ -8,6 +8,10 @@ router.get('/my-orders', requireAuth, orderController.getMyOrders);
 router.get('/my-sales', requireAuth, orderController.getMySales);
 router.post('/create', requireAuth, orderController.initiateOrder);
 
+// Hent pakkelabel (PDF download)
+router.get('/:id/label', requireAuth, orderController.downloadLabel);
+
+
 // 2. DYNAMISKE RUTER (Disse skal ligge nederst)
 router.get('/:id', requireAuth, orderController.getOrderById);
 router.post('/:id/approve-delivery', requireAuth, orderController.approveDelivery);

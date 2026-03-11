@@ -3,13 +3,15 @@ const authenticationService = require('../services/authenticationService');
 async function approveAuthentication(req, res, next) {
     try {
         const { orderId } = req.params;
+
         const result = await authenticationService.handleAuthenticationPassed(orderId);
 
         return res.status(200).json({
             success: true,
             message: result.message,
-            labelUrl: result.labelUrl,
-            trackingNumber: result.trackingNumber
+            trackingNumber: result.trackingNumber,
+            // Admin henter label via samme endpoint som sælger/køber
+            labelDownloadUrl: `/api/orders/${orderId}/label`
         });
     } catch (error) {
         next(error);
