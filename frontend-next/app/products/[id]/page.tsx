@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import {
     MessageCircle, ArrowLeft, X, Heart, Share2,
     ChevronRight
@@ -16,24 +15,12 @@ import { PlaceBid } from "@/app/components/Bids/PlaceBid";
 import { toggleFavorite } from "@/app/api/favorites";
 import { api } from "@/app/api/api";
 import ProductCard from "@/app/components/product/ProductCard";
+import type { ApiProduct } from "@/app/components/product/types";
 import { cn } from "@/app/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/app/components/UI/avatar";
 
-interface ProductItem {
-    _id: string;
-    title: string;
-    price: number;
-    originalPrice?: number;
-    images?: string[];
-    brand?: { _id: string; name: string } | string;
-    subcategory?: { _id: string; name: string };
-    size?: { label?: string; name?: string } | string;
-    condition?: { name?: string } | string;
-    color?: { name?: string } | string;
-    material?: { name?: string } | string;
-    seller?: { _id: string; username?: string; profile?: { avatarUrl?: string }; stats?: { ratingAverage?: number; numberOfSales?: number }; rating?: number; sales?: number };
-    isFavorite?: boolean;
-}
+// Re-use ApiProduct as the product shape on this page
+type ProductItem = ApiProduct;
 
 const formatPrice = (price: number) => price?.toLocaleString("da-DK") + " kr.";
 
@@ -51,6 +38,13 @@ const ProductDetailsPage = () => {
 
     const [selectedImage, setSelectedImage] = useState(0);
     const [isChatOpen, setIsChatOpen] = useState(false);
+    const [isPreviewAdmin, setIsPreviewAdmin] = useState(false);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setIsPreviewAdmin(new URL(window.location.href).searchParams.get('preview') === 'admin');
+        }
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -126,7 +120,7 @@ const ProductDetailsPage = () => {
         const material = typeof p.material === "object" && p.material !== null ? p.material : p.material;
         return {
             discount: p.originalPrice ? Math.round((1 - p.price / p.originalPrice) * 100) : null,
-            brandName: brand?.name ?? (typeof p.brand === "string" ? p.brand : ""),
+            brandName: brand?.name ?? "",
             details: [
                 { label: "Size", value: typeof size === "object" && size !== null ? (size.label ?? size.name) : size },
                 { label: "Condition", value: typeof condition === "object" && condition !== null ? condition.name : condition },
@@ -154,6 +148,12 @@ const ProductDetailsPage = () => {
 
     return (
         <div className="max-w-6xl mx-auto px-4 pb-16 min-h-screen">
+            {isPreviewAdmin && (
+                <div className="my-4 px-4 py-3 rounded-xl bg-yellow-600/20 border border-yellow-500/40 text-yellow-200 text-sm flex items-center gap-2">
+                    <span className="font-bold uppercase tracking-wider text-xs">Admin Preview</span>
+                    <span className="text-yellow-200/70">— This product has not been approved yet. Purchase actions are disabled.</span>
+                </div>
+            )}
             <nav className="flex items-center gap-1.5 text-xs text-muted-foreground py-4 mb-2">
                 <button onClick={() => router.back()} className="flex items-center gap-1 hover:text-foreground transition-colors">
                     <ArrowLeft className="h-3 w-3" /> Back
@@ -168,14 +168,12 @@ const ProductDetailsPage = () => {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
                 <div className="space-y-4">
-                    <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-muted border border-border/30">
-                        <Image
+                    <div className="aspect-[3/4] rounded-xl overflow-hidden bg-muted border border-border/30">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
                             src={product.images?.[selectedImage] || "/images/ImagePlaceholder.jpg"}
                             alt={product.title}
-                            fill
-                            priority
-                            className="object-cover"
-                            sizes="(max-w-768px) 100vw, 50vw"
+                            className="w-full h-full object-cover"
                         />
                     </div>
                     {(product.images?.length ?? 0) > 1 && (
@@ -185,11 +183,12 @@ const ProductDetailsPage = () => {
                                     key={i}
                                     onClick={() => setSelectedImage(i)}
                                     className={cn(
-                                        "relative w-20 h-24 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all",
+                                        "w-20 h-24 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all",
                                         selectedImage === i ? "border-foreground" : "border-transparent opacity-60"
                                     )}
                                 >
-                                    <Image src={img} alt={`Image ${i + 1}`} fill className="object-cover" sizes="80px" />
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={img} alt={`Image ${i + 1}`} className="w-full h-full object-cover" />
                                 </button>
                             ))}
                         </div>
@@ -226,6 +225,12 @@ const ProductDetailsPage = () => {
                     </div>
 
                     <div className="space-y-3 pt-4">
+                        {isPreviewAdmin ? (
+                            <div className="px-4 py-3 rounded-xl bg-yellow-600/10 border border-yellow-500/30 text-yellow-200/70 text-sm text-center">
+                                Purchase actions are disabled in admin preview mode.
+                            </div>
+                        ) : (
+                        <>
                         <div className="flex gap-2">
                             <Button onClick={() => user ? router.push(`/checkout/${product._id}`) : router.push("/login")} className="flex-1 h-14 rounded-2xl text-base font-bold">
                                 Buy now
@@ -247,6 +252,8 @@ const ProductDetailsPage = () => {
                         <button onClick={() => user ? setIsChatOpen(true) : router.push("/login")} className="w-full text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground py-2 flex items-center justify-center gap-2">
                             <MessageCircle className="h-4 w-4" /> Questions for the seller?
                         </button>
+                        </>
+                        )}
                     </div>
 
                     <div className="pt-6 border-t border-border/30">
@@ -264,6 +271,13 @@ const ProductDetailsPage = () => {
                             </Link>
                         </div>
                     </div>
+
+                    {product.description && (
+                        <div className="pt-6 border-t border-border/30 space-y-2">
+                            <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Description</h3>
+                            <p className="text-sm leading-relaxed whitespace-pre-line">{product.description}</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
