@@ -20,6 +20,9 @@ async function refresh(req, res, next) {
         if (!user) {
             return res.status(404).json({ success: false, message: "User not found" });
         }
+        if (user.deleted || user.active === false || user.role === "deleted") {
+            return res.status(401).json({ success: false, message: "Account is no longer active" });
+        }
 
         const newAccessToken = jwt.sign(
             { id: user._id, email: user.email, role: user.role },

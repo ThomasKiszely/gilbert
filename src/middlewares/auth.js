@@ -24,6 +24,10 @@ async function requireAuth(req, res, next) {
         const user = await userRepo.findUserById(decoded.id);
         if (!user) return res.status(401).json({ error: "User not found" });
 
+        if (user.deleted || user.active === false || user.role === "deleted") {
+            return res.status(401).json({ error: "Account deleted" });
+        }
+
         req.user = user;
         next();
     } catch (error) {

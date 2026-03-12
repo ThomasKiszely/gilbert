@@ -1,14 +1,28 @@
 "use client";
-import { useState } from "react";
-import Link from "next/link"; // ⭐ Husk at importere Link
+import { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
+// Vi pakker selve form-logikken ind i en sub-komponent for at
+// Next.js ikke brokker sig over useSearchParams uden en Suspense boundary.
+function LoginForm() {
+    const searchParams = useSearchParams();
     const [activeTab, setActiveTab] = useState<"login" | "register">("login");
     const [message, setMessage] = useState("");
+    const [messageType, setMessageType] = useState<"error" | "info">("error");
+
+    useEffect(() => {
+        const reason = searchParams.get("reason");
+        if (reason === "session_expired") {
+            setMessageType("info");
+            setMessage("Your session has expired. Please log in again to enter the vault.");
+        }
+    }, [searchParams]);
 
     function switchTab(tab: "login" | "register") {
         setActiveTab(tab);
         setMessage("");
+        setMessageType("error");
     }
 
     async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
@@ -24,10 +38,12 @@ export default function LoginPage() {
         const payload: any = Object.fromEntries(formData.entries());
 
         if (payload.password !== payload.confirmPassword) {
+            setMessageType("error");
             return setMessage("Passwords do not match");
         }
 
         if (!payload.termsAccepted) {
+            setMessageType("error");
             return setMessage("You must accept the terms");
         }
 
@@ -62,59 +78,82 @@ export default function LoginPage() {
             const data = await res.json();
 
             if (!data.success) {
-                // Hvis terms er outdated, sender vi dem til den nye side med en besked
                 if (data.code === "TERMS_OUTDATED") {
-                    window.location.href = "/terms?action=accept"; // ⭐ Send brugeren til terms-siden
+                    window.location.href = "/terms?action=accept";
                     return;
                 }
+                setMessageType("error");
                 return setMessage(data.error || "Something went wrong");
             }
 
             if (endpoint === "register") {
+                setMessageType("info");
                 return setMessage("User registered. Please verify your email.");
             }
 
             window.location.href = "/";
         } catch (err) {
             console.error(err);
+            setMessageType("error");
             setMessage("Server error");
         }
     }
 
     return (
-        <div className="max-w-md mx-auto mt-20 p-6 bg-ivory-dark rounded-xl shadow-lg text-burgundy">
-
+        <div className="max-w-md mx-auto mt-20 p-8 bg-ivory-dark rounded-[2rem] shadow-2xl text-racing-green border border-racing-green/5">
             {/* Tabs */}
-            <div className="flex mb-4">
+            <div className="flex mb-8 bg-ivory/50 rounded-xl p-1">
                 <button
-                    className={`text-burgundy flex-1 py-2 ${activeTab === "login" ? "border-b-2 border-racing-green" : ""}`}
+                    className={`flex-1 py-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
+                        activeTab === "login"
+                            ? "bg-white text-racing-green shadow-sm"
+                            : "text-racing-green/40 hover:text-racing-green"
+                    }`}
                     onClick={() => switchTab("login")}
                 >
                     Login
                 </button>
 
                 <button
-                    className={`text-burgundy flex-1 py-2 ${activeTab === "register" ? "border-b-2 border-racing-green" : ""}`}
+                    className={`flex-1 py-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
+                        activeTab === "register"
+                            ? "bg-white text-racing-green shadow-sm"
+                            : "text-racing-green/40 hover:text-racing-green"
+                    }`}
                     onClick={() => switchTab("register")}
                 >
                     Register
                 </button>
             </div>
 
-            {/* Message */}
+            {/* Message Display */}
             {message && (
-                <p className="text-red-600 mb-3">{message}</p>
+                <div className={`mb-6 p-4 rounded-xl text-[11px] font-bold uppercase tracking-wider text-center border animate-in fade-in slide-in-from-top-2 ${
+                    messageType === "info"
+                        ? "bg-blue-50 text-blue-700 border-blue-100"
+                        : "bg-red-50 text-red-600 border-red-100"
+                }`}>
+                    {message}
+                </div>
             )}
 
             {/* Login Form */}
             {activeTab === "login" && (
-                <form onSubmit={handleLogin} className="space-y-3">
-                    <input name="email" type="email" placeholder="Email" required className="input" />
-                    <input name="password" type="password" placeholder="Password" required className="input" />
-                    <button className="btn-primary w-full">Login</button>
-                    <div className="text-center mt-3">
-                        <a href="/forgot-password" className="text-sm underline text-racing-green">
-                            Forgot your password?
+                <form onSubmit={handleLogin} className="space-y-4">
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Email</label>
+                        <input name="email" type="email" placeholder="collector@gilbert.dk" required className="w-full p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold outline-none focus:border-racing-green/30" />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Password</label>
+                        <input name="password" type="password" placeholder="Your password" required className="w-full p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold outline-none focus:border-racing-green/30" />
+                    </div>
+                    <button className="w-full bg-racing-green text-ivory py-5 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-lg hover:bg-zinc-800 transition-all mt-4">
+                        Access Account
+                    </button>
+                    <div className="text-center mt-6">
+                        <a href="/forgot-password" hidden className="text-[10px] font-black uppercase tracking-widest text-racing-green/40 hover:text-racing-green">
+                            Forgot Password?
                         </a>
                     </div>
                 </form>
@@ -123,32 +162,43 @@ export default function LoginPage() {
             {/* Register Form */}
             {activeTab === "register" && (
                 <form onSubmit={handleRegister} className="space-y-3">
-                    <input name="username" placeholder="Username" required className="input" />
-                    <input name="email" type="email" placeholder="Email" required className="input" />
-                    <input name="city" placeholder="City" required className="input" />
-                    <input name="country" placeholder="Country" required className="input" />
-                    <input name="cvr" placeholder="CVR (optional)" className="input" />
-                    <input name="password" type="password" placeholder="Password" required className="input" />
-                    <input name="confirmPassword" type="password" placeholder="Confirm Password" required className="input" />
+                    <div className="grid grid-cols-2 gap-3">
+                        <input name="username" placeholder="Username" required className="p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold text-sm" />
+                        <input name="email" type="email" placeholder="Email" required className="p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold text-sm" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                        <input name="city" placeholder="City" required className="p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold text-sm" />
+                        <input name="country" placeholder="Country" required className="p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold text-sm" />
+                    </div>
+                    <input name="cvr" placeholder="CVR (optional)" className="w-full p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold text-sm" />
+                    <input name="password" type="password" placeholder="Password" required className="w-full p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold text-sm" />
+                    <input name="confirmPassword" type="password" placeholder="Confirm Password" required className="w-full p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold text-sm" />
 
-                    {/* ⭐ Her linker vi til /terms i stedet for at åbne popup */}
-                    <label className="flex items-center gap-2 text-sm">
-                        <input type="checkbox" name="termsAccepted" />
-                        <span>
-                            I accept the{" "}
-                            <Link
-                                href="/terms"
-                                target="_blank"
-                                className="underline text-racing-green font-semibold"
-                            >
+                    <label className="flex items-start gap-3 p-4 bg-white/40 rounded-xl cursor-pointer">
+                        <input type="checkbox" name="termsAccepted" className="mt-1 accent-racing-green" />
+                        <span className="text-[10px] font-medium leading-relaxed opacity-70">
+                            I accept the {" "}
+                            <Link href="/terms" target="_blank" className="underline font-black text-racing-green">
                                 Terms of Service
                             </Link>
+                            {" "} regarding manual authentication and vault security.
                         </span>
                     </label>
 
-                    <button className="btn-primary w-full">Register</button>
+                    <button className="w-full bg-racing-green text-ivory py-5 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-lg hover:bg-zinc-800 transition-all mt-4">
+                        Create Membership
+                    </button>
                 </form>
             )}
         </div>
+    );
+}
+
+// Main Page export med Suspense for at håndtere useSearchParams
+export default function LoginPage() {
+    return (
+        <Suspense fallback={<div className="text-center p-20 font-serif italic text-racing-green">Loading vault access...</div>}>
+            <LoginForm />
+        </Suspense>
     );
 }
