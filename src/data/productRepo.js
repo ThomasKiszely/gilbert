@@ -295,6 +295,9 @@ async function getEditorsPicks(limit = 3) {
         { $unwind: { path: '$seller', preserveNullAndEmptyArrays: true } },
     ]);
 }
+async function deleteProductsBySeller(sellerId) {
+    return Product.deleteMany({ seller: sellerId });
+}
 
 
 module.exports = {
@@ -313,4 +316,5 @@ module.exports = {
     getTrendingProducts,
     getEditorsPicks,
     getProductByIdAny,
+    deleteProductsBySeller,
 }

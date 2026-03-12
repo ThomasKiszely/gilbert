@@ -1,5 +1,6 @@
 const userRepo = require('../data/userRepo');
 const orderRepo = require('../data/orderRepo');
+const productRepo = require('../data/productRepo');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
@@ -316,6 +317,8 @@ async function confirmAccountDeletion(token) {
 
     // brug din eksisterende soft‑delete
     await deleteUser(user._id);
+
+    await productRepo.deleteProductsBySeller(user._id);
 
     return true;
 }

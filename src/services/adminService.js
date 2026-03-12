@@ -2,7 +2,7 @@ const productRepo = require('../data/productRepo');
 const userRepo = require("../data/userRepo");
 const orderRepo = require("../data/orderRepo");
 const shippingService = require("../services/shippingService");
-const { sanitizeUser } = require('../utils/sanitizeUser');
+const { removePasswordHash } = require('../utils/removePasswordHash');
 const mailer = require('../utils/mailer');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const notificationService = require('../services/notificationService');
@@ -37,7 +37,7 @@ async function getAllUsersPaginated(page, limit) {
 
 async function getUserById(id) {
     const user = await userRepo.findUserById(id);
-    const sanitizedUser = sanitizeUser(user);
+    const sanitizedUser = removePasswordHash(user);
     return sanitizedUser;
 }
 
@@ -54,19 +54,19 @@ async function updateProfessionalStatus(id, professionalStatus) {
             type: notificationTypes.professional_rejected
         });
     }
-    const sanitizedUser = sanitizeUser(user);
+    const sanitizedUser = removePasswordHash(user);
     return sanitizedUser;
 }
 
 async function updateUserBadges(id, badges) {
     const user = await userRepo.updateUserBadges(id, badges);
-    const sanitizedUser = sanitizeUser(user);
+    const sanitizedUser = removePasswordHash(user);
     return sanitizedUser;
 }
 
 async function updateUserRole(id, role) {
     const user = await userRepo.updateUserRole(id, role);
-    const sanitizedUser = sanitizeUser(user);
+    const sanitizedUser = removePasswordHash(user);
     return sanitizedUser;
 }
 
@@ -133,7 +133,7 @@ async function toggleUserSuspension(id, isSuspended, reason) {
         }
     }
 
-    return sanitizeUser(user);
+    return removePasswordHash(user);
 }
 
 async function retryShippingLabel(orderId) {

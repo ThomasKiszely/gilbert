@@ -1,16 +1,13 @@
 const orderService = require('../services/orderService');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-
+const { sanitizeUser } = require("../utils/sanitizeUser");
 
 // 1. Opret en ny ordre (Køb nu / Accepter bud)
 async function initiateOrder(req, res, next) {
     try {
-        // Vi trækker 'address' ud fra req.body (som vi sender fra Next.js)
         const { productId, bidId, wantAuth, address, discountCode, shippingMethod } = req.body;
         const buyerId = req.user._id;
 
-        // VIGTIGT: Vi sender 'address' med som det 3. argument,
-        // præcis som orderService.initiateOrder forventer det.
         const result = await orderService.initiateOrder(
             productId,
             buyerId,
@@ -21,7 +18,6 @@ async function initiateOrder(req, res, next) {
             shippingMethod
         );
 
-        // Bemærk: orderService returnerer { order, clientSecret }
         return res.status(201).json({
             success: true,
             order: result.order,
@@ -39,10 +35,19 @@ async function getMyOrders(req, res, next) {
         const buyerId = req.user._id;
         const orders = await orderService.getUserOrders(buyerId);
 
+        const safeOrders = orders.map(o => {
+            const obj = o;
+            return {
+                ...obj,
+                buyer: sanitizeUser(obj.buyer),
+                seller: sanitizeUser(obj.seller)
+            };
+        });
+
         return res.status(200).json({
             success: true,
-            count: orders.length,
-            data: orders
+            count: safeOrders.length,
+            data: safeOrders
         });
     } catch (error) {
         next(error);
@@ -52,22 +57,27 @@ async function getMyOrders(req, res, next) {
 // 3. Åben en sag/indsigelse (Dispute)
 async function openOrderDispute(req, res, next) {
     try {
-        const { id } = req.params; // Ordre ID
+        const { id } = req.params;
         const userId = req.user._id;
-        const { reason } = req.body; // begrundelse fra køber
+        const { reason } = req.body;
 
         const updatedOrder = await orderService.openOrderDispute(id, userId, reason);
+
+        const safeOrder = {
+            ...updatedOrder.toObject(),
+            buyer: sanitizeUser(updatedOrder.buyer),
+            seller: sanitizeUser(updatedOrder.seller)
+        };
 
         return res.status(200).json({
             success: true,
             message: "Indsigelse er registreret. Udbetalingen er sat på pause.",
-            data: updatedOrder
+            data: safeOrder
         });
     } catch (error) {
         next(error);
     }
 }
-
 
 async function handleStripeWebhook(req, res, next) {
     const sig = req.headers['stripe-signature'];
@@ -85,20 +95,12 @@ async function handleStripeWebhook(req, res, next) {
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
 
-    // 1. Log event type for at debugge (Du kan fjerne denne senere)
     console.log(`⚡ Event modtaget: ${event.type}`);
 
-    // 2. Håndter både PaymentIntent og Charge events
-    // Charge events indeholder ofte et 'payment_intent' ID, som vi kan bruge
     if (event.type === 'payment_intent.succeeded' || event.type === 'charge.succeeded') {
         const object = event.data.object;
-
-        // Vi skal finde orderId.
-        // Ved 'payment_intent.succeeded' ligger det i metadata direkte.
-        // Ved 'charge.succeeded' ligger metadata ofte i det tilknyttede PaymentIntent.
         let orderId = object.metadata?.orderId;
 
-        // Hvis vi er i en charge, og metadata mangler, prøver vi at hente PaymentIntent
         if (!orderId && object.payment_intent) {
             try {
                 const paymentIntent = await stripe.paymentIntents.retrieve(object.payment_intent);
@@ -110,7 +112,6 @@ async function handleStripeWebhook(req, res, next) {
 
         if (orderId) {
             try {
-                // Vi sender objektet videre, men sørger for at orderService ved hvilket ID vi taler om
                 await orderService.handlePaymentIntentSucceeded({ ...object, metadata: { orderId } });
                 console.log(`✅ Ordre ${orderId} markeret som betalt via ${event.type}`);
             } catch (error) {
@@ -124,23 +125,38 @@ async function handleStripeWebhook(req, res, next) {
 
     res.json({ received: true });
 }
+
 async function getOrderById(req, res, next) {
     try {
         const order = await orderService.getOrderById(req.params.id, req.user._id);
-        return res.status(200).json({ success: true, data: order });
+
+        const safeOrder = {
+            ...order.toObject(),
+            buyer: sanitizeUser(order.buyer),
+            seller: sanitizeUser(order.seller)
+        };
+
+        return res.status(200).json({ success: true, data: safeOrder });
     } catch (err) {
         next(err);
     }
 }
+
 async function getMySales(req, res, next) {
     try {
         const userId = req.user._id;
         const sales = await orderService.getUserSales(userId);
 
+        const safeSales = sales.map(o => ({
+            ...o,
+            buyer: sanitizeUser(o.buyer),
+            seller: sanitizeUser(o.seller)
+        }));
+
         return res.status(200).json({
             success: true,
-            count: sales.length,
-            data: sales
+            count: safeSales.length,
+            data: safeSales
         });
     } catch (error) {
         next(error);
@@ -156,6 +172,7 @@ async function handleShipmondoWebhook(req, res, next) {
         return res.status(400).json({ error: err.message });
     }
 }
+
 async function approveDelivery(req, res, next) {
     try {
         const { id } = req.params;
@@ -163,10 +180,16 @@ async function approveDelivery(req, res, next) {
 
         const updatedOrder = await orderService.approveDelivery(id, userId);
 
+        const safeOrder = {
+            ...updatedOrder.toObject(),
+            buyer: sanitizeUser(updatedOrder.buyer),
+            seller: sanitizeUser(updatedOrder.seller)
+        };
+
         return res.status(200).json({
             success: true,
             message: "Delivery approved. Payment released to the seller.",
-            data: updatedOrder
+            data: safeOrder
         });
     } catch (error) {
         next(error);
@@ -180,10 +203,16 @@ async function confirmPickup(req, res, next) {
 
         const updatedOrder = await orderService.confirmPickup(orderId, buyerId);
 
+        const safeOrder = {
+            ...updatedOrder.toObject(),
+            buyer: sanitizeUser(updatedOrder.buyer),
+            seller: sanitizeUser(updatedOrder.seller)
+        };
+
         return res.json({
             success: true,
             message: "Pickup confirmed. Your 72-hour protection period has started.",
-            order: updatedOrder
+            order: safeOrder
         });
 
     } catch (err) {
@@ -208,7 +237,6 @@ async function downloadLabel(req, res, next) {
             return res.status(403).send("Not allowed");
         }
 
-        // ⭐ Support both forward/normal and return labels
         const labelBase64 = order.labelUrl || order.returnLabelUrl;
 
         if (!labelBase64) {
@@ -226,8 +254,6 @@ async function downloadLabel(req, res, next) {
         next(error);
     }
 }
-
-
 
 module.exports = {
     downloadLabel,
