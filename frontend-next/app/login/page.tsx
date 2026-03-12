@@ -3,8 +3,6 @@ import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
-// Vi pakker selve form-logikken ind i en sub-komponent for at
-// Next.js ikke brokker sig over useSearchParams uden en Suspense boundary.
 function LoginForm() {
     const searchParams = useSearchParams();
     const [activeTab, setActiveTab] = useState<"login" | "register">("login");
@@ -15,14 +13,13 @@ function LoginForm() {
         const reason = searchParams.get("reason");
         if (reason === "session_expired") {
             setMessageType("info");
-            setMessage("Your session has expired. Please log in again to enter the vault.");
+            setMessage("Your session has expired. Please log in again.");
         }
     }, [searchParams]);
 
     function switchTab(tab: "login" | "register") {
         setActiveTab(tab);
         setMessage("");
-        setMessageType("error");
     }
 
     async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
@@ -53,15 +50,10 @@ function LoginForm() {
             password: payload.password,
             confirmPassword: payload.confirmPassword,
             termsAccepted: true,
-            location: {
-                city: payload.city,
-                country: payload.country
-            }
+            location: { city: payload.city, country: payload.country }
         };
 
-        if (payload.cvr?.trim()) {
-            registerPayload.cvr = payload.cvr.trim();
-        }
+        if (payload.cvr?.trim()) registerPayload.cvr = payload.cvr.trim();
 
         submitAuth("register", registerPayload);
     }
@@ -93,100 +85,97 @@ function LoginForm() {
 
             window.location.href = "/";
         } catch (err) {
-            console.error(err);
             setMessageType("error");
             setMessage("Server error");
         }
     }
 
     return (
-        <div className="max-w-md mx-auto mt-20 p-8 bg-ivory-dark rounded-[2rem] shadow-2xl text-racing-green border border-racing-green/5">
-            {/* Tabs */}
-            <div className="flex mb-8 bg-ivory/50 rounded-xl p-1">
+        <div className="max-w-md mx-auto mt-20 p-8 bg-[#f2e8d5] rounded-2xl shadow-xl text-[#6b2121]">
+
+            {/* Tabs - Matcher billedets bordeaux farve og streg */}
+            <div className="flex mb-8 relative border-b border-[#6b2121]/10">
                 <button
-                    className={`flex-1 py-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
-                        activeTab === "login"
-                            ? "bg-white text-racing-green shadow-sm"
-                            : "text-racing-green/40 hover:text-racing-green"
+                    className={`flex-1 py-3 text-lg font-medium transition-all relative ${
+                        activeTab === "login" ? "text-[#6b2121]" : "text-[#6b2121]/40"
                     }`}
                     onClick={() => switchTab("login")}
                 >
                     Login
+                    {activeTab === "login" && (
+                        <div className="absolute bottom-0 left-0 w-full h-[2px] bg-[#003d2b]" />
+                    )}
                 </button>
 
                 <button
-                    className={`flex-1 py-3 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${
-                        activeTab === "register"
-                            ? "bg-white text-racing-green shadow-sm"
-                            : "text-racing-green/40 hover:text-racing-green"
+                    className={`flex-1 py-3 text-lg font-medium transition-all relative ${
+                        activeTab === "register" ? "text-[#6b2121]" : "text-[#6b2121]/40"
                     }`}
                     onClick={() => switchTab("register")}
                 >
                     Register
+                    {activeTab === "register" && (
+                        <div className="absolute bottom-0 left-0 w-full h-[2px] bg-[#003d2b]" />
+                    )}
                 </button>
             </div>
 
-            {/* Message Display */}
             {message && (
-                <div className={`mb-6 p-4 rounded-xl text-[11px] font-bold uppercase tracking-wider text-center border animate-in fade-in slide-in-from-top-2 ${
-                    messageType === "info"
-                        ? "bg-blue-50 text-blue-700 border-blue-100"
-                        : "bg-red-50 text-red-600 border-red-100"
-                }`}>
+                <p className={`mb-4 text-sm text-center font-bold ${messageType === "error" ? "text-red-600" : "text-blue-700"}`}>
                     {message}
-                </div>
+                </p>
             )}
 
-            {/* Login Form */}
             {activeTab === "login" && (
                 <form onSubmit={handleLogin} className="space-y-4">
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Email</label>
-                        <input name="email" type="email" placeholder="collector@gilbert.dk" required className="w-full p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold outline-none focus:border-racing-green/30" />
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-[10px] font-black uppercase tracking-widest opacity-40 ml-2">Password</label>
-                        <input name="password" type="password" placeholder="Your password" required className="w-full p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold outline-none focus:border-racing-green/30" />
-                    </div>
-                    <button className="w-full bg-racing-green text-ivory py-5 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-lg hover:bg-zinc-800 transition-all mt-4">
-                        Access Account
+                    <input
+                        name="email"
+                        type="email"
+                        placeholder="Email"
+                        required
+                        className="w-full p-4 bg-white border border-gray-300 rounded-xl text-black outline-none focus:border-[#003d2b]"
+                    />
+                    <input
+                        name="password"
+                        type="password"
+                        placeholder="Password"
+                        required
+                        className="w-full p-4 bg-white border border-gray-300 rounded-xl text-black outline-none focus:border-[#003d2b]"
+                    />
+                    <button className="w-full bg-[#003d2b] text-white py-4 rounded-xl font-bold text-lg hover:bg-[#002b1e] transition-all">
+                        Login
                     </button>
-                    <div className="text-center mt-6">
-                        <a href="/forgot-password" hidden className="text-[10px] font-black uppercase tracking-widest text-racing-green/40 hover:text-racing-green">
-                            Forgot Password?
-                        </a>
+                    <div className="text-center mt-4">
+                        <Link href="/forgot-password" title="Glemt password" className="text-sm underline text-[#003d2b] hover:opacity-80">
+                            Forgot your password?
+                        </Link>
                     </div>
                 </form>
             )}
 
-            {/* Register Form */}
             {activeTab === "register" && (
                 <form onSubmit={handleRegister} className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
-                        <input name="username" placeholder="Username" required className="p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold text-sm" />
-                        <input name="email" type="email" placeholder="Email" required className="p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold text-sm" />
+                        <input name="username" placeholder="Username" required className="p-3 bg-white border border-gray-300 rounded-xl text-black text-sm outline-none focus:border-[#003d2b]" />
+                        <input name="email" type="email" placeholder="Email" required className="p-3 bg-white border border-gray-300 rounded-xl text-black text-sm outline-none focus:border-[#003d2b]" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                        <input name="city" placeholder="City" required className="p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold text-sm" />
-                        <input name="country" placeholder="Country" required className="p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold text-sm" />
+                        <input name="city" placeholder="City" required className="p-3 bg-white border border-gray-300 rounded-xl text-black text-sm outline-none focus:border-[#003d2b]" />
+                        <input name="country" placeholder="Country" required className="p-3 bg-white border border-gray-300 rounded-xl text-black text-sm outline-none focus:border-[#003d2b]" />
                     </div>
-                    <input name="cvr" placeholder="CVR (optional)" className="w-full p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold text-sm" />
-                    <input name="password" type="password" placeholder="Password" required className="w-full p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold text-sm" />
-                    <input name="confirmPassword" type="password" placeholder="Confirm Password" required className="w-full p-4 bg-ivory border border-racing-green/10 rounded-xl text-black font-bold text-sm" />
+                    <input name="cvr" placeholder="CVR (optional)" className="w-full p-3 bg-white border border-gray-300 rounded-xl text-black text-sm outline-none focus:border-[#003d2b]" />
+                    <input name="password" type="password" placeholder="Password" required className="w-full p-3 bg-white border border-gray-300 rounded-xl text-black text-sm outline-none focus:border-[#003d2b]" />
+                    <input name="confirmPassword" type="password" placeholder="Confirm Password" required className="w-full p-3 bg-white border border-gray-300 rounded-xl text-black text-sm outline-none focus:border-[#003d2b]" />
 
-                    <label className="flex items-start gap-3 p-4 bg-white/40 rounded-xl cursor-pointer">
-                        <input type="checkbox" name="termsAccepted" className="mt-1 accent-racing-green" />
-                        <span className="text-[10px] font-medium leading-relaxed opacity-70">
-                            I accept the {" "}
-                            <Link href="/terms" target="_blank" className="underline font-black text-racing-green">
-                                Terms of Service
-                            </Link>
-                            {" "} regarding manual authentication and vault security.
+                    <label className="flex items-start gap-2 py-2 cursor-pointer">
+                        <input type="checkbox" name="termsAccepted" className="mt-1 accent-[#003d2b]" />
+                        <span className="text-xs text-[#6b2121]/70">
+                            I accept the <Link href="/terms" target="_blank" className="underline font-bold text-[#003d2b]">Terms of Service</Link>
                         </span>
                     </label>
 
-                    <button className="w-full bg-racing-green text-ivory py-5 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-lg hover:bg-zinc-800 transition-all mt-4">
-                        Create Membership
+                    <button className="w-full bg-[#003d2b] text-white py-4 rounded-xl font-bold text-lg hover:bg-[#002b1e] transition-all">
+                        Register
                     </button>
                 </form>
             )}
@@ -194,10 +183,9 @@ function LoginForm() {
     );
 }
 
-// Main Page export med Suspense for at håndtere useSearchParams
 export default function LoginPage() {
     return (
-        <Suspense fallback={<div className="text-center p-20 font-serif italic text-racing-green">Loading vault access...</div>}>
+        <Suspense fallback={<div className="text-center p-20 text-white">Loading...</div>}>
             <LoginForm />
         </Suspense>
     );
