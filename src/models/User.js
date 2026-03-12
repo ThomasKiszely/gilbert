@@ -53,7 +53,9 @@ const userSchema = new mongoose.Schema({
     isSuspended: {type: Boolean, default: false},
     suspensionReason: {type: String},
     stripeAccountId: {type: String, default: null},
-},
+    deleteAccountToken: { type: String, default: null },
+    deleteAccountExpires: { type: Date, default: null },
+    },
 {timestamps: true });
 
 

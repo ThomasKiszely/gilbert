@@ -129,6 +129,33 @@ async function getUserById(req, res, next) {
     }
 }
 
+async function requestAccountDeletion(req, res, next) {
+    try {
+        await userService.requestAccountDeletion(req.user.id);
+
+        return res.status(200).json({
+            success: true,
+            message: "A confirmation email has been sent. Please check your inbox."
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+async function confirmAccountDeletion(req, res, next) {
+    try {
+        const { token } = req.query;
+
+        await userService.confirmAccountDeletion(token);
+
+        return res.status(200).json({
+            success: true,
+            message: "Your account has been deleted."
+        });
+
+    } catch (error) {
+        next(error);
+    }
+}
 
 
 module.exports = {
@@ -141,4 +168,6 @@ module.exports = {
     verifyEmailChange,
     deleteUser,
     getUserById,
+    requestAccountDeletion,
+    confirmAccountDeletion,
 }

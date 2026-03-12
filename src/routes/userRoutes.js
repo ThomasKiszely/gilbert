@@ -9,6 +9,8 @@ const { validateAdminUserUpdate } = require("../middlewares/validateAdminUserUpd
 
 router.get("/public/:id", userController.getUserById);
 router.get("/verify-email-change", userController.verifyEmailChange);
+router.get("/confirm-delete", userController.confirmAccountDeletion);
+
 
 router.use(requireAuth);
 
@@ -19,7 +21,7 @@ router.post("/me/email", userController.changeEmail);
 router.get("/me", userController.getMe);
 router.patch("/me", validateUserUpdate, userController.updateMe);
 
-router.delete('/me', userController.deleteUser);
+router.post("/me/request-delete", userController.requestAccountDeletion);
 
 
 module.exports = router;

@@ -16,7 +16,12 @@ async function updateUser(id, user) {
     return updatedUser;
 }
 
-
+async function findUserByDeleteToken(hashedToken) {
+    return User.findOne({
+        deleteAccountToken: hashedToken,
+        deleteAccountExpires: { $gt: Date.now() }
+    });
+}
 
 
 async function findUserById(id) {
@@ -145,5 +150,6 @@ module.exports = {
     findAdmins,
     toggleUserSuspension,
     updateStripeAccountId,
-    countPendingProfessionalUsers
+    countPendingProfessionalUsers,
+    findUserByDeleteToken
 }

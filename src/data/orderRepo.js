@@ -218,6 +218,27 @@ async function countOrdersByBuyer(buyerId) {
     });
 }
 
+async function findActiveOrdersForUser(userId) {
+    return Order.find({
+        $or: [
+            { buyer: userId },
+            { seller: userId }
+        ],
+        status: {
+            $in: [
+                'pending',
+                'paid',
+                'shipped',
+                'auth_passed',
+                'awaiting_pickup',
+                'delivered',
+                'awaiting_return',
+                'disputed'
+            ]
+        }
+    });
+}
+
 
 module.exports = {
     createOrder,
@@ -242,4 +263,5 @@ module.exports = {
     findByExternalShippingId,
     updateOrderAfterPickup,
     countOrdersByBuyer,
+    findActiveOrdersForUser
 };

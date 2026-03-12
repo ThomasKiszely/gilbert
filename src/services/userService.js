@@ -1,4 +1,5 @@
 const userRepo = require('../data/userRepo');
+const orderRepo = require('../data/orderRepo');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
@@ -12,6 +13,7 @@ const imageService = require('../services/imageService');
 const { allowedUserUpdateFields } = require('../utils/allowedUserUpdateFields');
 const reviewRepo = require('../data/reviewRepo');
 const {userRoles} = require("../utils/userRoles");
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 async function updateMe(id, data) {
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -271,7 +273,52 @@ async function getUserById(id) {
     };
 }
 
+async function requestAccountDeletion(userId) {
+    const user = await userRepo.findUserById(userId);
+    if (!user) throw new Error("User not found");
 
+    const token = crypto.randomBytes(32).toString("hex");
+    const hashed = crypto.createHash("sha256").update(token).digest("hex");
+
+    await userRepo.updateUser(userId, {
+        deleteAccountToken: hashed,
+        deleteAccountExpires: Date.now() + 1000 * 60 * 30 // 30 min
+    });
+
+    const url = `${process.env.BASE_URL}/api/users/confirm-delete?token=${token}`;
+
+    await mailer.send({
+        to: user.email,
+        subject: "Confirm deletion of your GILBERT account",
+        html: `
+            <h1>Confirm account deletion</h1>
+            <p>Click the link below to permanently delete your account:</p>
+            <p><a href="${url}">${url}</a></p>
+            <p>This link is valid for 30 minutes.</p>
+        `
+    });
+
+    return true;
+}
+
+async function confirmAccountDeletion(token) {
+    if (!token) throw new Error("Invalid token");
+
+    const hashed = crypto.createHash("sha256").update(token).digest("hex");
+    const user = await userRepo.findUserByDeleteToken(hashed);
+    if (!user) throw new Error("Invalid or expired token");
+
+    // ryd token før sletning
+    await userRepo.updateUser(user._id, {
+        deleteAccountToken: null,
+        deleteAccountExpires: null
+    });
+
+    // brug din eksisterende soft‑delete
+    await deleteUser(user._id);
+
+    return true;
+}
 
 module.exports = {
     updateUser,
@@ -283,4 +330,6 @@ module.exports = {
     deleteUser,
     searchUsers,
     getUserById,
+    confirmAccountDeletion,
+    requestAccountDeletion,
 };
