@@ -3,4 +3,5 @@ module.exports.userRoles = {
     professional: "professional",
     admin: "admin",
     gilbert: "gilbert",
+    deleted: "deleted",
 };

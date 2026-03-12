@@ -11,6 +11,7 @@ const { sanitizeUser } = require('../utils/sanitizeUser');
 const imageService = require('../services/imageService');
 const { allowedUserUpdateFields } = require('../utils/allowedUserUpdateFields');
 const reviewRepo = require('../data/reviewRepo');
+const {userRoles} = require("../utils/userRoles");
 
 async function updateMe(id, data) {
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -172,13 +173,78 @@ async function verifyEmailChange(token) {
 
 async function deleteUser(userId) {
     const user = await userRepo.findUserById(userId);
+    if (!user) throw new Error("User not found");
+
+    // 1. Check for active orders
+    const activeOrders = await orderRepo.findActiveOrdersForUser(userId);
+    if (activeOrders.length > 0) {
+        throw new Error("You cannot delete your account while you have active orders.");
+    }
+
+    // 2. Delete avatar if exists
     const avatar = user.profile?.avatarUrl;
-    if(avatar) {
+    if (avatar && avatar !== "/avatars/Gilbert.jpg") {
         await imageService.deleteImage(avatar);
     }
-    const deleted = await userRepo.deleteUser(userId);
-    return deleted;
+
+    // 3. Delete Stripe account
+    if (user.stripeAccountId) {
+        try {
+            await stripe.accounts.del(user.stripeAccountId);
+        } catch (err) {
+            console.error("Stripe account deletion failed:", err.message);
+        }
+    }
+
+    // 4. Soft delete + anonymisering
+    const softDeleted = await userRepo.updateUser(userId, {
+        deleted: true,
+        deletedAt: new Date(),
+        active: false,
+
+        email: `deleted+${userId}@gilbert.dk`,
+        username: `deleted_user_${userId}`,
+        passwordHash: user.passwordHash,
+
+        pendingEmail: null,
+        emailChangeToken: null,
+        emailChangeExpires: null,
+
+        role: "deleted",
+
+        profile: {
+            bio: null,
+            avatarUrl: "/avatars/Gilbert.jpg",
+            language: "en",
+            address: {
+                street: null,
+                houseNumber: null,
+                zip: null,
+                city: null,
+                country: null
+            }
+        },
+
+        cvr: null,
+        professionalStatus: "none",
+
+        badges: {
+            isProfessional: false,
+            isExpertSeller: false,
+            isIdVerified: false
+        },
+
+        location: {
+            city: null,
+            country: null
+        },
+
+        stripeAccountId: null
+    });
+
+    return softDeleted;
 }
+
 
 async function searchUsers(query, limit) {
     return userRepo.searchUsers(query, limit);

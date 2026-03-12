@@ -56,7 +56,7 @@ async function register({ username, email, password, location, termsAccepted, cv
 
 async function login(email, password) {
     const user = await userRepo.findUserByEmail(email.toLowerCase());
-    if (!user) throw new Error("Wrong email or password");
+    if (!user || user.deleted || !user.active) throw new Error("Wrong email or password");
 
     if (user.termsVersion !== process.env.TERMS_VERSION) {
         const err = new Error("New terms must be accepted");
