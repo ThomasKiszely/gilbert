@@ -1,36 +1,42 @@
 function sanitizeUser(user) {
-    if (!user) return null;
+    if (!user) {
+        return {
+            _id: null,
+            username: "Unknown User",
+            profile: { avatarUrl: "/avatars/Gilbert.jpg" }
+        };
+    }
 
+    // 1. Lav en kopi
     const obj = user.toJSON ? user.toJSON() : { ...user };
 
-    // ❌ Følsomme felter fjernes altid
-    delete obj.passwordHash;
-    delete obj.email;
-    delete obj.pendingEmail;
-    delete obj.emailChangeToken;
-    delete obj.emailChangeExpires;
-    delete obj.deleteAccountToken;
-    delete obj.deleteAccountExpires;
-    delete obj.stripeAccountId;
-    delete obj.location;
-    delete obj.suspensionReason; // følsomt
+    // Gem vitale felter, som vi IKKE må miste
+    const vitalId = obj._id;
+    const role = obj.role;
+    const isDeleted = obj.deleted;
 
-    // ❌ Fjern adresse (shipping)
-    if (obj.profile && obj.profile.address) {
+    // 2. Definition af følsomme felter der SKAL væk
+    const sensitiveFields = [
+        'passwordHash', 'email', 'phone', 'pendingEmail',
+        'emailChangeToken', 'emailChangeExpires',
+        'deleteAccountToken', 'deleteAccountExpires', 'stripeAccountId'
+    ];
+
+    sensitiveFields.forEach(field => delete obj[field]);
+
+    // 3. Fjern adresse-data fra profil
+    if (obj.profile?.address) {
         delete obj.profile.address;
     }
 
-    // ⭐ SLETTET BRUGER → anonymiser
-    if (obj.deleted || obj.role === "deleted") {
+    // 4. Hvis slettet - overskriv, men bevar ID og rolle
+    if (isDeleted || role === "deleted") {
         obj.username = "Deleted User";
-
         obj.profile = obj.profile || {};
         obj.profile.avatarUrl = "/avatars/Gilbert.jpg";
         obj.profile.bio = null;
-
         obj.cvr = null;
         obj.professionalStatus = "none";
-
         obj.badges = {
             isProfessional: false,
             isExpertSeller: false,
@@ -38,9 +44,11 @@ function sanitizeUser(user) {
         };
     }
 
+    // 5. Sikr at _id og role altid er intakt
+    obj._id = vitalId;
+    obj.role = role;
+
     return obj;
 }
 
-module.exports = {
-    sanitizeUser,
-};
+module.exports = { sanitizeUser };

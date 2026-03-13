@@ -7,7 +7,7 @@ import { Elements } from "@stripe/react-stripe-js";
 import StripePayment from "./StripePayment";
 import { Button } from "@/app/components/UI/button";
 import { useAuth } from "@/app/context/AuthContext";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { Loader2, AlertTriangle, ShieldCheck } from "lucide-react";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
@@ -23,21 +23,27 @@ export default function CheckoutPage() {
     const [isPreparing, setIsPreparing] = useState(false);
     const [isCalculating, setIsCalculating] = useState(false);
     const [shippingMethod, setShippingMethod] = useState("dao");
+    const [wantsAuthentication, setWantsAuthentication] = useState(false); // NY STATE
     const [discountCode, setDiscountCode] = useState("");
     const [appliedDiscount, setAppliedDiscount] = useState(false);
-    const [amounts, setAmounts] = useState({ productPrice: 0, shipping: 0, discount: 0, authenticationFee: 0, total: 0 });
+    const [amounts, setAmounts] = useState({
+        productPrice: 0,
+        shipping: 0,
+        discount: 0,
+        authenticationFee: 0,
+        total: 0
+    });
     const [isLargeItem, setIsLargeItem] = useState(false);
-    const [address, setAddress] = useState({ name: "", street: "", houseNumber: "", city: "", zip: "", country: "Denmark" });
+    const [address, setAddress] = useState({
+        name: "",
+        street: "",
+        houseNumber: "",
+        city: "",
+        zip: "",
+        country: "Denmark"
+    });
 
-    // Tjek om brugeren er sælgeren af produktet
     const isSeller = user && product && (user._id === (product.seller?._id || product.seller));
-
-    const SHIPPING_LABELS: Record<string, string> = {
-        dao: "DAO – Indlevering",
-        gls: "GLS – Pakkeshop (indlevering)",
-        postnord: "PostNord – MyPack Collect (indlevering)",
-        manual: "Manual pickup"
-    };
 
     useEffect(() => {
         const fetchProduct = async () => {
@@ -48,6 +54,11 @@ export default function CheckoutPage() {
                 setProduct(prod);
                 setIsLargeItem(prod.isLargeItem === true);
                 setAmounts(prev => ({ ...prev, productPrice: prod.price, total: prod.price }));
+
+                // Hvis varen er dyr, kan vi for-vælge autentificering visuelt
+                if (prod.price >= 20000) {
+                    setWantsAuthentication(true);
+                }
             }
             setLoading(false);
         };
@@ -62,17 +73,27 @@ export default function CheckoutPage() {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
-                body: JSON.stringify({ productId, address, shippingMethod: isLargeItem ? "manual" : shippingMethod, discountCode: forcedCode ?? (appliedDiscount ? discountCode : null) })
+                body: JSON.stringify({
+                    productId,
+                    address,
+                    shippingMethod: isLargeItem ? "manual" : shippingMethod,
+                    discountCode: forcedCode ?? (appliedDiscount ? discountCode : null),
+                    wantsAuthentication // SENDER VALG TIL BACKEND
+                })
             });
             const data = await res.json();
             if (data.success) setAmounts(data);
-        } catch (err) { console.error(err); } finally { setIsCalculating(false); }
-    }, [address, productId, shippingMethod, appliedDiscount, discountCode, isLargeItem]);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsCalculating(false);
+        }
+    }, [address, productId, shippingMethod, appliedDiscount, discountCode, isLargeItem, wantsAuthentication]);
 
     useEffect(() => {
         const timer = setTimeout(() => calculateTotal(), 600);
         return () => clearTimeout(timer);
-    }, [address.zip, address.city, shippingMethod, calculateTotal]);
+    }, [address.zip, address.city, shippingMethod, wantsAuthentication, calculateTotal]);
 
     const handleDiscount = async () => {
         if (!appliedDiscount) {
@@ -90,7 +111,13 @@ export default function CheckoutPage() {
         const res = await fetch(`/api/orders/create`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ productId, address, shippingMethod, discountCode: appliedDiscount ? discountCode : null })
+            body: JSON.stringify({
+                productId,
+                address,
+                shippingMethod,
+                discountCode: appliedDiscount ? discountCode : null,
+                wantsAuthentication // SENDER VALG TIL ORDRE-OPRETTELSE
+            })
         });
         const data = await res.json();
         if (res.ok) {
@@ -104,7 +131,6 @@ export default function CheckoutPage() {
 
     if (loading) return <div className="min-h-screen bg-[#003d2b] flex items-center justify-center text-white italic font-serif">Accessing the vault...</div>;
 
-    // --- VIS DENNE BOKS HVIS MAN PRØVER AT KØBE SIT EGET ---
     if (isSeller) {
         return (
             <div className="min-h-screen bg-[#003d2b] flex items-center justify-center p-6">
@@ -179,9 +205,35 @@ export default function CheckoutPage() {
                                 </div>
                             </div>
 
-                            {/* RABAT OG LEVERING */}
+                            {/* PREFERENCES (Levering & Autentificering) */}
                             <div className="bg-black/20 p-8 rounded-[2.5rem] border border-white/10 space-y-4">
                                 <h4 className="text-[10px] uppercase tracking-[0.2em] font-black text-white/40 mb-2">Preferences</h4>
+
+                                {/* Autentificering valg (Kun hvis prisen er under tærsklen på f.eks. 1500) */}
+                                {product?.price < 20000 ? (
+                                    <div
+                                        onClick={() => setWantsAuthentication(!wantsAuthentication)}
+                                        className={`flex items-center justify-between p-5 rounded-2xl border transition-all cursor-pointer ${wantsAuthentication ? 'bg-white border-white' : 'bg-[#16302b] border-white/10 hover:border-white/30'}`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <ShieldCheck className={wantsAuthentication ? "text-black" : "text-white/40"} size={24} />
+                                            <div>
+                                                <p className={`text-[10px] font-black uppercase tracking-widest ${wantsAuthentication ? "text-black" : "text-white"}`}>Vault Authentication</p>
+                                                <p className={`text-[10px] italic ${wantsAuthentication ? "text-black/60" : "text-white/40"}`}>Physical verification by experts</p>
+                                            </div>
+                                        </div>
+                                        <span className={`font-bold text-xs ${wantsAuthentication ? "text-black" : "text-white"}`}>+250 DKK</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-4 p-5 rounded-2xl bg-white/5 border border-white/10 opacity-80">
+                                        <ShieldCheck className="text-green-400" size={24} />
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase text-white">Compulsory Authentication</p>
+                                            <p className="text-[10px] italic text-white/40">Included for high-value items</p>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="flex gap-2">
                                     <input
                                         className={`${inputClass} flex-1`}
@@ -202,8 +254,6 @@ export default function CheckoutPage() {
                                     className={`${inputClass} w-full outline-none appearance-none cursor-pointer`}
                                 >
                                     <option value="dao" className="bg-[#16302b]">DAO – Indlevering</option>
-                                    {/*<option value="gls" className="bg-[#16302b]">GLS – Pakkeshop (indlevering)</option>
-                                    <option value="postnord" className="bg-[#16302b]">PostNord – MyPack Collect (indlevering)</option>*/}
                                 </select>
                             </div>
 
@@ -221,7 +271,6 @@ export default function CheckoutPage() {
                             </Button>
                         </div>
                     ) : (
-                        /* STRIPE ELEMENTS SEKTION */
                         <div className="bg-white p-10 rounded-[3rem] shadow-2xl overflow-hidden">
                             <Elements stripe={stripePromise} options={{ clientSecret }}>
                                 <StripePayment orderId={orderId} clientSecret={clientSecret} />
@@ -252,6 +301,15 @@ export default function CheckoutPage() {
                                     <span>{amounts.shipping > 0 ? `${amounts.shipping} DKK` : 'Calculated at checkout'}</span>
                                 )}
                             </div>
+
+                            {/* NY LINJE: Authentication Fee */}
+                            {amounts.authenticationFee > 0 && (
+                                <div className="flex justify-between text-white/50">
+                                    <span>Authentication</span>
+                                    <span>{amounts.authenticationFee} DKK</span>
+                                </div>
+                            )}
+
                             {appliedDiscount && (
                                 <div className="flex justify-between text-green-400">
                                     <span>Discount Applied</span>

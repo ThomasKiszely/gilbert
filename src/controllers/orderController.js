@@ -13,7 +13,7 @@ async function initiateOrder(req, res, next) {
             buyerId,
             address,
             bidId,
-            wantAuth,
+            wantsAuthentication,
             discountCode,
             shippingMethod
         );

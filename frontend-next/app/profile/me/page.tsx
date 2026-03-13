@@ -144,12 +144,14 @@ const MePage = () => {
 
                 if (productsRes.status === "fulfilled") {
                     const json = await productsRes.value.json();
-                    if (json.success) {
-                        setProducts((json.data || []).map((p: ApiProduct) => ({
-                            ...p,
-                            isFavorite: favoriteIds.has(String(p._id)),
-                        })));
-                    }
+
+                    // RETTELSE 1: Håndter både {success: true, data: []} og bare []
+                    const productList = json.data || (Array.isArray(json) ? json : []);
+
+                    setProducts(productList.map((p: ApiProduct) => ({
+                        ...p,
+                        isFavorite: favoriteIds.has(String(p._id)),
+                    })));
                 }
 
                 if (ordersRes.status === "fulfilled") {
@@ -313,17 +315,21 @@ const MePage = () => {
                     ) : (
                         <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                             {products.map((p) => {
+                                // RETTELSE 2: Sikker key og ID-håndtering
+                                const productId = p._id || `temp-${Math.random()}`;
+
                                 const mappedProduct = {
-                                    id: p._id,
-                                    title: p.title,
+                                    id: productId,
+                                    title: p.title || "No Title",
                                     brand: p.brand?.name || "",
                                     price: p.price,
                                     imageUrl: p.images?.[0] || "/images/ImagePlaceholder.jpg",
                                     tag: p.tags?.[0]?.name,
                                     isFavorite: Boolean(p.isFavorite),
                                 };
+
                                 return (
-                                    <div key={p._id}>
+                                    <div key={productId}>
                                         <ProductCard product={mappedProduct} onToggleFavorite={handleToggleFavorite} />
                                         <p className="text-xs mt-1 font-medium text-muted-foreground">Status: {p.status}</p>
                                     </div>

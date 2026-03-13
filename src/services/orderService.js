@@ -45,7 +45,7 @@ async function initiateOrder(
     buyerId,
     address,
     bidId = null,
-    wantAuth = false,
+    wantsAuthentication = false,
     discountCode = null,
     shippingMethod = null
 ) {
@@ -151,7 +151,7 @@ async function initiateOrder(
 
     // Authentication fee
     const isAuthForced = finalPrice >= AUTH_THRESHOLD;
-    const requiresAuthentication = isAuthForced || wantAuth;
+    const requiresAuthentication = isAuthForced || wantsAuthentication;
     const currentAuthFee = requiresAuthentication ? AUTHENTICATION_FEE : 0;
 
     // Platform fee + seller payout

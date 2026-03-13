@@ -198,11 +198,19 @@ async function searchProducts(filters, page = 1, limit = 20) {
     return await Product.aggregate(pipeline);
 }
 
+// I productRepo.js
+
 async function findProductsBySeller(sellerId, includeAll = false) {
-    const filter = {seller: sellerId};
-    if(!includeAll) {
+    // 1. Konverter til ObjectId
+    const sellerObjectId = new Types.ObjectId(sellerId);
+
+    // 2. Brug det konverterede ID i filteret
+    const filter = { seller: sellerObjectId };
+
+    if (!includeAll) {
         filter.status = 'Approved';
     }
+
     return await Product.find(filter)
         .populate("category")
         .populate("subcategory")
@@ -212,9 +220,9 @@ async function findProductsBySeller(sellerId, includeAll = false) {
         .populate("condition")
         .populate("color")
         .populate("material")
-        .populate("tags");
+        .populate("tags")
+        .populate("seller"); // Husk at populere seller, så din sanitizeUser virker!
 }
-
 async function updateManyProductsStatus(sellerId, newStatus) {
     return await Product.updateMany(
         { seller: sellerId },

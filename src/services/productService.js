@@ -5,6 +5,7 @@ const userRepo = require("../data/userRepo");
 const followRepo = require("../data/followRepo");
 const notificationService = require("../services/notificationService");
 const notificationTypes = require("../utils/notificationTypes");
+const { sanitizeUser } = require("../utils/sanitizeUser");
 
 
 async function attachFavoriteStatus(products, userId) {
@@ -141,8 +142,19 @@ async function searchProducts(filters, page, limit, userId) {
     return attachFavoriteStatus(products, userId);
 }
 
+// I productService.js
 async function findProductsBySeller(sellerId, includeAll){
-    return await productRepo.findProductsBySeller(sellerId, includeAll);
+    // Bare kald repoet direkte, det håndterer nu ObjectId
+    const products = await productRepo.findProductsBySeller(sellerId, includeAll);
+
+    // Vi mapper dem her, så vi kan sanitizere hver sælgers data
+    return products.map(p => {
+        const productObj = p.toObject ? p.toObject() : p;
+        return {
+            ...productObj,
+            seller: sanitizeUser(productObj.seller)
+        };
+    });
 }
 
 async function getTrendingProducts(limit, userId) {
