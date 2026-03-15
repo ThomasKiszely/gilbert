@@ -2,6 +2,7 @@
 
 import { Bell, Search, X, ShoppingBag } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/app/components/UI/button";
 import { Input } from "@/app/components/UI/input";
 import { useAuth } from "@/app/context/AuthContext";
@@ -131,9 +132,18 @@ const TopBar = () => {
                     )}
                 </div>
 
-                <Link href="/" className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center">
-                    <h1 className="text-xl md:text-2xl font-bold tracking-widest text-foreground font-serif uppercase leading-none">
-                        GILBERT
+                <Link href="/" className="absolute left-1/2 -translate-x-1/2 flex items-center">
+                    <h1 className="flex items-center gap-0 text-xl md:text-2xl font-bold tracking-widest text-foreground font-serif uppercase leading-none">
+                        <span>G</span>
+                        <Image
+                            src="/Gilbert.png"
+                            alt="I"
+                            width={200}
+                            height={240}
+                            style={{ width: "auto", height: "1.2em", objectFit: "contain", display: "inline-block", verticalAlign: "middle", transform: "translateY(-0.15em)", margin: "0 2px 0 0px" }}
+                            unoptimized
+                        />
+                        <span>LBERT</span>
                     </h1>
                 </Link>
 
